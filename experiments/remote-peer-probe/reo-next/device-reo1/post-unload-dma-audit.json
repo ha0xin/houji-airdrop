@@ -1,0 +1,61 @@
+{
+  "token": "[REDACTED]",
+  "boot_id": "b9361e8c-20fd-4306-9dca-75b3afe731e2",
+  "module_sha256": "0d98d07be6d2e662a618ee98ee87ea02a390c49af6207a364e792b0490386b47",
+  "original_before_snapshot_valid": false,
+  "original_snapshot_error": "/system/bin/printf: Argument list too long",
+  "source": "same-boot dmesg filtered by the original token's final and exit file mtimes",
+  "final_snapshot_wall": "2026-11-10 18:22:32.418999180 +0800",
+  "exit_file_wall": "2026-11-10 18:22:37.010999179 +0800",
+  "wall_minus_uptime_bounds_s": [
+    1794303967.961878,
+    1794303967.971878
+  ],
+  "events": [
+    {
+      "log": "[ 2184.592638] PT_REO_DMA_FREE generation=1 tid=0 path=2 flush_status=4294967295",
+      "uptime_s": 2184.592638,
+      "wall_epoch_bounds": [
+        1794306152.554516,
+        1794306152.564516
+      ]
+    },
+    {
+      "log": "[ 2184.592641] PT_REO_DMA_FREE generation=1 tid=16 path=2 flush_status=4294967295",
+      "uptime_s": 2184.592641,
+      "wall_epoch_bounds": [
+        1794306152.5545192,
+        1794306152.5645192
+      ]
+    }
+  ],
+  "all_current_matching_lines": 2,
+  "reo": {
+    "boot_id": "b9361e8c-20fd-4306-9dca-75b3afe731e2",
+    "new_dma_logs": [
+      "[ 2184.592638] PT_REO_DMA_FREE generation=1 tid=0 path=2 flush_status=4294967295",
+      "[ 2184.592641] PT_REO_DMA_FREE generation=1 tid=16 path=2 flush_status=4294967295"
+    ],
+    "verified": true,
+    "dma_cleanup_verified": true,
+    "firmware_queue_execution": "unknown",
+    "binding": "wmi_submit_callback_tail",
+    "free": [
+      {
+        "generation": 1,
+        "tid": 0,
+        "path": 2,
+        "callback_status": null
+      },
+      {
+        "generation": 1,
+        "tid": 16,
+        "path": 2,
+        "callback_status": null
+      }
+    ],
+    "flush_failures": []
+  },
+  "verified": true,
+  "android_pipefail_failure_propagated": true
+}

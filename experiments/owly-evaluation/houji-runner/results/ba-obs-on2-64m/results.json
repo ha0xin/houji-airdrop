@@ -1,0 +1,41 @@
+{
+  "channel": 149,
+  "profile": "vht80-sgi",
+  "aggregation": "amsdu",
+  "ack": "ack",
+  "tcp_mss": 1160,
+  "tun_queue": 500,
+  "rx_block_ack": false,
+  "ba_observer": "on",
+  "mac_awdl": "02:00:00:00:00:01",
+  "samples": [
+    {
+      "direction": "Mac\u2192\u5c0f\u7c73",
+      "sample": 1,
+      "mode": 0,
+      "bytes": 67108864,
+      "status": "verified",
+      "seconds": 33.683120625,
+      "MBps": 1.9923588656506792,
+      "sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "pair": 1,
+      "phone_seconds": 33.674392
+    },
+    {
+      "direction": "\u5c0f\u7c73\u2192Mac",
+      "sample": 2,
+      "mode": 1,
+      "bytes": 67108864,
+      "status": "verified",
+      "seconds": 12.053683041,
+      "MBps": 5.567498645163686,
+      "sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "pair": 1,
+      "phone_seconds": 12.053743
+    }
+  ],
+  "phone_owly0": "2001:db8::3f",
+  "radio_exit": 0,
+  "restored": true,
+  "server_sha_receipts": 2
+}

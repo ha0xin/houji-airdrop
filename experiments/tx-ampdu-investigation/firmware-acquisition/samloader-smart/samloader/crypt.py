@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: GPL-3.0+
+# Copyright (C) 2020 nlscc
+
+""" Calculate keys and decrypt encrypted firmware packages. """
+
+import hashlib
+import xml.etree.ElementTree as ET
+from Cryptodome.Cipher import AES
+from tqdm import tqdm
+
+from . import fusclient
+from . import request
+from . import versionfetch
+
+# PKCS#7 unpad
+unpad = lambda d: d[:-d[-1]]
+
+def getv4key(version, model, region):
+    """ Retrieve the AES key for V4 encryption. """
+    client = fusclient.FUSClient()
+    version = versionfetch.normalizevercode(version)
+    req = request.binaryinform(version, model, region, client.nonce)
+    resp = client.makereq("NF_SmartDownloadBinaryInform.do", req)
+    root = ET.fromstring(resp)
+    kv = {}
+    for elem in root.iter():
+        data = elem.find("Data")
+        if data is not None and data.text is not None:
+            kv[elem.tag] = data.text
+    fwver = kv.get("BINARY_SW_VERSION") or kv.get("LATEST_FW_VERSION")
+    logicval = kv.get("LOGIC_VALUE_FACTORY") or kv.get("LOGIC_VALUE_HOME")
+    deckey = request.getlogiccheck(fwver, logicval)
+    return hashlib.md5(deckey.encode()).digest()
+
+def getv2key(version, model, region):
+    """ Calculate the AES key for V2 (legacy) encryption. """
+    deckey = region + ":" + model + ":" + version
+    return hashlib.md5(deckey.encode()).digest()
+
+def decrypt_progress(inf, outf, key, length):
+    """ Decrypt a stream of data while showing a progress bar. """
+    cipher = AES.new(key, AES.MODE_ECB)
+    if length % 16 != 0:
+        raise Exception("invalid input block size")
+    chunks = length//4096+1
+    pbar = tqdm(total=length, unit="B", unit_scale=True)
+    for i in range(chunks):
+        block = inf.read(4096)
+        if not block:
+            break
+        decblock = cipher.decrypt(block)
+        if i == chunks - 1:
+            outf.write(unpad(decblock))
+        else:
+            outf.write(decblock)
+        pbar.update(4096)

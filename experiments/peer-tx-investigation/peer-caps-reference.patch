@@ -1,0 +1,47 @@
+--- a/src/wlan/qcacld-3.0/core/wma/src/wma_dev_if.c
++++ b/src/wlan/qcacld-3.0/core/wma/src/wma_dev_if.c
+@@ -2800,6 +2800,11 @@
+ static u32 pt_reo_mode;
+ static bool pt_fw_addba;
+ module_param(pt_fw_addba, bool, 0400);
++/* 1 is a fixed historical Mac reference, not automatic IE negotiation. */
++static unsigned int pt_peer_caps_profile;
++module_param(pt_peer_caps_profile, uint, 0400);
++MODULE_PARM_DESC(pt_peer_caps_profile,
++	"Peer assoc caps: 0=legacy, 1=historical Mac 2SS reference (verify live IE)");
+ static int pt_fw_addba_rc;
+ module_param(pt_fw_addba_rc, int, 0400);
+ static bool pt_fw_addba_sent;
+@@ -2830,6 +2835,8 @@
+ 
+ 	if (!generation || !wma || !wma->psoc || !wma->wmi_handle || !soc ||
+ 	    !wma_is_passthru_vdev(vdev) || !remote_mac)
++		return -EINVAL;
++	if (pt_peer_caps_profile > 1 || (pt_peer_caps_profile == 1 && !is_2ss))
+ 		return -EINVAL;
+ 
+ 	memcpy(remote.bytes, remote_mac, QDF_MAC_ADDR_SIZE);
+@@ -2993,6 +3000,23 @@
+ 	assoc.peer_ht_rates.num_rates = is_2ss ? 16 : 8;
+ 	for (i = 0; i < assoc.peer_ht_rates.num_rates; i++)
+ 		assoc.peer_ht_rates.rates[i] = i;
++	if (pt_peer_caps_profile == 1) {
++		/* Historical received HT TLV 00006f001fffff0000 and
++		 * VHT IE body 36008003faff0000faff0000. Density code 3
++		 * maps to 1 usec. peer_max_mpdu is max RX A-MPDU length,
++		 * not the single-MPDU limit encoded in peer_vht_caps.
++		 */
++		assoc.peer_ht_caps = 0x006f;
++		assoc.peer_vht_caps = 0x03800036;
++		assoc.peer_mpdu_density = 1;
++		assoc.rx_max_rate = 0;
++		assoc.tx_max_rate = 0;
++	}
++	wma_info("PT_ASSOC_CAPS profile=%u ht=%x vht=%x max_rx_ampdu=%u density_us=%u nss=%u phymode=%u rate_caps=%x rx_map=%x tx_map=%x rx_rate=%u tx_rate=%u",
++		 pt_peer_caps_profile, assoc.peer_ht_caps, assoc.peer_vht_caps,
++		 assoc.peer_max_mpdu, assoc.peer_mpdu_density, assoc.peer_nss,
++		 assoc.peer_phymode, assoc.peer_rate_caps, assoc.rx_mcs_set,
++		 assoc.tx_mcs_set, assoc.rx_max_rate, assoc.tx_max_rate);
+ 
+ 	spin_lock_irqsave(&wma_pt_peer_lock, flags);
+ 	wma_pt_peer_live.assoc_issued = true;

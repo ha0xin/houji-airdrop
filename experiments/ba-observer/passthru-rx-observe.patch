@@ -1,0 +1,52 @@
+--- a/qca-wifi-host-cmn/dp/wifi3.0/dp_rx.c
++++ b/qca-wifi-host-cmn/dp/wifi3.0/dp_rx.c
+@@ -1125,6 +1125,8 @@
+ qdf_export_symbol(__dp_rx_buffers_replenish);
+ 
+ #ifdef DRIVER_PASSTHRU_DP
++#include "dp_pt_ba_observer.h"
++
+ /* Explicit opt-in for the measured Stage39 kiwi_v2/Samsung-AMSS experiment.
+  * Keep false for all normal paths and for unmeasured firmware/layouts.
+  */
+@@ -1155,27 +1157,36 @@
+ 	    qdf_nbuf_is_nonlinear(nbuf) || qdf_nbuf_is_frag(nbuf) ||
+ 	    qdf_nbuf_is_rx_chfrag_cont(nbuf) ||
+ 	    !qdf_nbuf_is_rx_chfrag_start(nbuf) ||
+-	    !qdf_nbuf_is_rx_chfrag_end(nbuf) || qdf_nbuf_len(nbuf) < 10)
++	    !qdf_nbuf_is_rx_chfrag_end(nbuf) || qdf_nbuf_len(nbuf) < 10) {
++		pt_ba_note_reject(PT_BA_RX_PRECHECK);
+ 		goto out;
++	}
+ 
+ 	tlv_len = soc->rx_pkt_tlv_size;
+ 	prefix = tlv_len + QDF_NBUF_CB_RX_PACKET_L3_HDR_PAD(nbuf);
+ 	if (!hal_rx_passthru_tlv_size_valid(soc->hal_soc, tlv_len) ||
+-	    qdf_nbuf_headroom(nbuf) < prefix)
++	    qdf_nbuf_headroom(nbuf) < prefix) {
++		pt_ba_note_reject(PT_BA_RX_LAYOUT);
+ 		goto out;
++	}
+ 
+ 	/* The validated descriptor remains in headroom until radiotap is added. */
+ 	rx_tlvs = qdf_nbuf_data(nbuf) - prefix;
+-	if (!HAL_IS_DECAP_FORMAT_RAW(soc->hal_soc, rx_tlvs))
++	if (!HAL_IS_DECAP_FORMAT_RAW(soc->hal_soc, rx_tlvs)) {
++		pt_ba_note_reject(PT_BA_RX_NONRAW);
+ 		goto out;
++	}
+ 	fcs_error = !!hal_rx_tlv_mpdu_fcs_err_get(soc->hal_soc, rx_tlvs);
++	pt_ba_note_raw(soc, vdev, nbuf, rx_tlvs, tlv_len, fcs_error);
+     if (dp_rx_passthru_metadata)
+         metadata = hal_rx_passthru_kiwi_metadata(soc->hal_soc, rx_tlvs,
+                                                  tlv_len, &rx_ticks, &signal);
+     if (!qdf_nbuf_update_radiotap_passthru(nbuf, vdev->passthru_freq,
+                                          fcs_error, metadata,
+-                                         rx_ticks / 960, signal))
++                                         rx_ticks / 960, signal)) {
++		pt_ba_note_reject(PT_BA_RX_RADIOTAP);
+ 		goto out;
++	}
+ 
+ 	/* Do not inspect nbuf or interpret the status as retained ownership. */
+ 	vdev->osif_rx(vdev->osif_vdev, nbuf);

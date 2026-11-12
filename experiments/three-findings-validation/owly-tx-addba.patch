@@ -1,0 +1,568 @@
+diff --git a/crates/owly-awdl/src/driver.rs b/crates/owly-awdl/src/driver.rs
+index 389d8c0..b549cf7 100644
+--- a/crates/owly-awdl/src/driver.rs
++++ b/crates/owly-awdl/src/driver.rs
+@@ -356,7 +356,7 @@ impl<A: Air, N: Netif> Driver<A, N> {
+     /// held a frame: the host's queue holds them meanwhile, and drops the newest
+     /// when full rather than the node dropping its oldest.
+     fn takes_outbound(&self) -> bool {
+-        self.node.backlog() + self.unicast.len() < UNICAST_QUEUE
++        self.node.backlog() + self.unicast.len() < self.node.config().unicast_queue.max(UNICAST_QUEUE)
+     }
+ 
+     fn publish_peers(&self) {
+@@ -379,7 +379,7 @@ impl<A: Air, N: Netif> Driver<A, N> {
+         let s = self.node.stats();
+         let l = &self.lateness;
+         tracing::info!(
+-            "STATS tx_action {} tx_unicast {} tx_multicast {} tx_amsdu {} | radio full {} gave up {} | rx_action {} rx_data {} rx_malformed {} rx_dup {} delivered {} | addba req {} resp {} | dropped no_peer {} queue {} expired {} | syn held {} released {} | no_overlap {} | timer late avg {} µs max {} µs",
++            "STATS tx_action {} tx_unicast {} tx_multicast {} tx_amsdu {} | radio full {} gave up {} | rx_action {} rx_data {} rx_malformed {} rx_dup {} delivered {} | addba req {} resp {} tx_req {} rx_resp {} | dropped no_peer {} queue {} expired {} | syn held {} released {} | no_overlap {} | timer late avg {} µs max {} µs",
+             s.tx_action,
+             s.tx_unicast,
+             s.tx_multicast,
+@@ -393,6 +393,8 @@ impl<A: Air, N: Netif> Driver<A, N> {
+             s.delivered,
+             s.rx_addba_req,
+             s.tx_addba_resp,
++            s.tx_addba_req,
++            s.rx_addba_resp,
+             s.dropped_no_peer,
+             s.dropped_queue_full,
+             s.dropped_expired,
+diff --git a/crates/owly-awdl/src/frame.rs b/crates/owly-awdl/src/frame.rs
+index 0f5cc49..48cc637 100644
+--- a/crates/owly-awdl/src/frame.rs
++++ b/crates/owly-awdl/src/frame.rs
+@@ -113,6 +113,14 @@ pub enum Received<'a> {
+         params: u16,
+         timeout: u16,
+     },
++    /// A response to an outbound Block Ack session request.
++    AddBaResponse {
++        header: Header,
++        token: u8,
++        status: u16,
++        params: u16,
++        timeout: u16,
++    },
+     /// An AWDL data frame: one MSDU, or an A-MSDU.
+     Data {
+         header: Header,
+@@ -192,6 +200,15 @@ fn action(header: Header, body: &[u8]) -> Result<Received<'_>, Error> {
+             timeout: b.le16(5)?,
+         });
+     }
++    if b.u8(0)? == CATEGORY_BLOCK_ACK && b.u8(1)? == ADDBA_RESPONSE {
++        return Ok(Received::AddBaResponse {
++            header,
++            token: b.u8(2)?,
++            status: b.le16(3)?,
++            params: b.le16(5)?,
++            timeout: b.le16(7)?,
++        });
++    }
+     if body.len() < ACTION_HEADER_LEN
+         || body[0] != CATEGORY_VENDOR
+         || body[1..4] != OUI
+@@ -315,6 +332,22 @@ pub fn data_frame(src: MacAddr, dst: MacAddr, seq: u16, awdl_seq: u16, packet: &
+     out
+ }
+ 
++/// QoS Data (TID 0, Normal Ack) frame carrying a single IPv6 packet, so TQM
++/// can aggregate single-MSDU packets into outbound A-MPDUs without non-QoS holes.
++pub fn qos_data_frame(
++    src: MacAddr,
++    dst: MacAddr,
++    seq: u16,
++    awdl_seq: u16,
++    packet: &[u8],
++) -> Vec<u8> {
++    let mut out = Vec::with_capacity(HEADER_LEN + 2 + DATA_HEADER_LEN + packet.len());
++    put_header(&mut out, fc::QOS_DATA, dst, src, seq);
++    out.le16(0x0000); // QoS control: TID 0, Normal Ack, A-MSDU absent
++    put_msdu(&mut out, awdl_seq, packet);
++    out
++}
++
+ /// The bytes one packet adds to an A-MSDU, less the up to 3 bytes of
+ /// padding that may come before it.
+ pub fn amsdu_subframe_len(packet_len: usize) -> usize {
+@@ -388,6 +421,31 @@ pub fn addba_response_with_amsdu(
+     out
+ }
+ 
++/// Outbound IEEE 802.11 Block Ack ADDBA Request (Category 3, Action 0).
++pub fn addba_request(
++    src: MacAddr,
++    dst: MacAddr,
++    seq: u16,
++    token: u8,
++    tid: u8,
++    window: u16,
++    allow_amsdu: bool,
++    ssn: u16,
++) -> Vec<u8> {
++    let win = window.clamp(1, 256);
++    let amsdu_bit = u16::from(allow_amsdu);
++    let params = amsdu_bit | 0x0002 | ((u16::from(tid) & 0x0f) << 2) | (win << 6);
++    let mut out = Vec::with_capacity(HEADER_LEN + 9);
++    put_header(&mut out, fc::ACTION, dst, src, seq);
++    out.u8(CATEGORY_BLOCK_ACK);
++    out.u8(ADDBA_REQUEST);
++    out.u8(token);
++    out.le16(params);
++    out.le16(0); // Block Ack timeout = 0 (no inactivity timer)
++    out.le16((ssn & 0x0fff) << 4); // Block Ack Starting Sequence Control
++    out
++}
++
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+diff --git a/crates/owly-awdl/src/node.rs b/crates/owly-awdl/src/node.rs
+index ac6da79..d07bfc5 100644
+--- a/crates/owly-awdl/src/node.rs
++++ b/crates/owly-awdl/src/node.rs
+@@ -111,12 +111,23 @@ pub struct Config {
+     pub accept_addba: bool,
+     /// Preserve A-MSDU support (bit 0) in ADDBA responses when  is enabled.
+     pub accept_addba_amsdu: bool,
++    /// Initiate outbound Block Ack (ADDBA Request on TID 0) towards valid peers.
++    pub initiate_addba: bool,
++    /// Window size advertised in outbound ADDBA Requests (1..=256).
++    pub initiate_addba_window: u16,
++    /// Unicast queue capacity (defaults to [`UNICAST_QUEUE`]).
++    pub unicast_queue: usize,
++    /// Max frames emitted in one burst before pausing (defaults to `BURST`).
++    pub burst_limit: usize,
+     /// Advertise 80 MHz VHT with one spatial stream and the 3895-byte MPDU limit.
+     pub advertise_vht80_1ss: bool,
+     /// Explicit VHT container advertisement profile (overrides `advertise_vht80_1ss` when non-`Off`).
+     pub vht_profile: VhtProfile,
+     /// Send unicast packets to one peer as A-MSDUs, up to the peer's limit.
+     pub amsdu: bool,
++    /// Maximum software hold for an incomplete A-MSDU, in microseconds.
++    /// Zero sends immediately; queued packets can still share an A-MSDU.
++    pub amsdu_coalesce_us: u64,
+     /// The largest frame the radio takes, MAC header included.
+     pub max_frame: usize,
+     /// Peers heard more weakly than this, in dBm, aren't taken on; known
+@@ -140,9 +151,14 @@ impl Config {
+             no_ack,
+             accept_addba: false,
+             accept_addba_amsdu: false,
++            initiate_addba: false,
++            initiate_addba_window: 64,
++            unicast_queue: UNICAST_QUEUE,
++            burst_limit: BURST,
+             advertise_vht80_1ss: false,
+             vht_profile: VhtProfile::Off,
+             amsdu: false,
++            amsdu_coalesce_us: 1_000,
+             max_frame: 2304,
+             rssi_threshold: Some(-65),
+             neighbour_echo: true,
+@@ -171,6 +187,8 @@ pub struct Stats {
+     pub peers_evicted: u64,
+     pub rx_addba_req: u64,
+     pub tx_addba_resp: u64,
++    pub tx_addba_req: u64,
++    pub rx_addba_resp: u64,
+     pub rx_dup_dropped: u64,
+ }
+ 
+@@ -409,6 +427,41 @@ impl Node {
+                     });
+                 }
+             }
++            Received::AddBaResponse {
++                header,
++                token,
++                status,
++                params,
++                timeout,
++            } if header.dst == self.cfg.addr => {
++                if let Some(peer) = self.peers.get_mut(&header.src) {
++                    peer.last_seen = now;
++                    self.stats.rx_addba_resp += 1;
++                    let tid = (params >> 2) & 0x0f;
++                    let window = (params >> 6) & 0x03ff;
++                    let immediate = params & 2 != 0;
++                    let amsdu = params & 1 != 0;
++                    let accepted = self.cfg.initiate_addba
++                        && peer.tx_ba_attempts > 0
++                        && status == 0
++                        && peer.tx_ba_token == token
++                        && tid == 0
++                        && immediate
++                        && window > 0
++                        && window <= self.cfg.initiate_addba_window.clamp(1, 256)
++                        && (!amsdu || self.cfg.amsdu)
++                        && timeout == 0;
++                    #[cfg(feature = "driver")]
++                    tracing::info!(
++                        peer = ?header.src, token, expected_token = peer.tx_ba_token,
++                        status, tid, window, immediate, amsdu, timeout, accepted,
++                        "OWLY_TX_BA_RESPONSE_VALIDATED"
++                    );
++                    if accepted {
++                        peer.tx_ba_active = true;
++                    }
++                }
++            }
+             Received::Data {
+                 header,
+                 amsdu,
+@@ -474,6 +527,9 @@ impl Node {
+         if up {
+             let info = peer.info();
+             out.push(Action::PeerUp(info));
++            if self.cfg.initiate_addba {
++                self.maybe_initiate_addba(now, src, out);
++            }
+             self.release_syns(src, out);
+         }
+     }
+@@ -606,7 +662,7 @@ impl Node {
+                     return;
+                 }
+             }
+-            if self.unicast.len() == UNICAST_QUEUE {
++            if self.unicast.len() >= self.cfg.unicast_queue.max(1) {
+                 self.unicast.pop_front();
+                 self.stats.dropped_queue_full += 1;
+             }
+@@ -660,7 +716,7 @@ impl Node {
+         let mut sent = 0;
+         self.send_multicast(now, &mut sent, out);
+         self.send_unicast(now, &mut sent, out);
+-        if sent >= BURST {
++        if sent >= self.cfg.burst_limit.max(1) {
+             self.resume = Some(now.plus(BURST_PAUSE_US));
+         }
+     }
+@@ -839,7 +895,10 @@ impl Node {
+     }
+ 
+     fn send_multicast(&mut self, now: Time, sent: &mut usize, out: &mut Vec<Action>) {
+-        while *sent < BURST && !self.multicast.is_empty() && self.multicast_wait(now) == 0 {
++        while *sent < self.cfg.burst_limit.max(1)
++            && !self.multicast.is_empty()
++            && self.multicast_wait(now) == 0
++        {
+             let q = self.multicast.pop_front().expect("not empty");
+             let seq = self.next_seq();
+             let awdl_seq = self.awdl_seq;
+@@ -862,13 +921,60 @@ impl Node {
+ 
+     // Bulk IPv6 data can wait briefly for another MSDU. Keep the delay
+     // before frame creation and recheck the channel when retrying.
+-    const AMSDU_COALESCE_US: u64 = 1_000;
+     const AMSDU_COALESCE_MIN_BYTES: usize = 512;
+ 
+     fn should_coalesce(&self, peer: &Peer, now: Time, packet: &Ipv6Packet) -> bool {
+         packet.data.len() >= Self::AMSDU_COALESCE_MIN_BYTES
+             || (packet.pure_tcp_ack().is_some()
+-                && self.unicast_wait(peer, now.plus(Self::AMSDU_COALESCE_US)) == 0)
++                && self.unicast_wait(peer, now.plus(self.cfg.amsdu_coalesce_us)) == 0)
++    }
++
++    const TX_ADDBA_RETRY_US: u64 = 250_000;
++    const TX_ADDBA_MAX_ATTEMPTS: u8 = 4;
++
++    fn maybe_initiate_addba(&mut self, now: Time, dst: MacAddr, out: &mut Vec<Action>) {
++        let (token, ssn) = {
++            let Some(peer) = self.peers.get_mut(&dst) else {
++                return;
++            };
++            if !peer.valid
++                || peer.ht.is_none()
++                || peer.tx_ba_active
++                || peer.tx_ba_attempts >= Self::TX_ADDBA_MAX_ATTEMPTS
++            {
++                return;
++            }
++            if let Some(last) = peer.tx_ba_last_req
++                && now.since(last) < Self::TX_ADDBA_RETRY_US
++            {
++                return;
++            }
++            peer.tx_ba_attempts += 1;
++            peer.tx_ba_token = peer.tx_ba_token.wrapping_add(1).max(1);
++            peer.tx_ba_last_req = Some(now);
++            (peer.tx_ba_token, peer.tx_qos_seq)
++        };
++        let seq = self.next_seq();
++        let bytes = frame::addba_request(
++            self.cfg.addr,
++            dst,
++            seq,
++            token,
++            0,
++            self.cfg.initiate_addba_window,
++            self.cfg.amsdu,
++            ssn,
++        );
++        self.stats.tx_addba_req += 1;
++        out.push(Action::Transmit {
++            at: now,
++            frame: Frame {
++                bytes,
++                to: dst,
++                rate: TxRate::BASIC,
++                no_ack: false,
++            },
++        });
+     }
+ 
+     fn send_unicast(&mut self, now: Time, sent: &mut usize, out: &mut Vec<Action>) {
+@@ -880,7 +986,7 @@ impl Node {
+         let mut blocked: Vec<MacAddr> = Vec::new();
+         while let Some(q) = items.pop_front() {
+             let dst = q.packet.dst;
+-            let open = *sent < BURST
++            let open = *sent < self.cfg.burst_limit.max(1)
+                 && !blocked.contains(&dst)
+                 && self
+                     .peers
+@@ -928,18 +1034,39 @@ impl Node {
+                     && len + first_len + 3 <= limit;
+                 if can_grow
+                     && self.should_coalesce(peer, now, &oldest.packet)
+-                    && now.since(oldest.at) < Self::AMSDU_COALESCE_US
++                    && now.since(oldest.at) < self.cfg.amsdu_coalesce_us
+                 {
+                     blocked.push(dst);
+                     waiting.extend(batch);
+                     continue;
+                 }
+             }
+-            let seq = self.next_seq();
++            if self.cfg.initiate_addba {
++                self.maybe_initiate_addba(now, dst, out);
++            }
++            let seq = if self.cfg.initiate_addba {
++                if let Some(peer) = self.peers.get_mut(&dst) {
++                    peer.next_tx_qos_seq()
++                } else {
++                    self.next_seq()
++                }
++            } else {
++                self.next_seq()
++            };
+             let awdl_seq = self.awdl_seq;
+             self.awdl_seq = self.awdl_seq.wrapping_add(batch.len() as u16);
+             let bytes = if batch.len() == 1 {
+-                frame::data_frame(self.cfg.addr, dst, seq, awdl_seq, &batch[0].packet.data)
++                if self.cfg.initiate_addba {
++                    frame::qos_data_frame(
++                        self.cfg.addr,
++                        dst,
++                        seq,
++                        awdl_seq,
++                        &batch[0].packet.data,
++                    )
++                } else {
++                    frame::data_frame(self.cfg.addr, dst, seq, awdl_seq, &batch[0].packet.data)
++                }
+             } else {
+                 let packets: Vec<&[u8]> = batch.iter().map(|q| q.packet.data.as_slice()).collect();
+                 self.stats.tx_amsdu += 1;
+@@ -985,7 +1112,7 @@ impl Node {
+                     && p.ht.is_some()
+                     && self.should_coalesce(p, now, &q.packet)
+                 {
+-                    wait = Self::AMSDU_COALESCE_US.saturating_sub(now.since(q.at));
++                    wait = self.cfg.amsdu_coalesce_us.saturating_sub(now.since(q.at));
+                 }
+                 t = t.min(now.plus(wait.max(1)));
+             }
+diff --git a/crates/owly-awdl/src/peer.rs b/crates/owly-awdl/src/peer.rs
+index 65c2ad3..78b7486 100644
+--- a/crates/owly-awdl/src/peer.rs
++++ b/crates/owly-awdl/src/peer.rs
+@@ -35,6 +35,11 @@ pub struct Peer {
+     /// then is it a peer to talk to (AWDL-17).
+     pub valid: bool,
+     rx_seq_win: [Option<(u16, u128)>; 17],
++    pub(crate) tx_qos_seq: u16,
++    pub(crate) tx_ba_active: bool,
++    pub(crate) tx_ba_token: u8,
++    pub(crate) tx_ba_last_req: Option<Time>,
++    pub(crate) tx_ba_attempts: u8,
+ }
+ 
+ /// What a host is told about a peer that has turned valid.
+@@ -64,9 +69,21 @@ impl Peer {
+             v2: false,
+             valid: false,
+             rx_seq_win: [None; 17],
++            tx_qos_seq: 0,
++            tx_ba_active: false,
++            tx_ba_token: 0,
++            tx_ba_last_req: None,
++            tx_ba_attempts: 0,
+         }
+     }
+ 
++    /// Next contiguous 12-bit QoS TID 0 sequence number for outbound BlockAck sessions.
++    pub(crate) fn next_tx_qos_seq(&mut self) -> u16 {
++        let s = self.tx_qos_seq;
++        self.tx_qos_seq = (s + 1) & 0x0fff;
++        s
++    }
++
+     /// Sliding 128-sequence retry deduplicator per QoS TID (`0..15`) or non-QoS (`16`).
+     pub(crate) fn check_rx_duplicate(&mut self, slot: usize, seq: u16, is_retry: bool) -> bool {
+         let seq = seq & 0x0fff;
+diff --git a/crates/owly-awdl/tests/node.rs b/crates/owly-awdl/tests/node.rs
+index a9c6cfc..0ccbe65 100644
+--- a/crates/owly-awdl/tests/node.rs
++++ b/crates/owly-awdl/tests/node.rs
+@@ -580,12 +580,17 @@ fn bulk_coalescing_holds_briefly_and_preserves_order() {
+ 
+ 
+ fn coalescing_node(max_frame: usize) -> Node {
++    coalescing_node_with_delay(max_frame, 1_000)
++}
++
++fn coalescing_node_with_delay(max_frame: usize, delay_us: u64) -> Node {
+     let radio = RadioConstraints {
+         channel: Channel(149),
+         presence: Presence::Fixed,
+     };
+     let mut cfg = Config::new(US, "owly", radio);
+     cfg.amsdu = true;
++    cfg.amsdu_coalesce_us = delay_us;
+     cfg.max_frame = max_frame;
+     cfg.neighbour_echo = false;
+     Node::new(cfg, START)
+@@ -631,6 +636,25 @@ fn a_full_aggregate_sends_before_the_hold_deadline() {
+     assert_eq!(phone_payloads(&output), expected);
+ }
+ 
++#[test]
++fn configured_hold_controls_deadline_without_losing_the_packet() {
++    for hold in [0, 250, 1_000, 4_000] {
++        let mut node = coalescing_node_with_delay(7935, hold);
++        let now = meet(&mut node, &seq([149; SLOTS])).plus(100);
++        let packet = Ipv6Packet::echo_request(US, PHONE, 5, 1, &[1; 600]);
++        let expected = vec![packet.data.clone()];
++        let first = outgoing(&mut node, now, packet);
++        if hold == 0 {
++            assert_eq!(phone_payloads(&first), expected);
++        } else {
++            assert!(phone_payloads(&first).is_empty());
++            assert!(phone_payloads(&tick(&mut node, now.plus(hold - 1))).is_empty());
++            assert_eq!(phone_payloads(&tick(&mut node, now.plus(hold))), expected);
++        }
++        assert_eq!(node.backlog(), 0);
++    }
++}
++
+ #[test]
+ fn a_later_small_packet_cannot_overtake_an_earlier_packet_that_does_not_fit() {
+     let mut node = coalescing_node(2304);
+@@ -749,3 +773,102 @@ fn pure_tcp_ack_near_slot_close_flushes_immediately_instead_of_stranding() {
+     assert_eq!(phone_payloads(&sent), [ack.data]);
+     assert_eq!(node.backlog(), 0);
+ }
++
++#[test]
++fn initiate_addba_emits_request_and_contiguous_qos_data_sequences() {
++    let radio = RadioConstraints {
++        channel: Channel(149),
++        presence: Presence::Fixed,
++    };
++    let mut c = Config::new(US, "owly", radio);
++    c.amsdu = true;
++    c.no_ack = false;
++    c.initiate_addba = true;
++    c.initiate_addba_window = 64;
++    let mut node = Node::new(c, START);
++    let t0 = START.plus(100_000);
++    let actions = feed(&mut node, t0, &phone_frame(subtype::MIF, &seq([149; SLOTS]), 400, 64));
++    let addba_tx: Vec<_> = transmits(&actions)
++        .into_iter()
++        .filter(|f| {
++            f.to == PHONE && f.bytes.len() == 33 && f.bytes[0] == 0xd0 && f.bytes[24..26] == [3, 0]
++        })
++        .collect();
++    assert_eq!(addba_tx.len(), 1);
++    assert_eq!(node.stats().tx_addba_req, 1);
++    let token = addba_tx[0].bytes[26];
++    let ssn = u16::from_le_bytes([addba_tx[0].bytes[31], addba_tx[0].bytes[32]]) >> 4;
++    assert_eq!(ssn, 0);
++
++    let resp = frame::addba_response_with_amsdu(PHONE, US, 7, token, 0x1003, 0, true);
++    let _ = feed(&mut node, t0.plus(100), &resp);
++    assert_eq!(node.stats().rx_addba_resp, 1);
++
++    let now = START.plus(1_000_000);
++    feed(&mut node, now, &phone_frame(subtype::PSF, &seq([149; SLOTS]), 400 + 4 * 14, 64));
++    let _ = tick(&mut node, now);
++
++    // Emit PSF/MIF action frames in between to prove action frames do NOT create
++    // sequence-number holes in peer's TID 0 QoS sequence stream!
++    let p1 = Ipv6Packet::echo_request(US, PHONE, 1, 1, &[0xaa; 64]);
++    let sent1 = outgoing(&mut node, now.plus(100), p1);
++    let unicast1: Vec<_> = transmits(&sent1)
++        .into_iter()
++        .filter(|f| f.to == PHONE && f.bytes[0] == 0x88)
++        .collect();
++    assert_eq!(unicast1.len(), 1);
++    let seq1 = u16::from_le_bytes([unicast1[0].bytes[22], unicast1[0].bytes[23]]) >> 4;
++    assert_eq!(seq1, 0);
++
++    let _ = tick(&mut node, now.plus(200_000));
++    let p2 = Ipv6Packet::echo_request(US, PHONE, 1, 2, &[0xbb; 64]);
++    let sent2 = outgoing(&mut node, now.plus(200_100), p2);
++    let unicast2: Vec<_> = transmits(&sent2)
++        .into_iter()
++        .filter(|f| f.to == PHONE && f.bytes[0] == 0x88)
++        .collect();
++    assert_eq!(unicast2.len(), 1);
++    let seq2 = u16::from_le_bytes([unicast2[0].bytes[22], unicast2[0].bytes[23]]) >> 4;
++    assert_eq!(seq2, 1);
++}
++
++#[test]
++fn tx_addba_response_validation_controls_retry() {
++    // Observe the real response parser and retry state machine, rather than
++    // duplicating the implementation predicate in a helper-only test.
++    for (name, token_delta, params, status, timeout, amsdu, accepted) in [
++        ("valid", 0u8, 0x1003u16, 0u16, 0u16, true, true),
++        ("valid_without_amsdu", 0, 0x1002, 0, 0, false, true),
++        ("smaller_window", 0, 0x0802, 0, 0, true, true),
++        ("wrong_token", 1, 0x1003, 0, 0, true, false),
++        ("wrong_tid", 0, 0x1007, 0, 0, true, false),
++        ("zero_window", 0, 0x0003, 0, 0, true, false),
++        ("oversize_window", 0, 0x1043, 0, 0, true, false),
++        ("delayed_policy", 0, 0x1001, 0, 0, true, false),
++        ("rejected", 0, 0x1003, 37, 0, true, false),
++        ("unsolicited_amsdu", 0, 0x1003, 0, 0, false, false),
++        ("nonzero_timeout", 0, 0x1003, 0, 1, true, false),
++    ] {
++        let radio = RadioConstraints { channel: Channel(149), presence: Presence::Fixed };
++        let mut c = Config::new(US, "owly", radio);
++        c.amsdu = amsdu;
++        c.no_ack = false;
++        c.initiate_addba = true;
++        c.initiate_addba_window = 64;
++        let mut node = Node::new(c, START);
++        let t = START.plus(100_000);
++        let actions = feed(&mut node, t, &phone_frame(subtype::MIF, &seq([149; SLOTS]), 400, 64));
++        let token = transmits(&actions).into_iter()
++            .find(|f| f.bytes.len() == 33 && f.bytes[24..26] == [3, 0])
++            .expect("initial ADDBA request").bytes[26];
++        let mut response = frame::addba_response_with_amsdu(PHONE, US, 7, token.wrapping_add(token_delta), 0x1003, 0, true);
++        response[27..29].copy_from_slice(&status.to_le_bytes());
++        response[29..31].copy_from_slice(&params.to_le_bytes());
++        response[31..33].copy_from_slice(&timeout.to_le_bytes());
++        feed(&mut node, t.plus(100), &response);
++        assert_eq!(node.stats().rx_addba_resp, 1, "{name}");
++        feed(&mut node, t.plus(300_000), &phone_frame(subtype::MIF, &seq([149; SLOTS]), 414, 64));
++        outgoing(&mut node, t.plus(300_100), Ipv6Packet::echo_request(US, PHONE, 1, 1, &[0xaa; 64]));
++        assert_eq!(node.stats().tx_addba_req, if accepted { 1 } else { 2 }, "{name}");
++    }
++}

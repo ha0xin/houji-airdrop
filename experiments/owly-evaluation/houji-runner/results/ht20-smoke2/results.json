@@ -1,0 +1,13 @@
+{
+  "channel": 149,
+  "profile": "ht20",
+  "aggregation": "single",
+  "ack": "ack",
+  "rx_block_ack": false,
+  "mac_awdl": "02:00:00:00:00:01",
+  "samples": [],
+  "test_error": "RuntimeError: radio exited before ready, rc=1",
+  "radio_exit": 1,
+  "restored": true,
+  "server_sha_receipts": 0
+}

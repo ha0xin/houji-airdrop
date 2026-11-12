@@ -1,0 +1,136 @@
+--- a/bench.py
++++ b/bench.py
+@@ -45,19 +45,23 @@
+     raise TimeoutError("device state deadline")
+ 
+ 
+-def deploy(variant, include_observer=False):
++def deploy(variant, observer=None):
+     stage = adb("shell", "mktemp -d /data/local/tmp/owly-stage.XXXXXX").strip()
+     if not re.fullmatch(r"/data/local/tmp/owly-stage\.[a-zA-Z0-9]+", stage):
+         raise ValueError("unexpected staging directory")
+     files = ["houji-owly", "wonder-init", "owly-hashprobe", "SHA256SUMS", "radio-owly.sh"]
+-    observer_name = "qca_cld3_kiwi_v2-observer.ko"
+-    if include_observer:
++    observer_name = None
++    if observer is not None:
++        observer_dir, observer_name = {
++            "aggregate": ("ba-observer", "qca_cld3_kiwi_v2-observer.ko"),
++            "peer": ("ba-peer-observer", "qca_cld3_kiwi_v2-peer-observer.ko"),
++        }[observer]
+         files.append(observer_name)
+     try:
+         for name in files:
+             dist = HERE / "dist" if variant == "baseline" else HERE / "dist" / variant
+             if name == observer_name:
+-                source = HERE.parents[1] / "ba-observer" / "qca_cld3_kiwi_v2.ko"
++                source = HERE.parents[1] / observer_dir / "qca_cld3_kiwi_v2.ko"
+             else:
+                 source = HERE / name if name.endswith(".sh") else dist / name
+             adb("push", str(source), f"{stage}/{name}")
+@@ -72,7 +76,7 @@
+ done
+ chmod 700 {ROOT}/houji-owly {ROOT}/wonder-init {ROOT}/owly-hashprobe {RADIO}
+ chmod 600 {ROOT}/SHA256SUMS
+-{"chmod 600 " + ROOT + "/" + observer_name if include_observer else ""}
++{"chmod 600 " + ROOT + "/" + observer_name if observer_name else ""}
+ cd {ROOT}
+ sha256sum -c SHA256SUMS
+ sh -n {RADIO}
+@@ -269,7 +273,9 @@
+     sub = parser.add_subparsers(dest="command", required=True)
+     install = sub.add_parser("deploy")
+     install.add_argument("--variant", choices=("baseline", "coalesce", "mss"), default="baseline")
+-    install.add_argument("--include-ba-observer", action="store_true")
++    observers = install.add_mutually_exclusive_group()
++    observers.add_argument("--include-ba-observer", dest="observer", action="store_const", const="aggregate")
++    observers.add_argument("--include-ba-peer-observer", dest="observer", action="store_const", const="peer")
+     trial = sub.add_parser("measure")
+     trial.add_argument("name")
+     trial.add_argument("profile", choices=("ht20", "vht80", "vht80-sgi"))
+@@ -278,11 +284,11 @@
+     trial.add_argument("--mib", type=int, choices=range(1, 129), default=64)
+     trial.add_argument("--mss", type=int, choices=(0, 1160), default=0)
+     trial.add_argument("--queue-len", type=int, choices=(500, 2048), default=500)
+-    trial.add_argument("--ba-observer", choices=("reference", "off", "on"), default="reference")
++    trial.add_argument("--ba-observer", choices=("reference", "off", "on", "peer"), default="reference")
+     trial.add_argument("--pairs", type=int, choices=range(1, 5), default=2)
+     args = parser.parse_args()
+     if args.command == "deploy":
+-        deploy(args.variant, args.include_ba_observer)
++        deploy(args.variant, args.observer)
+         return 0
+     if args.queue_len != 500 and args.mss != 1160:
+         parser.error("queue control requires the MSS 1160 comparison")
+--- a/radio-owly.sh
++++ b/radio-owly.sh
+@@ -17,6 +17,7 @@
+ NOTE=a3e9bd62646444e1ecbe0f421c95ec46e6caf69a78323efb2f6ebe00e6b2bd8b
+ RING_SHA=481e3474ea6b42acab5bb5a35b5be7b5e291aa975d7422034ca4e750e857d71c
+ BA_OBSERVER_SHA=b9f0a77ec9132e57677f83e75e4e3185087b8c4a104878db532a894cb0c4637b
++BA_PEER_OBSERVER_SHA=1ad02ff5e62183690c6f1d52a075f5d73001ed82d44c59cd37ec3bf2d5b2c3c4
+ TABLE=10075
+ IFACE=owly0
+ driver=
+@@ -197,6 +198,10 @@
+   echo "BA_OBSERVER_PARAM=$(cat "$W/parameters/pt_ba_observe")"
+   cat "$W/parameters/pt_ba_stats"
+  fi
++ if test "$ba_mode" = peer; then
++  echo "BA_PEER_CONFIGURED=$(cat "$W/parameters/pt_ba_peer")"
++  cat "$W/parameters/pt_ba_peer_stats"
++ fi
+  ip -s link show dev "$IFACE"
+  ip -s link show dev wonder0
+  tc -s qdisc show dev wonder0
+@@ -210,10 +215,16 @@
+  check 9a8345d87ec1186a29b413935b4efdbd38566e7e22374e70a7a85510b2970e9a "$RADIO/houji_wonder_bridge.ko"
+  qca="$RADIO/qca_cld3_kiwi_v2.ko"
+  qca_sha=$RING_SHA
+- if test "$ba_mode" != reference; then
+-  qca="$ROOT/qca_cld3_kiwi_v2-observer.ko"
+-  qca_sha=$BA_OBSERVER_SHA
+- fi
++ case "$ba_mode" in
++  off|on)
++   qca="$ROOT/qca_cld3_kiwi_v2-observer.ko"
++   qca_sha=$BA_OBSERVER_SHA
++   ;;
++  peer)
++   qca="$ROOT/qca_cld3_kiwi_v2-peer-observer.ko"
++   qca_sha=$BA_PEER_OBSERVER_SHA
++   ;;
++ esac
+  check "$qca_sha" "$qca"
+  echo "WLAN_BUILD_SHA=$qca_sha BA_OBSERVER_REQUEST=$ba_mode"
+  check 9d60988f896669604ff2e8cdfa1ba91a7047c1ddd2210b1fa494f506f5eb039c "$RADIO/wonder.ko"
+@@ -242,12 +253,18 @@
+  vht=0
+  case "$profile" in vht80|vht80-sgi) vht=1;; esac
+  set -- pt_exclusive=1 pt_zero_serial=1 pt_rx_metadata=1 pt_vht80="$vht" pt_rate_observe=1 pt_single_ring=1
+- if test "$ba_mode" = on; then set -- "$@" pt_ba_observe=1; fi
++ case "$ba_mode" in
++  on) set -- "$@" pt_ba_observe=1 ;;
++  peer) set -- "$@" pt_ba_observe=1 "pt_ba_peer=$peer" ;;
++ esac
+  bounded insmod "$qca" "$@"
+  case "$ba_mode" in
+   off) test "$(cat "$W/parameters/pt_ba_observe")" = N ;;
+-  on) test "$(cat "$W/parameters/pt_ba_observe")" = Y ;;
++  on|peer) test "$(cat "$W/parameters/pt_ba_observe")" = Y ;;
+  esac
++ if test "$ba_mode" = peer; then
++  test "$(cat "$W/parameters/pt_ba_peer")" = 1
++ fi
+  sleep 2
+  echo on > "$PCI"
+  bounded sh -c 'echo 1 > /sys/module/qca_cld3_kiwi_v2/parameters/pt_activate'
+@@ -446,7 +463,7 @@
+   test "$#" = 10
+   case "${10}" in
+    reference) ;;
+-   off|on) test "$2:$3:$4:$8:$9" = vht80-sgi:amsdu:ack:1160:500 ;;
++   off|on|peer) test "$2:$3:$4:$8:$9" = vht80-sgi:amsdu:ack:1160:500 ;;
+    *) exit 2 ;;
+   esac
+   case "$8:$9" in 0:500|1160:500|1160:2048) ;; *) exit 2;; esac

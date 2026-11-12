@@ -1,0 +1,1 @@
+active=1 generation=1 vdev=0 peer_id=1 ast_valid=1 ast_idx=2 ast_hash=2 reo_enabled=1 is_2ss=1 obj_created=1 dp_created=1 create_confirm=1 create_status=0 htt_map=1 slot=1 reo_setup=1 reo_status=0 assoc_issued=1 assoc_confirm=1 assoc_status=0 tx_ready=1 delete_issued=0 delete_confirm=0 htt_unmap=0 slot_removed=0 dp_released=0 obj_released=0 dp_conflict=0 setup_rc=0 teardown_rc=0

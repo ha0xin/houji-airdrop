@@ -1,0 +1,315 @@
+diff --git a/qca-wifi-host-cmn/qdf/inc/qdf_pt_remote_peer.h b/qca-wifi-host-cmn/qdf/inc/qdf_pt_remote_peer.h
+--- a/qca-wifi-host-cmn/qdf/inc/qdf_pt_remote_peer.h
++++ b/qca-wifi-host-cmn/qdf/inc/qdf_pt_remote_peer.h
+@@ -43,6 +43,13 @@
+ 				const u8 *ta);
+ void pt_remote_peer_flow_raw_submit(u64 generation);
+ 
++bool pt_remote_peer_ast_target(const void *psoc, u8 vdev_id, const u8 *mac,
++			       u16 peer_id);
++bool pt_remote_peer_ast_note_map(const void *psoc, u8 vdev_id, const u8 *mac,
++				 u16 peer_id, bool self_proven, u16 self_idx,
++				 u16 self_hash, u16 remote_idx, u16 remote_hash);
++void pt_remote_peer_ast_note_tx(const void *psoc, u8 vdev_id, u16 idx, u16 hash);
++
+ bool pt_remote_peer_reo_enabled(void);
+ u64 pt_remote_peer_reo_key(const void *psoc, u8 vdev_id, const u8 *mac);
+ bool pt_remote_peer_reo_skip_addba(const void *psoc, u8 vdev_id, const u8 *mac);
+diff --git a/qcacld-3.0/core/wma/src/wma_dev_if.c b/qcacld-3.0/core/wma/src/wma_dev_if.c
+--- a/qcacld-3.0/core/wma/src/wma_dev_if.c
++++ b/qcacld-3.0/core/wma/src/wma_dev_if.c
+@@ -2468,6 +2468,8 @@
+ module_param(pt_remote_reo, bool, 0400);
+ static bool pt_remote_reo_flow;
+ module_param(pt_remote_reo_flow, bool, 0400);
++static bool pt_remote_preserve_self_ast;
++module_param(pt_remote_preserve_self_ast, bool, 0400);
+ 
+ bool pt_remote_peer_reo_enabled(void)
+ {
+@@ -2544,6 +2546,18 @@
+ 	u32 flow_tlv_size;
+ 	u32 flow_capacity_max;
+ 	u32 flow_raw_qos_submit;
++	bool ast_map_seen;
++	bool ast_self_proven;
++	bool ast_distinct;
++	bool ast_conflict;
++	u16 ast_self_idx;
++	u16 ast_self_hash;
++	u16 ast_remote_idx;
++	u16 ast_remote_hash;
++	u16 ast_tx_idx;
++	u16 ast_tx_cache;
++	u32 ast_tx_samples;
++	u32 ast_tx_mismatch;
+ };
+ static struct wma_pt_peer_trial wma_pt_peer_trial;
+ 
+@@ -2896,6 +2910,77 @@
+ 			generation, tid, path, flush_status);
+ 	if (problem)
+ 		pr_info("PT_REO_DMA_ERROR generation=%llu tid=%u error=%s\n", generation, tid, problem);
++}
++
++bool pt_remote_peer_ast_target(const void *psoc, u8 vdev_id, const u8 *mac,
++			       u16 peer_id)
++{
++	unsigned long flags;
++	bool match;
++
++	if (!READ_ONCE(pt_remote_preserve_self_ast))
++		return false;
++	spin_lock_irqsave(&wma_pt_peer_lock, flags);
++	match = wma_pt_peer_dp_key_matches(psoc, vdev_id, mac) &&
++		wma_pt_peer_trial.slot_installed &&
++		wma_pt_peer_trial.peer_id == peer_id;
++	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
++	return match;
++}
++
++bool pt_remote_peer_ast_note_map(const void *psoc, u8 vdev_id, const u8 *mac,
++				 u16 peer_id, bool self_proven, u16 self_idx,
++				 u16 self_hash, u16 remote_idx, u16 remote_hash)
++{
++	unsigned long flags;
++	bool preserve = false;
++
++	spin_lock_irqsave(&wma_pt_peer_lock, flags);
++	if (!wma_pt_peer_dp_key_matches(psoc, vdev_id, mac) ||
++	    wma_pt_peer_trial.peer_id != peer_id)
++		goto unlock;
++	if (wma_pt_peer_trial.ast_map_seen) {
++		if (wma_pt_peer_trial.ast_self_proven != self_proven ||
++		    wma_pt_peer_trial.ast_self_idx != self_idx ||
++		    wma_pt_peer_trial.ast_self_hash != self_hash ||
++		    wma_pt_peer_trial.ast_remote_idx != remote_idx ||
++		    wma_pt_peer_trial.ast_remote_hash != remote_hash)
++			wma_pt_peer_trial.ast_conflict = true;
++	} else {
++		wma_pt_peer_trial.ast_map_seen = true;
++		wma_pt_peer_trial.ast_self_proven = self_proven;
++		wma_pt_peer_trial.ast_self_idx = self_idx;
++		wma_pt_peer_trial.ast_self_hash = self_hash;
++		wma_pt_peer_trial.ast_remote_idx = remote_idx;
++		wma_pt_peer_trial.ast_remote_hash = remote_hash;
++		wma_pt_peer_trial.ast_distinct = self_idx != remote_idx ||
++			(self_hash & 0xf) != (remote_hash & 0xf);
++	}
++	preserve = wma_pt_peer_trial.ast_self_proven && !wma_pt_peer_trial.ast_conflict;
++unlock:
++	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
++	return preserve;
++}
++
++void pt_remote_peer_ast_note_tx(const void *psoc, u8 vdev_id, u16 idx, u16 hash)
++{
++	unsigned long flags;
++
++	if (!READ_ONCE(pt_remote_preserve_self_ast) || !READ_ONCE(wma_pt_peer_trial.flow_ready))
++		return;
++	spin_lock_irqsave(&wma_pt_peer_lock, flags);
++	if (wma_pt_peer_trial.psoc == psoc && wma_pt_peer_trial.vdev_id == vdev_id &&
++	    wma_pt_peer_trial.flow_ready && wma_pt_peer_trial.ast_self_proven) {
++		if (!wma_pt_peer_trial.ast_tx_samples) {
++			wma_pt_peer_trial.ast_tx_idx = idx;
++			wma_pt_peer_trial.ast_tx_cache = hash & 0xf;
++		}
++		wma_pt_peer_trial.ast_tx_samples++;
++		if (idx != wma_pt_peer_trial.ast_self_idx ||
++		    (hash & 0xf) != (wma_pt_peer_trial.ast_self_hash & 0xf))
++			wma_pt_peer_trial.ast_tx_mismatch++;
++	}
++	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
+ }
+ 
+ static bool wma_pt_peer_flow_key(const void *psoc, u8 vdev_id, u16 peer_id)
+@@ -3131,7 +3216,8 @@
+ 	spin_lock_irqsave(&wma_pt_peer_lock, flags);
+ 	live = wma_pt_peer_live_slot(&wma_pt_peer_trial) &&
+ 	       !wma_pt_peer_trial.create_conflict &&
+-	       !wma_pt_peer_trial.reo_conflict;
++	       !wma_pt_peer_trial.reo_conflict &&
++	       !wma_pt_peer_trial.ast_conflict && !wma_pt_peer_trial.ast_tx_mismatch;
+ 	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
+ 	return live;
+ }
+@@ -3236,7 +3322,8 @@
+ 	enum wma_pt_peer_result result = WMA_PT_PEER_BLOCKED;
+ 
+ 	*retire = false;
+-	if (READ_ONCE(pt_remote_reo_flow) && !pt_remote_peer_reo_enabled()) {
++	if ((READ_ONCE(pt_remote_reo_flow) && !pt_remote_peer_reo_enabled()) ||
++	    (READ_ONCE(pt_remote_preserve_self_ast) && !READ_ONCE(pt_remote_reo_flow))) {
+ 		*retire = true;
+ 		return -EINVAL;
+ 	}
+@@ -3263,7 +3350,8 @@
+ 
+ 	do {
+ 		if (trial.create_returned && wma_pt_peer_live_slot(&trial) &&
+-		    (trial.create_confirmed || QDF_IS_STATUS_ERROR(status)))
++		    (trial.create_confirmed || QDF_IS_STATUS_ERROR(status)) &&
++		    (!READ_ONCE(pt_remote_preserve_self_ast) || trial.ast_map_seen))
+ 			break;
+ 		if (trial.dp_conflict)
+ 			goto done;
+@@ -3317,7 +3405,10 @@
+ 			    (i && (trial.reo_flags[i] & expected) != expected))
+ 				reo_error = -EIO;
+ 	}
+-	if (READ_ONCE(pt_remote_reo_flow) && !reo_error &&
++	if (READ_ONCE(pt_remote_preserve_self_ast) &&
++	    (!trial.ast_map_seen || !trial.ast_self_proven || !trial.ast_distinct || trial.ast_conflict))
++		flow_error = -ENODATA;
++	if (READ_ONCE(pt_remote_reo_flow) && !reo_error && !flow_error &&
+ 	    trial.create_returned && !QDF_IS_STATUS_ERROR(trial.create_submit) &&
+ 	    trial.create_confirmed && !trial.create_status && !trial.create_conflict) {
+ 		bool delete_safe;
+@@ -3390,7 +3481,10 @@
+ 			 "flow_cpu_quiet=%u flow_tx_quiet=%u flow_status=%d "
+ 			 "flow_quiesce_status=%d flow_tx_status=%d flow_tx_first=%u flow_tx_last=%u "
+ 			 "flow_be_pass=%u flow_be_reject=%u flow_raw_qos_submit=%u "
+-			 "flow_buf_cfg=%u flow_tlv_size=%u flow_capacity_max=%u\n",
++			 "flow_buf_cfg=%u flow_tlv_size=%u flow_capacity_max=%u "
++			 "ast_enabled=%u ast_map_seen=%u ast_self_proven=%u ast_distinct=%u ast_conflict=%u "
++			 "ast_self_idx=%u ast_self_hash=%u ast_remote_idx=%u ast_remote_hash=%u "
++			 "ast_tx_idx=%u ast_tx_cache=%u ast_tx_samples=%u ast_tx_mismatch=%u\n",
+ 			 READ_ONCE(wma_pt_peer_result), trial.generation, trial.vdev_id,
+ 			 trial.peer_id, trial.obj_attached, trial.obj_created, trial.dp_created,
+ 			 trial.create_issued, trial.create_returned, trial.create_submit,
+@@ -3417,7 +3511,12 @@
+ 			 trial.flow_status, trial.flow_quiesce_status, trial.flow_tx_status,
+ 			 trial.flow_tx_first, trial.flow_tx_last,
+ 			 trial.flow_be_pass, trial.flow_be_reject, trial.flow_raw_qos_submit,
+-			 trial.flow_buf_cfg, trial.flow_tlv_size, trial.flow_capacity_max);
++			 trial.flow_buf_cfg, trial.flow_tlv_size, trial.flow_capacity_max,
++			 READ_ONCE(pt_remote_preserve_self_ast), trial.ast_map_seen,
++			 trial.ast_self_proven, trial.ast_distinct, trial.ast_conflict,
++			 trial.ast_self_idx, trial.ast_self_hash, trial.ast_remote_idx,
++			 trial.ast_remote_hash, trial.ast_tx_idx, trial.ast_tx_cache,
++			 trial.ast_tx_samples, trial.ast_tx_mismatch);
+ }
+ 
+ static const struct kernel_param_ops wma_pt_remote_peer_stats_ops = {
+diff --git a/qca-wifi-host-cmn/dp/wifi3.0/dp_peer.c b/qca-wifi-host-cmn/dp/wifi3.0/dp_peer.c
+--- a/qca-wifi-host-cmn/dp/wifi3.0/dp_peer.c
++++ b/qca-wifi-host-cmn/dp/wifi3.0/dp_peer.c
+@@ -2894,6 +2894,41 @@
+ }
+ #endif
+ 
++#ifdef DRIVER_PASSTHRU_OWNER
++static bool dp_pt_remote_preserve_self_ast(struct dp_soc *soc,
++					    struct dp_vdev *vdev,
++					    struct dp_peer *remote,
++					    uint16_t peer_id,
++					    uint16_t hw_peer_id, uint16_t ast_hash)
++{
++	struct dp_peer *self, *slot = NULL;
++	uint16_t self_idx, self_hash;
++	bool proven, preserve;
++
++	if (!pt_remote_peer_ast_target(soc->ctrl_psoc, vdev->vdev_id,
++				       remote->mac_addr.raw, peer_id))
++		return false;
++
++	self_idx = vdev->bss_ast_idx;
++	self_hash = vdev->bss_ast_hash;
++	self = dp_peer_find_hash_find(soc, vdev->mac_addr.raw, 0,
++				      vdev->vdev_id, DP_MOD_ID_CDP);
++	if (self && self != remote && self->vdev == vdev && self->valid &&
++	    self->peer_id != HTT_INVALID_PEER && self->peer_id != peer_id)
++		slot = dp_peer_get_ref_by_id(soc, self->peer_id, DP_MOD_ID_CDP);
++	proven = slot && slot == self &&
++		 self->ast_idx == self_idx && self->ast_hash == self_hash;
++	preserve = pt_remote_peer_ast_note_map(soc->ctrl_psoc, vdev->vdev_id,
++			remote->mac_addr.raw, peer_id, proven, self_idx, self_hash,
++			hw_peer_id, ast_hash);
++	if (slot)
++		dp_peer_unref_delete(slot, DP_MOD_ID_CDP);
++	if (self)
++		dp_peer_unref_delete(self, DP_MOD_ID_CDP);
++	return preserve;
++}
++#endif
++
+ QDF_STATUS
+ dp_rx_peer_map_handler(struct dp_soc *soc, uint16_t peer_id,
+ 		       uint16_t hw_peer_id, uint8_t vdev_id,
+@@ -2956,11 +2991,17 @@
+ 
+ 		if (peer) {
+ 			bool peer_map = true;
++			bool preserve_self_ast = false;
+ 
+ 			/* Updating ast_hash and ast_idx in peer level */
+ 			peer->ast_hash = ast_hash;
+ 			peer->ast_idx = hw_peer_id;
+ 			vdev = peer->vdev;
++#ifdef DRIVER_PASSTHRU_OWNER
++			if (vdev->opmode == wlan_op_mode_passthru)
++				preserve_self_ast = dp_pt_remote_preserve_self_ast(soc, vdev,
++					peer, peer_id, hw_peer_id, ast_hash);
++#endif
+ 			/* Only check for STA Vdev and peer is not for TDLS */
+ 			if ((wlan_op_mode_sta == vdev->opmode &&
+ 			     !peer->is_tdls_peer)
+@@ -2977,13 +3018,15 @@
+ 						peer->txrx_peer->bss_peer = 1;
+ 				}
+ 
+-				dp_info("bss ast_hash 0x%x, ast_index 0x%x",
+-					ast_hash, hw_peer_id);
+-				vdev->bss_ast_hash = ast_hash;
+-				vdev->bss_ast_idx = hw_peer_id;
+-
+-				dp_tx_ppeds_cfg_astidx_cache_mapping(soc, vdev,
+-								     peer_map);
++				if (!preserve_self_ast) {
++					dp_info("bss ast_hash 0x%x, ast_index 0x%x",
++						ast_hash, hw_peer_id);
++					vdev->bss_ast_hash = ast_hash;
++					vdev->bss_ast_idx = hw_peer_id;
++
++					dp_tx_ppeds_cfg_astidx_cache_mapping(soc, vdev,
++									     peer_map);
++				}
+ 			}
+ 
+ 			/* Add ast entry incase self ast entry is
+diff --git a/qca-wifi-host-cmn/dp/wifi3.0/be/dp_be_tx.c b/qca-wifi-host-cmn/dp/wifi3.0/be/dp_be_tx.c
+--- a/qca-wifi-host-cmn/dp/wifi3.0/be/dp_be_tx.c
++++ b/qca-wifi-host-cmn/dp/wifi3.0/be/dp_be_tx.c
+@@ -18,6 +18,10 @@
+  */
+ 
+ #include "cdp_txrx_cmn_struct.h"
++
++#ifdef DRIVER_PASSTHRU_OWNER
++#include <qdf_pt_remote_peer.h>
++#endif
+ #include "dp_types.h"
+ #include "dp_tx.h"
+ #include "dp_be_tx.h"
+@@ -1322,6 +1326,9 @@
+ 	uint8_t num_desc_bytes = HAL_TX_DESC_LEN_BYTES;
+ 	uint16_t ast_idx = vdev->bss_ast_idx;
+ 	uint16_t ast_hash = vdev->bss_ast_hash;
++#ifdef DRIVER_PASSTHRU_OWNER
++	bool raw_desc = dp_tx_desc_is_passthru(tx_desc);
++#endif
+ 
+ 	be_vdev = dp_get_be_vdev_from_dp_vdev(vdev);
+ 
+@@ -1451,6 +1458,10 @@
+ 
+ ring_access_fail:
+ 	dp_tx_ring_access_end_wrapper(soc, hal_ring_hdl, coalesce);
++#ifdef DRIVER_PASSTHRU_OWNER
++	if (raw_desc && QDF_IS_STATUS_SUCCESS(status))
++		pt_remote_peer_ast_note_tx(soc->ctrl_psoc, vdev->vdev_id, ast_idx, ast_hash);
++#endif
+ 	// MIUI DEL: NETWORK_NetworkBoost
+ 	// dp_pkt_add_timestamp(vdev, QDF_PKT_TX_DRIVER_EXIT,
+ 	// 		     qdf_get_log_timestamp(), tx_desc->nbuf);

@@ -1,0 +1,27 @@
+{
+  "token": "[REDACTED]",
+  "channel": 149,
+  "throughput_test": false,
+  "rx_ba": false,
+  "module_sha256": "739abb094c277b6fa675d9a59de3502019c5344b0a7466b843d43b6eaa2ad7f0",
+  "radio_exit": 0,
+  "restored": true,
+  "before": {
+    "schema": 1,
+    "enabled": 1,
+    "sampled": 0,
+    "create_conf": 0,
+    "sync_delete": 0,
+    "fw_unmap_conf": 0,
+    "dp_unmap_conf": 0
+  },
+  "after": {
+    "schema": 1,
+    "enabled": 1,
+    "sampled": 1,
+    "create_conf": 1,
+    "sync_delete": 1,
+    "fw_unmap_conf": 1,
+    "dp_unmap_conf": 0
+  }
+}

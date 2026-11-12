@@ -1,0 +1,9 @@
+{
+  "token": "[REDACTED]",
+  "module_sha256": "d966a7d42a27e6e55cfffd1ee29877f63e2746e0e230a2771ffd8f732a8593e7",
+  "app_sha256": "ab84ddba4c05ee2a5f9bc0f5f304a1c053e1074cc7a268265c2026956bebcbf8",
+  "harness_sha256": "fccfdde53badc02deef3737105111a5701f98b38df2f752fed4795af0de159c9",
+  "channel": 149,
+  "peer_sha256": "88b2ae0c111a148731c60a6b2b82de55a31b4a6239931feb2c943a08b3e4564f",
+  "ifindex": 13
+}

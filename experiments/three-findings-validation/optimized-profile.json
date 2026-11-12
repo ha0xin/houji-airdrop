@@ -1,0 +1,26 @@
+{
+  "scope": "Owly/AWDL single-direction transfer validation; not MIShare/XOS integration",
+  "arguments": {
+    "remote-reo": 2,
+    "tx-addba": "win64",
+    "mib": 64,
+    "coalesce-us": 1000,
+    "rx-window": 64,
+    "firmware": "ezif"
+  },
+  "sha256": {
+    "qca_cld3_kiwi_v2-three-findings.ko": "6914d32ece387172706e740cf63284daf9e9cd72b2f6f91dc2a3f678fc5dc6bb",
+    "audit-three-findings.json": "11a140bcc0be7090f7060babd05e9c03cbcc8c763494ec836d04862bf8e0a049",
+    "dist/houji-owly": "98cf9246df329fae66abf0a85753f7c9cd0b987e7353298be32bf756f54847c2",
+    "dist/wonder-init": "051263b0e329d5da75e07c77381c1d575e79883ec4c790cbd414d080de2ddeb4",
+    "dist/owly-hashprobe": "dba1dc74656f11b9b41c3fd3df41f299a3c8b673a80785580afb5a8a5128f40c",
+    "dist/SHA256SUMS": "b49f16ab2bbed18afe3e0d190699520c8e3be2186390acd915bf12d0bdd65fb6",
+    "three-findings-kernel.patch": "d90fcc6996ba819c198b588693fc1bbc010611e55edf3fe659c1d58097cc0596",
+    "owly-tx-addba.patch": "06d422f44e0d240f6c0c1db83b4e76ab073cfa2fc91e7dd38ef9165378820031",
+    "runner-tx-addba.patch": "dcc9dc5f7efc991cc59257585e3f85ec971a4e27406df4605bb003f59bd70783",
+    "run-ezif-rx-adapter.py": "0c404880c292d2b511cda7af7f3c169fa0359553edc248016003646bce7cf4f6",
+    "device-three-findings-harness.patch": "2ca38739170d58794d7e93c0e04b49e72fcfaf4178bb3bf35adf2f61f8ce0e43",
+    "../tx-ampdu-investigation/firmware-acquisition/official-ezif-artifacts/ezif-official-fwd-amss20.bin": "37d409044902fb5e4eb47aff5c543adb0dfd6a56e4e38ff723feb823bc8b522f",
+    "run-three-findings.py": "49e695f5e802390a52de04c3320bf2d921a0c0ee5e0fb337b102bae42e1c4618"
+  }
+}

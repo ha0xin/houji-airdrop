@@ -1,0 +1,42 @@
+[
+  {
+    "name": "BL_S928BXXU6EZIF_S928BXXU6EZIF_MQB115064488_REV00_user_low_ship_MULTI_CERT.tar.md5",
+    "size": 103731313,
+    "compressed": 86033902,
+    "offset": 0,
+    "crc32": 3452097620,
+    "method": 8
+  },
+  {
+    "name": "AP_S928BXXU6EZIF_S928BXXU6EZIF_MQB115064488_REV00_user_low_ship_MULTI_CERT_meta_OS17.tar.md5",
+    "size": 21744404603,
+    "compressed": 19423140093,
+    "offset": 86034058,
+    "crc32": 3666200036,
+    "method": 8
+  },
+  {
+    "name": "CP_S928BXXU6EZIF_CP36479546_MQB115064488_REV00_user_low_ship_MULTI_CERT.tar.md5",
+    "size": 84582510,
+    "compressed": 75591344,
+    "offset": 19509174317,
+    "crc32": 3965994654,
+    "method": 8
+  },
+  {
+    "name": "HOME_CSC_OXM_S928BOXM6EZIF_MQB115064488_REV00_user_low_ship_MULTI_CERT.tar.md5",
+    "size": 378245229,
+    "compressed": 306658103,
+    "offset": 19584765814,
+    "crc32": 3683496204,
+    "method": 8
+  },
+  {
+    "name": "CSC_OXM_S928BOXM6EZIF_MQB115064488_REV00_user_low_ship_MULTI_CERT.tar.md5",
+    "size": 378286184,
+    "compressed": 306690096,
+    "offset": 19891424069,
+    "crc32": 806058693,
+    "method": 8
+  }
+]

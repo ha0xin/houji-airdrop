@@ -1,0 +1,22 @@
+{
+  ".text": {
+    "port": {
+      "size": 6097528,
+      "sha256": "c07df05c274f8a50ca971b8ed494be5ca831107c96bc3f26f2d681ef30783033"
+    },
+    "official": {
+      "size": 6093432,
+      "sha256": "f856a2462dfacad300b1dc42bb20886083036d837b841546a6e289383bb40ee8"
+    }
+  },
+  "__versions": {
+    "port": {
+      "size": 36224,
+      "sha256": "e07a73748daedf92eaeacdd233bdd648464e99e0baa9ce741490efe79ed64d8d"
+    },
+    "official": {
+      "size": 36224,
+      "sha256": "7daa65dcef58871c4d25ff24992d4af58e9309102b6f93cd99142481f2e3d1ce"
+    }
+  }
+}

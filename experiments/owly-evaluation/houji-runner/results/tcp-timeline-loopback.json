@@ -1,0 +1,211 @@
+[
+  {
+    "direction": "Mac\u2192\u5c0f\u7c73",
+    "sample": 1,
+    "mode": 0,
+    "bytes": 4096,
+    "status": "verified_mac",
+    "mac_tcp_timeline": {
+      "status": "complete",
+      "interval_ms": 200,
+      "samples": [
+        {
+          "offset_ns": 279375,
+          "mss": 16312,
+          "rtt_current_ms": 1,
+          "rtt_smoothed_ms": 1,
+          "tx_packets": 0,
+          "tx_bytes": 0,
+          "tx_retransmit_packets": 0,
+          "tx_retransmit_bytes": 0,
+          "rx_packets": 0,
+          "rx_bytes": 0,
+          "rx_out_of_order_bytes": 0,
+          "snd_cwnd_bytes": 163120,
+          "snd_wnd_bytes": 407808,
+          "snd_sbbytes": 0,
+          "loss_recovery": 0
+        },
+        {
+          "offset_ns": 205052458,
+          "mss": 16312,
+          "rtt_current_ms": 1,
+          "rtt_smoothed_ms": 1,
+          "tx_packets": 2,
+          "tx_bytes": 4108,
+          "tx_retransmit_packets": 0,
+          "tx_retransmit_bytes": 0,
+          "rx_packets": 0,
+          "rx_bytes": 0,
+          "rx_out_of_order_bytes": 0,
+          "snd_cwnd_bytes": 167228,
+          "snd_wnd_bytes": 403712,
+          "snd_sbbytes": 0,
+          "loss_recovery": 0
+        },
+        {
+          "offset_ns": 405108291,
+          "mss": 16312,
+          "rtt_current_ms": 1,
+          "rtt_smoothed_ms": 1,
+          "tx_packets": 2,
+          "tx_bytes": 4108,
+          "tx_retransmit_packets": 0,
+          "tx_retransmit_bytes": 0,
+          "rx_packets": 0,
+          "rx_bytes": 0,
+          "rx_out_of_order_bytes": 0,
+          "snd_cwnd_bytes": 167228,
+          "snd_wnd_bytes": 403712,
+          "snd_sbbytes": 0,
+          "loss_recovery": 0
+        }
+      ]
+    },
+    "seconds": 0.445464125,
+    "MBps": 0.009194904303461026,
+    "sha256": "c8f5d0341d54d951a71b136e6e2afcb14d11ed8489a7ae126a8fee0df6ecf193"
+  },
+  {
+    "direction": "\u5c0f\u7c73\u2192Mac",
+    "sample": 1,
+    "mode": 1,
+    "bytes": 4096,
+    "status": "verified_mac",
+    "mac_tcp_timeline": {
+      "status": "complete",
+      "interval_ms": 200,
+      "samples": [
+        {
+          "offset_ns": 166417,
+          "mss": 16312,
+          "rtt_current_ms": 1,
+          "rtt_smoothed_ms": 1,
+          "tx_packets": 0,
+          "tx_bytes": 0,
+          "tx_retransmit_packets": 0,
+          "tx_retransmit_bytes": 0,
+          "rx_packets": 0,
+          "rx_bytes": 0,
+          "rx_out_of_order_bytes": 0,
+          "snd_cwnd_bytes": 163120,
+          "snd_wnd_bytes": 407808,
+          "snd_sbbytes": 0,
+          "loss_recovery": 0
+        },
+        {
+          "offset_ns": 205096875,
+          "mss": 16312,
+          "rtt_current_ms": 1,
+          "rtt_smoothed_ms": 1,
+          "tx_packets": 1,
+          "tx_bytes": 12,
+          "tx_retransmit_packets": 0,
+          "tx_retransmit_bytes": 0,
+          "rx_packets": 1,
+          "rx_bytes": 2048,
+          "rx_out_of_order_bytes": 0,
+          "snd_cwnd_bytes": 163132,
+          "snd_wnd_bytes": 407808,
+          "snd_sbbytes": 0,
+          "loss_recovery": 0
+        },
+        {
+          "offset_ns": 402061458,
+          "mss": 16312,
+          "rtt_current_ms": 1,
+          "rtt_smoothed_ms": 1,
+          "tx_packets": 1,
+          "tx_bytes": 12,
+          "tx_retransmit_packets": 0,
+          "tx_retransmit_bytes": 0,
+          "rx_packets": 1,
+          "rx_bytes": 2048,
+          "rx_out_of_order_bytes": 0,
+          "snd_cwnd_bytes": 163132,
+          "snd_wnd_bytes": 407808,
+          "snd_sbbytes": 0,
+          "loss_recovery": 0
+        }
+      ]
+    },
+    "seconds": 0.44318575,
+    "MBps": 0.009242174415580827,
+    "sha256": "c8f5d0341d54d951a71b136e6e2afcb14d11ed8489a7ae126a8fee0df6ecf193"
+  },
+  {
+    "direction": "Mac\u2192\u5c0f\u7c73",
+    "sample": 1,
+    "mode": 0,
+    "bytes": 4096,
+    "status": "verified_mac",
+    "seconds": 0.445318208,
+    "MBps": 0.009197917189139503,
+    "sha256": "c8f5d0341d54d951a71b136e6e2afcb14d11ed8489a7ae126a8fee0df6ecf193"
+  },
+  {
+    "direction": "Mac\u2192\u5c0f\u7c73",
+    "sample": 1,
+    "mode": 0,
+    "bytes": 4096,
+    "status": "failed",
+    "mac_tcp_timeline": {
+      "status": "complete",
+      "interval_ms": 200,
+      "samples": [
+        {
+          "offset_ns": 153583,
+          "mss": 16312,
+          "rtt_current_ms": 1,
+          "rtt_smoothed_ms": 1,
+          "tx_packets": 0,
+          "tx_bytes": 0,
+          "tx_retransmit_packets": 0,
+          "tx_retransmit_bytes": 0,
+          "rx_packets": 0,
+          "rx_bytes": 0,
+          "rx_out_of_order_bytes": 0,
+          "snd_cwnd_bytes": 163120,
+          "snd_wnd_bytes": 407808,
+          "snd_sbbytes": 0,
+          "loss_recovery": 0
+        },
+        {
+          "offset_ns": 200855583,
+          "mss": 16312,
+          "rtt_current_ms": 1,
+          "rtt_smoothed_ms": 1,
+          "tx_packets": 2,
+          "tx_bytes": 4108,
+          "tx_retransmit_packets": 0,
+          "tx_retransmit_bytes": 0,
+          "rx_packets": 0,
+          "rx_bytes": 0,
+          "rx_out_of_order_bytes": 0,
+          "snd_cwnd_bytes": 167228,
+          "snd_wnd_bytes": 403712,
+          "snd_sbbytes": 0,
+          "loss_recovery": 0
+        },
+        {
+          "offset_ns": 405065083,
+          "mss": 16312,
+          "rtt_current_ms": 1,
+          "rtt_smoothed_ms": 1,
+          "tx_packets": 2,
+          "tx_bytes": 4108,
+          "tx_retransmit_packets": 0,
+          "tx_retransmit_bytes": 0,
+          "rx_packets": 0,
+          "rx_bytes": 0,
+          "rx_out_of_order_bytes": 0,
+          "snd_cwnd_bytes": 167228,
+          "snd_wnd_bytes": 403712,
+          "snd_sbbytes": 0,
+          "loss_recovery": 0
+        }
+      ]
+    },
+    "error": "ValueError: SHA256 mismatch (0000000000000000000000000000000000000000000000000000000000000000)"
+  }
+]

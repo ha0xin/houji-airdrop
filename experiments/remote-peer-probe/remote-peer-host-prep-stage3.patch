@@ -1,0 +1,132 @@
+diff --git a/qca-wifi-host-cmn/qdf/inc/qdf_pt_remote_peer.h b/qca-wifi-host-cmn/qdf/inc/qdf_pt_remote_peer.h
+--- a/qca-wifi-host-cmn/qdf/inc/qdf_pt_remote_peer.h
++++ b/qca-wifi-host-cmn/qdf/inc/qdf_pt_remote_peer.h
+@@ -18,6 +18,7 @@
+ 
+ void pt_remote_peer_dp_event(const void *psoc, u8 vdev_id, const u8 *mac,
+ 			     u16 peer_id, enum pt_remote_peer_event event);
++void pt_remote_peer_obj_attached(const void *psoc, u8 vdev_id, const u8 *mac);
+ u64 pt_remote_peer_release_key(const void *psoc, u8 vdev_id, const u8 *mac);
+ void pt_remote_peer_released(u64 generation, enum pt_remote_peer_object obj);
+ 
+diff --git a/qca-wifi-host-cmn/dp/wifi3.0/dp_main.c b/qca-wifi-host-cmn/dp/wifi3.0/dp_main.c
+--- a/qca-wifi-host-cmn/dp/wifi3.0/dp_main.c
++++ b/qca-wifi-host-cmn/dp/wifi3.0/dp_main.c
+@@ -6059,6 +6059,7 @@
+ 	struct dp_pdev *pdev;
+ 	enum cdp_txrx_ast_entry_type ast_type = CDP_TXRX_AST_TYPE_STATIC;
+ 	struct dp_vdev *vdev = NULL;
++	bool trial = false;
+ 
+ 	if (!peer_mac_addr)
+ 		return QDF_STATUS_E_FAILURE;
+@@ -6070,12 +6071,21 @@
+ 
+ 	pdev = vdev->pdev;
+ 	soc = pdev->soc;
++#ifdef DRIVER_PASSTHRU_OWNER
++	trial = vdev->opmode == wlan_op_mode_passthru &&
++		pt_remote_peer_release_key(soc->ctrl_psoc, vdev_id, peer_mac_addr);
++	if (trial && (peer_type != CDP_LINK_PEER_TYPE ||
++		      !qdf_mem_cmp(peer_mac_addr, vdev->mac_addr.raw, QDF_MAC_ADDR_SIZE))) {
++		dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
++		return QDF_STATUS_E_INVAL;
++	}
++#endif
+ 
+ 	/*
+ 	 * If a peer entry with given MAC address already exists,
+ 	 * reuse the peer and reset the state of peer.
+ 	 */
+-	peer = dp_peer_can_reuse(vdev, peer_mac_addr, peer_type);
++	peer = trial ? NULL : dp_peer_can_reuse(vdev, peer_mac_addr, peer_type);
+ 
+ 	if (peer) {
+ 		qdf_atomic_init(&peer->is_default_route_set);
+@@ -6144,7 +6154,7 @@
+ 
+ 		dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+ 		return QDF_STATUS_SUCCESS;
+-	} else {
++	} else if (!trial) {
+ 		/*
+ 		 * When a STA roams from RPTR AP to ROOT AP and vice versa, we
+ 		 * need to remove the AST entry which was earlier added as a WDS
+@@ -6182,6 +6192,12 @@
+ 		&peer->mac_addr.raw[0], peer_mac_addr, QDF_MAC_ADDR_SIZE);
+ 
+ 	DP_PEER_SET_TYPE(peer, peer_type);
++	/*
++	 * A fresh trial peer must allocate TIDs before publishing the peer
++	 * or taking a vdev CHILD ref. The allocator only needs type/MAC.
++	 */
++	if (trial && QDF_IS_STATUS_ERROR(dp_peer_rx_tids_create(peer)))
++		goto fail;
+ 	if (IS_MLO_DP_MLD_PEER(peer)) {
+ 		if (dp_txrx_peer_attach(soc, peer) !=
+ 				QDF_STATUS_SUCCESS)
+@@ -6252,7 +6268,7 @@
+ 		peer->sta_self_peer = 1;
+ 	}
+ 
+-	if (dp_peer_rx_tids_create(peer) != QDF_STATUS_SUCCESS) {
++	if (!trial && dp_peer_rx_tids_create(peer) != QDF_STATUS_SUCCESS) {
+ 		dp_alert("RX tid alloc fail for peer %pK (" QDF_MAC_ADDR_FMT ")",
+ 			 peer, QDF_MAC_ADDR_REF(peer->mac_addr.raw));
+ 		goto fail;
+@@ -6271,6 +6287,12 @@
+ 
+ 	return QDF_STATUS_SUCCESS;
+ fail:
++	if (trial) {
++		if (peer->rx_tid)
++			dp_peer_rx_tids_destroy(peer);
++		wlan_minidump_remove(peer, sizeof(*peer), soc->ctrl_psoc,
++				     WLAN_MD_DP_PEER, "dp_peer");
++	}
+ 	qdf_mem_free(peer);
+ 	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+ 
+diff --git a/qca-wifi-host-cmn/umac/cmn_services/obj_mgr/src/wlan_objmgr_peer_obj.c b/qca-wifi-host-cmn/umac/cmn_services/obj_mgr/src/wlan_objmgr_peer_obj.c
+--- a/qca-wifi-host-cmn/umac/cmn_services/obj_mgr/src/wlan_objmgr_peer_obj.c
++++ b/qca-wifi-host-cmn/umac/cmn_services/obj_mgr/src/wlan_objmgr_peer_obj.c
+@@ -256,6 +256,9 @@
+ 				    || (type == WLAN_PEER_P2P_CLI))
+ 		wlan_objmgr_peer_get_ref(wlan_vdev_get_bsspeer(vdev),
+ 					 WLAN_OBJMGR_ID);
++#ifdef DRIVER_PASSTHRU_OWNER
++	pt_remote_peer_obj_attached(psoc, wlan_vdev_get_id(vdev), macaddr);
++#endif
+ 	/* TODO init other parameters */
+ 	/* Invoke registered create handlers */
+ 	for (id = 0; id < WLAN_UMAC_MAX_COMPONENTS; id++) {
+diff --git a/qcacld-3.0/core/wma/src/wma_dev_if.c b/qcacld-3.0/core/wma/src/wma_dev_if.c
+--- a/qcacld-3.0/core/wma/src/wma_dev_if.c
++++ b/qcacld-3.0/core/wma/src/wma_dev_if.c
+@@ -2470,6 +2470,7 @@
+ 	u8 vdev_id;
+ 	u8 mac[QDF_MAC_ADDR_SIZE];
+ 	bool obj_created;
++	bool obj_attached;
+ 	bool dp_created;
+ 	bool create_issued;
+ 	bool create_returned;
+@@ -2726,6 +2727,18 @@
+ 	}
+ 
+ unlock:
++	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
++}
++
++void pt_remote_peer_obj_attached(const void *psoc, u8 vdev_id, const u8 *mac)
++{
++	unsigned long flags;
++
++	if (!READ_ONCE(wma_pt_peer_trial.generation))
++		return;
++	spin_lock_irqsave(&wma_pt_peer_lock, flags);
++	if (wma_pt_peer_dp_key_matches(psoc, vdev_id, mac))
++		wma_pt_peer_trial.obj_attached = true;
+ 	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
+ }
+ 

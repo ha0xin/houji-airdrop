@@ -1,0 +1,8 @@
+schema=1 enabled=1 completed=10777 valid=10272 invalid=505 tries=10955 amsdu=0 ldpc=10265 ppdus=1282 agg_ppdus=843 agg_mpdus=9833 ast_overrides=10274 remote_peer_compl=10266
+bw=7,0,10265,0,0,0,0,0
+mcs=0,0,0,7,0,0,0,0,0,10265,0,0,0,0,0,0
+pkt=7,0,0,10265,0,0,0,0,0,0,0,0,0,0,0,0
+gi=7,10265,0,0
+status=10272,0,505,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+tx_ring=10777,0,0,0,0,0,0,0
+ppdu_bin=438,123,122,222,376,0

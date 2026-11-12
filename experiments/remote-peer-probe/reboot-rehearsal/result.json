@@ -1,0 +1,30 @@
+{
+  "purpose": "synthetic_stock_rehearsal",
+  "session": 27002,
+  "token": "[REDACTED]",
+  "exit": 0,
+  "reboot_requests": 1,
+  "same_serial": true,
+  "root_available_without_manual_unlock": true,
+  "boot_before": "6cb7276f-5b7d-4aa3-a65b-f470b43f5008",
+  "boot_after": "b9361e8c-20fd-4306-9dca-75b3afe731e2",
+  "readback": {
+    "wifi": 1,
+    "scan": 0,
+    "vendor_cnd": "running",
+    "vendor_wifi_hal_legacy": "running",
+    "pci": "auto"
+  },
+  "stock_ko_sha256": "d3fbe4f1b62f8c3533609945b617508e8a585660f5640aeeda08f8508416137b",
+  "stock_files": {
+    "/sys/module/qca_cld3_kiwi_v2/notes/.note.gnu.build-id": "a3e9bd62646444e1ecbe0f421c95ec46e6caf69a78323efb2f6ebe00e6b2bd8b",
+    "/vendor/firmware_mnt/image/kiwi/amss20.bin": "4db7b0e1aa7e4ec071708359c9d0db8d3d7872390cd8e88ffa0bbb30d560bcc8",
+    "/data/local/tmp/xos/native/radio.sh": "ea4d1f19d820b23fc82bc9f657192dc5d3bb4ca7fdb6244b2ddd2b2493f24b62",
+    "/data/local/tmp/xos/native/../libxos.so": "0a1b6401bcbde7d50f1e503b2f581940c6f40d4c3a701a1aa1a03ee04bbfffab",
+    "/data/local/tmp/xos/native/xos-bridge.zip": "07b4b951a805ebd2860f9432f553dfca9db42f50b34a400a40e1f8a2ae419333"
+  },
+  "native_binder": true,
+  "original_runner_sha256": "49a68b9112c696f815327539f47a61abf39e676c11efc01256ceaaa5eb40adb8",
+  "wlan_candidate_loaded": false,
+  "remote_peer_create_submitted": false
+}

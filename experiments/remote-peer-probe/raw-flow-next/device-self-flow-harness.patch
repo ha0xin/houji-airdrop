@@ -1,0 +1,93 @@
+--- a/radio-owly.sh
++++ b/radio-owly.sh
+@@ -306,7 +306,7 @@
+   peer) set -- "$@" pt_ba_observe=1 "pt_ba_peer=$peer" ;;
+   caps) set -- "$@" pt_peer_caps_observe=1 ;;
+   remote) set -- "$@" pt_peer_caps_observe=1 pt_remote_reo=1 "pt_remote_peer_mac=$peer" ;;
+-  remote-flow) set -- "$@" pt_peer_caps_observe=1 pt_remote_reo=1 pt_remote_reo_flow=1 "pt_remote_peer_mac=$peer" ;;
++  remote-flow) set -- "$@" pt_remote_reo=0 pt_remote_reo_flow=1 pt_remote_self_flow=1 "pt_remote_peer_mac=$peer" ;;
+  esac
+  bounded insmod "$qca" "$@"
+  case "$ba_mode" in
+@@ -316,8 +316,13 @@
+    test "$(cat "$W/parameters/pt_ba_observe")" = N
+    test "$(cat "$W/parameters/pt_ba_peer")" = 0
+    test "$(cat "$W/parameters/pt_remote_peer_mac")" = "$peer"
+-   test "$(cat "$W/parameters/pt_remote_reo")" = Y
+-   if test "$ba_mode" = remote-flow; then test "$(cat "$W/parameters/pt_remote_reo_flow")" = Y; fi
++   if test "$ba_mode" = remote-flow; then
++    test "$(cat "$W/parameters/pt_remote_reo")" = N
++    test "$(cat "$W/parameters/pt_remote_reo_flow")" = Y
++    test "$(cat "$W/parameters/pt_remote_self_flow")" = Y
++   else
++    test "$(cat "$W/parameters/pt_remote_reo")" = Y
++   fi
+    ;;
+   caps)
+    test "$(cat "$W/parameters/pt_ba_observe")" = N
+@@ -401,7 +406,7 @@
+ collect_remote_peer() {
+  for i in $(seq 1 12); do
+   stats=$(cat "$W/parameters/pt_remote_peer_stats")
+-  case "$stats" in 'result=2 '*|'result=3 '*|'result=4 '*|'result=5 '*|'result=6 '*|'result=7 '*) break;; esac
++  case "$stats" in 'result=2 '*|'result=3 '*|'result=4 '*|'result=5 '*|'result=6 '*|'result=7 '*|'result=8 '*) break;; esac
+   sleep 1
+  done
+  printf '%s\n' "$stats" > "$STATE/peer-terminal.txt"
+@@ -419,10 +424,10 @@
+  final=$(cat "$W/parameters/pt_remote_peer_stats")
+  printf '%s\n' "$final" > "$STATE/peer-final.txt"
+  echo "PEER_TRIAL_FINAL $final"
+- echo "$stats" | grep -q '^result=3 '
+- echo "$final" | grep -q '^result=3 '
+- echo "$final" | grep -q 'create_conflict=0 '
+- echo "$final" | grep -q 'dp_conflict=0 compensation=0 reo_enabled=1 '
++ echo "$stats" | grep -q '^result=8 generation=0 '
++ echo "$final" | grep -q '^result=8 generation=0 '
++ echo "$final" | grep -q 'reo_enabled=0 '
++ echo "$final" | grep -q ' flow_self_only=1 flow_self_generation=[1-9][0-9]*$'
+  echo "$live" | grep -q 'phase=5 error=0 closing=1 .* peer_requested=1 peer_started=1 peer_result=0$'
+  test ! -e /sys/class/net/wondertap0
+ }
+@@ -432,11 +437,12 @@
+  trigger_remote_peer
+  for i in $(seq 1 12); do
+   stats=$(cat "$W/parameters/pt_remote_peer_stats")
+-  if echo "$stats" | grep -q 'flow_enabled=1 flow_ready=1 flow_opened=1 '; then
++  if echo "$stats" | grep -q 'flow_enabled=1 flow_ready=1 flow_opened=1 ' &&
++     echo "$stats" | grep -q ' flow_self_only=1 flow_self_generation=[1-9][0-9]*$'; then
+    echo "PEER_FLOW_READY $stats"
+    return 0
+   fi
+-  case "$stats" in 'result=2 '*|'result=3 '*|'result=4 '*|'result=5 '*|'result=6 '*|'result=7 '*) return 1;; esac
++  case "$stats" in 'result=2 '*|'result=3 '*|'result=4 '*|'result=5 '*|'result=6 '*|'result=7 '*|'result=8 '*) return 1;; esac
+   sleep 1
+  done
+  return 1
+@@ -448,7 +454,7 @@
+  for i in $(seq 1 52); do
+   stats=$(cat "$W/parameters/pt_remote_peer_stats" 2>/dev/null || true)
+   case "$stats" in
+-   'result=2 '*|'result=3 '*|'result=4 '*|'result=5 '*|'result=6 '*|'result=7 '*)
++   'result=2 '*|'result=3 '*|'result=4 '*|'result=5 '*|'result=6 '*|'result=7 '*|'result=8 '*)
+     collect_remote_peer
+     return "$stop_error"
+     ;;
+@@ -519,6 +525,17 @@
+  test "$(cat /sys/class/net/"$IFACE"/tx_queue_len)" = "$qlen"
+  routes
+  collect > "$STATE/before.txt"
++ if test "$ba_mode" = remote-flow; then
++  state OWLY_READY
++  for i in $(seq 1 8); do
++   kill -0 "$driver"
++   grep -q 'flow_enabled=1 flow_ready=1 ' "$W/parameters/pt_remote_peer_stats"
++   rates=$(cat "$W/parameters/pt_rate_stats")
++   if echo "$rates" | grep -q '^schema=1 enabled=1 completed=[1-9][0-9]* '; then break; fi
++   sleep 0.25
++  done
++  return
++ fi
+  set -- "$count" "$size"
+  if test "$mss" != 0; then set -- "$@" "$mss"; fi
+  ./owly-hashprobe "$@" > "$STATE/server.log" 2>&1 &

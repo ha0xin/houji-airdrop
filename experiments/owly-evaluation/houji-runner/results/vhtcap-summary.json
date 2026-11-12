@@ -1,0 +1,778 @@
+{
+  "channel": 149,
+  "profile": "vht80-sgi",
+  "aggregation": "amsdu",
+  "ack": "ack",
+  "tcp_mss": 1160,
+  "tun_queue": 500,
+  "rx_block_ack": false,
+  "coalesce_us": 1000,
+  "userspace_sha256": "06a4a9c81687aec503f7165a51777fdf6f30be069ef99106ac022904e017020a",
+  "rounds": [
+    {
+      "mode": "off1",
+      "run": "vhtcap-off1-16m",
+      "enabled": false,
+      "samples": [
+        {
+          "direction": "Mac→小米",
+          "sample": 1,
+          "mode": 0,
+          "bytes": 16777216,
+          "status": "verified",
+          "seconds": 7.965874042000001,
+          "MBps": 2.1061362396068875,
+          "sha256": "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1",
+          "pair": 1,
+          "phone_seconds": 7.94814
+        },
+        {
+          "direction": "小米→Mac",
+          "sample": 2,
+          "mode": 1,
+          "bytes": 16777216,
+          "status": "verified",
+          "seconds": 2.115111290999998,
+          "MBps": 7.932072449988173,
+          "sha256": "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1",
+          "pair": 1,
+          "phone_seconds": 2.115318
+        }
+      ],
+      "radio_exit": 0,
+      "restored": true,
+      "live_peer_mpdu_observations": [
+        0,
+        11454
+      ],
+      "air_totals": {
+        "air_rx_invalid": 0,
+        "air_tx_fatal": 0,
+        "air_tx_backpressure": 19426,
+        "air_tx_submitted": 13104,
+        "air_tx_amsdu_mpdu": 4941,
+        "air_tx_amsdu_msdu": 14658,
+        "air_tx_amsdu_max_subframes": 8,
+        "air_tx_amsdu_max_frame": 3780,
+        "air_tx_amsdu_above_ht": 0
+      },
+      "mean_msdu_per_amsdu": 2.9666059502125077,
+      "tqm": {
+        "before": {
+          "schema": 1,
+          "enabled": 1,
+          "completed": 33,
+          "valid": 0,
+          "invalid": 33,
+          "tries": 33,
+          "amsdu": 0,
+          "bw": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "mcs": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "pkt": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "gi": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "status": [
+            0,
+            0,
+            33,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "tx_ring": [
+            33,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "after": {
+          "schema": 1,
+          "enabled": 1,
+          "completed": 13101,
+          "valid": 12754,
+          "invalid": 347,
+          "tries": 14489,
+          "amsdu": 0,
+          "bw": [
+            0,
+            0,
+            12754,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "mcs": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            12754,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "pkt": [
+            0,
+            0,
+            0,
+            12754,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "gi": [
+            0,
+            12754,
+            0,
+            0
+          ],
+          "status": [
+            12754,
+            0,
+            347,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "tx_ring": [
+            13101,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      },
+      "netdev_drops": {
+        "before": {
+          "owly0": {
+            "rx_dropped": 1,
+            "tx_dropped": 0
+          },
+          "wonder0": {
+            "rx_dropped": 0,
+            "tx_dropped": 0
+          }
+        },
+        "after": {
+          "owly0": {
+            "rx_dropped": 1,
+            "tx_dropped": 85
+          },
+          "wonder0": {
+            "rx_dropped": 0,
+            "tx_dropped": 0
+          }
+        }
+      },
+      "tqm_interval_attempts_per_completion": 1.106213651668197,
+      "tqm_interval_status2": 314
+    },
+    {
+      "mode": "on1",
+      "run": "vhtcap-on1-16m",
+      "enabled": true,
+      "samples": [
+        {
+          "direction": "Mac→小米",
+          "sample": 1,
+          "mode": 0,
+          "bytes": 16777216,
+          "status": "verified",
+          "seconds": 8.444863209000001,
+          "MBps": 1.986677058560274,
+          "sha256": "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1",
+          "pair": 1,
+          "phone_seconds": 8.424269
+        },
+        {
+          "direction": "小米→Mac",
+          "sample": 2,
+          "mode": 1,
+          "bytes": 16777216,
+          "status": "verified",
+          "seconds": 35.506982625000006,
+          "MBps": 0.47250469512403404,
+          "sha256": "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1",
+          "pair": 1,
+          "phone_seconds": 35.505451
+        }
+      ],
+      "radio_exit": 0,
+      "restored": true,
+      "live_peer_mpdu_observations": [
+        0,
+        11454
+      ],
+      "air_totals": {
+        "air_rx_invalid": 0,
+        "air_tx_fatal": 0,
+        "air_tx_backpressure": 7625,
+        "air_tx_submitted": 12599,
+        "air_tx_amsdu_mpdu": 3209,
+        "air_tx_amsdu_msdu": 14953,
+        "air_tx_amsdu_max_subframes": 8,
+        "air_tx_amsdu_max_frame": 7620,
+        "air_tx_amsdu_above_ht": 2767
+      },
+      "mean_msdu_per_amsdu": 4.659707073854784,
+      "tqm": {
+        "before": {
+          "schema": 1,
+          "enabled": 1,
+          "completed": 34,
+          "valid": 0,
+          "invalid": 34,
+          "tries": 34,
+          "amsdu": 0,
+          "bw": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "mcs": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "pkt": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "gi": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "status": [
+            0,
+            0,
+            34,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "tx_ring": [
+            34,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "after": {
+          "schema": 1,
+          "enabled": 1,
+          "completed": 12596,
+          "valid": 11424,
+          "invalid": 1172,
+          "tries": 14133,
+          "amsdu": 0,
+          "bw": [
+            0,
+            2,
+            11422,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "mcs": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            11424,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "pkt": [
+            0,
+            0,
+            0,
+            11424,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "gi": [
+            0,
+            11424,
+            0,
+            0
+          ],
+          "status": [
+            11424,
+            0,
+            1172,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "tx_ring": [
+            12596,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      },
+      "netdev_drops": {
+        "before": {
+          "owly0": {
+            "rx_dropped": 1,
+            "tx_dropped": 0
+          },
+          "wonder0": {
+            "rx_dropped": 0,
+            "tx_dropped": 0
+          }
+        },
+        "after": {
+          "owly0": {
+            "rx_dropped": 1,
+            "tx_dropped": 0
+          },
+          "wonder0": {
+            "rx_dropped": 0,
+            "tx_dropped": 0
+          }
+        }
+      },
+      "tqm_interval_attempts_per_completion": 1.1223531284827257,
+      "tqm_interval_status2": 1138
+    },
+    {
+      "mode": "off2",
+      "run": "vhtcap-off2-16m",
+      "enabled": false,
+      "samples": [
+        {
+          "direction": "Mac→小米",
+          "sample": 1,
+          "mode": 0,
+          "bytes": 16777216,
+          "status": "verified",
+          "seconds": 8.022203042000001,
+          "MBps": 2.091347714856305,
+          "sha256": "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1",
+          "pair": 1,
+          "phone_seconds": 8.017063
+        },
+        {
+          "direction": "小米→Mac",
+          "sample": 2,
+          "mode": 1,
+          "bytes": 16777216,
+          "status": "verified",
+          "seconds": 2.1130629590000005,
+          "MBps": 7.939761533626881,
+          "sha256": "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1",
+          "pair": 1,
+          "phone_seconds": 2.114553
+        }
+      ],
+      "radio_exit": 0,
+      "restored": true,
+      "live_peer_mpdu_observations": [
+        11454
+      ],
+      "air_totals": {
+        "air_rx_invalid": 0,
+        "air_tx_fatal": 0,
+        "air_tx_backpressure": 16628,
+        "air_tx_submitted": 13152,
+        "air_tx_amsdu_mpdu": 4898,
+        "air_tx_amsdu_msdu": 14638,
+        "air_tx_amsdu_max_subframes": 8,
+        "air_tx_amsdu_max_frame": 3780,
+        "air_tx_amsdu_above_ht": 0
+      },
+      "mean_msdu_per_amsdu": 2.9885667619436505,
+      "tqm": {
+        "before": {
+          "schema": 1,
+          "enabled": 1,
+          "completed": 33,
+          "valid": 0,
+          "invalid": 33,
+          "tries": 33,
+          "amsdu": 0,
+          "bw": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "mcs": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "pkt": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "gi": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "status": [
+            0,
+            0,
+            33,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "tx_ring": [
+            33,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "after": {
+          "schema": 1,
+          "enabled": 1,
+          "completed": 13149,
+          "valid": 12810,
+          "invalid": 339,
+          "tries": 14407,
+          "amsdu": 0,
+          "bw": [
+            0,
+            0,
+            12810,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "mcs": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            12810,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "pkt": [
+            0,
+            0,
+            0,
+            12810,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "gi": [
+            0,
+            12810,
+            0,
+            0
+          ],
+          "status": [
+            12810,
+            0,
+            339,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "tx_ring": [
+            13149,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      },
+      "netdev_drops": {
+        "before": {
+          "owly0": {
+            "rx_dropped": 1,
+            "tx_dropped": 0
+          },
+          "wonder0": {
+            "rx_dropped": 0,
+            "tx_dropped": 0
+          }
+        },
+        "after": {
+          "owly0": {
+            "rx_dropped": 1,
+            "tx_dropped": 0
+          },
+          "wonder0": {
+            "rx_dropped": 0,
+            "tx_dropped": 0
+          }
+        }
+      },
+      "tqm_interval_attempts_per_completion": 1.0959133882281182,
+      "tqm_interval_status2": 306
+    }
+  ],
+  "final_stock_receipt": "vhtcap-final-stock.txt"
+}

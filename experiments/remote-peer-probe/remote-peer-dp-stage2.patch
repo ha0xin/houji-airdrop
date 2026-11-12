@@ -1,0 +1,463 @@
+diff --git a/qca-wifi-host-cmn/qdf/inc/qdf_pt_remote_peer.h b/qca-wifi-host-cmn/qdf/inc/qdf_pt_remote_peer.h
+new file mode 100644
+--- /dev/null
++++ b/qca-wifi-host-cmn/qdf/inc/qdf_pt_remote_peer.h
+@@ -0,0 +1,24 @@
++/* SPDX-License-Identifier: ISC */
++#ifndef _QDF_PT_REMOTE_PEER_H_
++#define _QDF_PT_REMOTE_PEER_H_
++
++#include <linux/types.h>
++
++enum pt_remote_peer_event {
++	PT_REMOTE_HTT_MAP,
++	PT_REMOTE_SLOT_INSTALL,
++	PT_REMOTE_HTT_UNMAP,
++	PT_REMOTE_SLOT_REMOVE,
++};
++
++enum pt_remote_peer_object {
++	PT_REMOTE_DP_OBJECT,
++	PT_REMOTE_OBJMGR_OBJECT,
++};
++
++void pt_remote_peer_dp_event(const void *psoc, u8 vdev_id, const u8 *mac,
++			     u16 peer_id, enum pt_remote_peer_event event);
++u64 pt_remote_peer_release_key(const void *psoc, u8 vdev_id, const u8 *mac);
++void pt_remote_peer_released(u64 generation, enum pt_remote_peer_object obj);
++
++#endif
+diff --git a/qcacld-3.0/core/wma/src/wma_dev_if.c b/qcacld-3.0/core/wma/src/wma_dev_if.c
+--- a/qcacld-3.0/core/wma/src/wma_dev_if.c
++++ b/qcacld-3.0/core/wma/src/wma_dev_if.c
+@@ -29,6 +29,7 @@
+ #ifdef DRIVER_PASSTHRU_OWNER
+ #include <linux/moduleparam.h>
+ #include <linux/spinlock.h>
++#include <qdf_pt_remote_peer.h>
+ #include <scheduler_core.h>
+ #include "target_if_vdev_mgr_rx_ops.h"
+ #endif
+@@ -2464,6 +2465,7 @@
+ static DEFINE_SPINLOCK(wma_pt_peer_lock);
+ static struct {
+ 	tp_wma_handle wma;
++	const void *psoc;
+ 	u64 generation;
+ 	u8 vdev_id;
+ 	u8 mac[QDF_MAC_ADDR_SIZE];
+@@ -2482,6 +2484,15 @@
+ 	bool delete_claimed;
+ 	bool delete_confirmed;
+ 	u32 delete_duplicates;
++	u16 peer_id;
++	bool htt_map;
++	bool slot_installed;
++	bool htt_unmap;
++	bool slot_removed;
++	bool dp_conflict;
++	bool dp_released;
++	bool obj_released;
++	bool compensation;
+ } wma_pt_peer_trial;
+ 
+ static bool wma_pt_peer_key_matches(tp_wma_handle wma, u32 vdev_id,
+@@ -2495,9 +2506,10 @@
+ static bool wma_pt_peer_create_event(tp_wma_handle wma, u32 vdev_id,
+ 				     const u8 *mac, u32 status)
+ {
++	unsigned long flags;
+ 	bool matched;
+ 
+-	spin_lock_bh(&wma_pt_peer_lock);
++	spin_lock_irqsave(&wma_pt_peer_lock, flags);
+ 	matched = wma_pt_peer_trial.create_issued &&
+ 		  wma_pt_peer_key_matches(wma, vdev_id, mac);
+ 	if (matched && !wma_pt_peer_trial.create_confirmed) {
+@@ -2508,16 +2520,17 @@
+ 		if (status != wma_pt_peer_trial.create_status)
+ 			wma_pt_peer_trial.create_conflict = true;
+ 	}
+-	spin_unlock_bh(&wma_pt_peer_lock);
++	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
+ 	return matched;
+ }
+ 
+ static bool wma_pt_peer_delete_event(tp_wma_handle wma, u32 vdev_id,
+ 				     const u8 *mac, bool *first)
+ {
++	unsigned long flags;
+ 	bool matched;
+ 
+-	spin_lock_bh(&wma_pt_peer_lock);
++	spin_lock_irqsave(&wma_pt_peer_lock, flags);
+ 	matched = wma_pt_peer_trial.delete_issued &&
+ 		  wma_pt_peer_key_matches(wma, vdev_id, mac);
+ 	*first = matched && !wma_pt_peer_trial.delete_claimed;
+@@ -2525,7 +2538,7 @@
+ 		wma_pt_peer_trial.delete_claimed = true;
+ 	else if (matched)
+ 		wma_pt_peer_trial.delete_duplicates++;
+-	spin_unlock_bh(&wma_pt_peer_lock);
++	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
+ 	return matched;
+ }
+ 
+@@ -2538,6 +2551,7 @@
+ 	void *soc = cds_get_context(QDF_MODULE_ID_SOC);
+ 	target_resource_config *cfg;
+ 	struct wlan_objmgr_peer *obj_peer, *self;
++	unsigned long flags;
+ 	QDF_STATUS status;
+ 	u8 vdev_id;
+ 
+@@ -2562,16 +2576,17 @@
+ 	    !memcmp(wlan_peer_get_macaddr(self), remote->bytes, QDF_MAC_ADDR_SIZE))
+ 		return QDF_STATUS_E_INVAL;
+ 
+-	spin_lock_bh(&wma_pt_peer_lock);
++	spin_lock_irqsave(&wma_pt_peer_lock, flags);
+ 	if (wma_pt_peer_trial.generation) {
+-		spin_unlock_bh(&wma_pt_peer_lock);
++		spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
+ 		return QDF_STATUS_E_INVAL;
+ 	}
+ 	wma_pt_peer_trial.wma = wma;
++	wma_pt_peer_trial.psoc = wma->psoc;
+ 	wma_pt_peer_trial.vdev_id = vdev_id;
+ 	wma_pt_peer_trial.generation = generation;
+ 	memcpy(wma_pt_peer_trial.mac, remote->bytes, QDF_MAC_ADDR_SIZE);
+-	spin_unlock_bh(&wma_pt_peer_lock);
++	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
+ 
+ 	/* STA is the remote objmgr role only. The vdev stays PASSTHRU. */
+ 	obj_peer = wma_create_objmgr_peer_typed(wma, vdev_id, remote->bytes,
+@@ -2580,9 +2595,9 @@
+ 	if (!obj_peer)
+ 		return QDF_STATUS_E_FAILURE;
+ 
+-	spin_lock_bh(&wma_pt_peer_lock);
++	spin_lock_irqsave(&wma_pt_peer_lock, flags);
+ 	wma_pt_peer_trial.obj_created = true;
+-	spin_unlock_bh(&wma_pt_peer_lock);
++	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
+ 
+ 	status = wlan_objmgr_peer_try_get_ref(obj_peer, WLAN_LEGACY_WMA_ID);
+ 	if (QDF_IS_STATUS_ERROR(status)) {
+@@ -2601,17 +2616,17 @@
+ 	param.vdev_id = vdev_id;
+ 	param.peer_addr = remote->bytes;
+ 	param.peer_type = WMI_PEER_TYPE_DEFAULT;
+-	spin_lock_bh(&wma_pt_peer_lock);
++	spin_lock_irqsave(&wma_pt_peer_lock, flags);
+ 	wma_pt_peer_trial.dp_created = true;
+ 	wma_pt_peer_trial.create_issued = true;
+-	spin_unlock_bh(&wma_pt_peer_lock);
++	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
+ 
+ 	/* An early HTT map can now find the host objects. No cdp_peer_setup. */
+ 	status = wmi_unified_peer_create_send(wma->wmi_handle, &param);
+-	spin_lock_bh(&wma_pt_peer_lock);
++	spin_lock_irqsave(&wma_pt_peer_lock, flags);
+ 	wma_pt_peer_trial.create_submit = status;
+ 	wma_pt_peer_trial.create_returned = true;
+-	spin_unlock_bh(&wma_pt_peer_lock);
++	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
+ 
+ 	/* An ambiguous submission still needs to be reconciled against HTT. */
+ 	return status;
+@@ -2621,6 +2636,7 @@
+ wma_pt_peer_delete(tp_wma_handle wma, struct wlan_objmgr_vdev *vdev,
+ 		   u64 generation, struct qdf_mac_addr *remote)
+ {
++	unsigned long flags;
+ 	QDF_STATUS status;
+ 	u8 vdev_id;
+ 
+@@ -2631,26 +2647,120 @@
+ 	if (vdev_id >= wma->max_bssid || wma->interfaces[vdev_id].vdev != vdev)
+ 		return QDF_STATUS_E_INVAL;
+ 
+-	spin_lock_bh(&wma_pt_peer_lock);
++	spin_lock_irqsave(&wma_pt_peer_lock, flags);
+ 	if (wma_pt_peer_trial.generation != generation ||
+ 	    !wma_pt_peer_key_matches(wma, vdev_id, remote->bytes) ||
+ 	    !wma_pt_peer_trial.create_returned ||
+-	    QDF_IS_STATUS_ERROR(wma_pt_peer_trial.create_submit) ||
+-	    !wma_pt_peer_trial.create_confirmed || wma_pt_peer_trial.create_status ||
+-	    wma_pt_peer_trial.create_conflict || wma_pt_peer_trial.delete_issued) {
+-		spin_unlock_bh(&wma_pt_peer_lock);
++	    !wma_pt_peer_trial.htt_map || !wma_pt_peer_trial.slot_installed ||
++	    wma_pt_peer_trial.slot_removed || wma_pt_peer_trial.htt_unmap ||
++	    wma_pt_peer_trial.dp_conflict || wma_pt_peer_trial.delete_issued) {
++		spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
+ 		return QDF_STATUS_E_INVAL;
+ 	}
++	/* Same live slot proves what to delete even if create did not confirm. */
++	wma_pt_peer_trial.compensation =
++		QDF_IS_STATUS_ERROR(wma_pt_peer_trial.create_submit) ||
++		!wma_pt_peer_trial.create_confirmed || wma_pt_peer_trial.create_status ||
++		wma_pt_peer_trial.create_conflict;
+ 	wma_pt_peer_trial.delete_issued = true;
+-	spin_unlock_bh(&wma_pt_peer_lock);
++	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
+ 
+ 	status = wma_remove_peer(wma, remote->bytes, vdev_id, false);
+-	spin_lock_bh(&wma_pt_peer_lock);
++	spin_lock_irqsave(&wma_pt_peer_lock, flags);
+ 	wma_pt_peer_trial.delete_submit = status;
+ 	wma_pt_peer_trial.delete_returned = true;
+-	spin_unlock_bh(&wma_pt_peer_lock);
++	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
+ 	return status;
+ }
++static bool wma_pt_peer_dp_key_matches(const void *psoc, u8 vdev_id,
++				       const u8 *mac)
++{
++	return wma_pt_peer_trial.generation && wma_pt_peer_trial.psoc == psoc &&
++	       wma_pt_peer_trial.vdev_id == vdev_id &&
++	       !memcmp(wma_pt_peer_trial.mac, mac, QDF_MAC_ADDR_SIZE);
++}
++
++void pt_remote_peer_dp_event(const void *psoc, u8 vdev_id, const u8 *mac,
++			     u16 peer_id, enum pt_remote_peer_event event)
++{
++	unsigned long flags;
++
++	if (!READ_ONCE(wma_pt_peer_trial.generation))
++		return;
++
++	spin_lock_irqsave(&wma_pt_peer_lock, flags);
++	if (!wma_pt_peer_dp_key_matches(psoc, vdev_id, mac))
++		goto unlock;
++
++	if (!wma_pt_peer_trial.create_issued || peer_id == U16_MAX ||
++	    (wma_pt_peer_trial.htt_map && wma_pt_peer_trial.peer_id != peer_id)) {
++		wma_pt_peer_trial.dp_conflict = true;
++		goto unlock;
++	}
++
++	switch (event) {
++	case PT_REMOTE_HTT_MAP:
++		if (wma_pt_peer_trial.htt_unmap || wma_pt_peer_trial.slot_removed)
++			wma_pt_peer_trial.dp_conflict = true;
++		wma_pt_peer_trial.htt_map = true;
++		wma_pt_peer_trial.peer_id = peer_id;
++		break;
++	case PT_REMOTE_SLOT_INSTALL:
++		if (!wma_pt_peer_trial.htt_map || wma_pt_peer_trial.htt_unmap)
++			wma_pt_peer_trial.dp_conflict = true;
++		else
++			wma_pt_peer_trial.slot_installed = true;
++		break;
++	case PT_REMOTE_HTT_UNMAP:
++		if (!wma_pt_peer_trial.slot_installed)
++			wma_pt_peer_trial.dp_conflict = true;
++		else
++			wma_pt_peer_trial.htt_unmap = true;
++		break;
++	case PT_REMOTE_SLOT_REMOVE:
++		if (!wma_pt_peer_trial.slot_installed)
++			wma_pt_peer_trial.dp_conflict = true;
++		else
++			wma_pt_peer_trial.slot_removed = true;
++		break;
++	}
++
++unlock:
++	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
++}
++
++u64 pt_remote_peer_release_key(const void *psoc, u8 vdev_id, const u8 *mac)
++{
++	unsigned long flags;
++	u64 generation = 0;
++
++	if (!READ_ONCE(wma_pt_peer_trial.generation))
++		return 0;
++
++	spin_lock_irqsave(&wma_pt_peer_lock, flags);
++	if (wma_pt_peer_dp_key_matches(psoc, vdev_id, mac))
++		generation = wma_pt_peer_trial.generation;
++	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
++	return generation;
++}
++
++void pt_remote_peer_released(u64 generation, enum pt_remote_peer_object obj)
++{
++	unsigned long flags;
++
++	if (!generation)
++		return;
++
++	spin_lock_irqsave(&wma_pt_peer_lock, flags);
++	if (generation == wma_pt_peer_trial.generation) {
++		if (obj == PT_REMOTE_DP_OBJECT)
++			wma_pt_peer_trial.dp_released = true;
++		else
++			wma_pt_peer_trial.obj_released = true;
++	}
++	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
++}
++
+ #endif
+ 
+ #ifdef WLAN_FEATURE_11BE_MLO
+@@ -4238,15 +4348,16 @@
+ 			    DEBUG_INVALID_PEER_ID, macaddr, NULL, 0, 0);
+ #ifdef DRIVER_PASSTHRU_OWNER
+ 	{
++		unsigned long flags;
+ 		bool first;
+ 
+ 		if (wma_pt_peer_delete_event(wma, event->vdev_id, macaddr, &first)) {
+ 			if (first) {
+ 				wma_cdp_cp_peer_del_response(wma->psoc, macaddr,
+ 							    event->vdev_id);
+-				spin_lock_bh(&wma_pt_peer_lock);
++				spin_lock_irqsave(&wma_pt_peer_lock, flags);
+ 				wma_pt_peer_trial.delete_confirmed = true;
+-				spin_unlock_bh(&wma_pt_peer_lock);
++				spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
+ 			}
+ 			return 0;
+ 		}
+diff --git a/qca-wifi-host-cmn/dp/wifi3.0/dp_peer.c b/qca-wifi-host-cmn/dp/wifi3.0/dp_peer.c
+--- a/qca-wifi-host-cmn/dp/wifi3.0/dp_peer.c
++++ b/qca-wifi-host-cmn/dp/wifi3.0/dp_peer.c
+@@ -23,6 +23,10 @@
+ #include "dp_htt.h"
+ #include "dp_types.h"
+ #include "dp_pt_ba_peer.h"
++
++#ifdef DRIVER_PASSTHRU_OWNER
++#include <qdf_pt_remote_peer.h>
++#endif
+ #include "dp_internal.h"
+ #include "dp_peer.h"
+ #include "dp_rx_defrag.h"
+@@ -737,6 +741,11 @@
+ #ifdef DRIVER_PASSTHRU_DP
+ 		pt_ba_peer_map_result(peer, peer_id);
+ #endif
++#ifdef DRIVER_PASSTHRU_OWNER
++		pt_remote_peer_dp_event(soc->ctrl_psoc, peer->vdev->vdev_id,
++					peer->mac_addr.raw, peer_id,
++					PT_REMOTE_SLOT_INSTALL);
++#endif
+ 	} else {
+ 		/* Peer map event came for peer_id which
+ 		 * is already mapped, this is not expected
+@@ -775,6 +784,10 @@
+ 	if (peer->txrx_peer)
+ 		peer->txrx_peer->peer_id = HTT_INVALID_PEER;
+ 	soc->peer_id_to_obj_map[peer_id] = NULL;
++#ifdef DRIVER_PASSTHRU_OWNER
++	pt_remote_peer_dp_event(soc->ctrl_psoc, peer->vdev->vdev_id,
++				peer->mac_addr.raw, peer_id, PT_REMOTE_SLOT_REMOVE);
++#endif
+ 	dp_peer_unref_delete(peer, DP_MOD_ID_CONFIG);
+ 	qdf_spin_unlock_bh(&soc->peer_map_lock);
+ }
+@@ -2889,6 +2902,11 @@
+ 	if (!is_wds)
+ 		pt_ba_peer_map_event(soc, vdev_id, peer_id, peer_mac_addr);
+ #endif
++#ifdef DRIVER_PASSTHRU_OWNER
++	if (!is_wds)
++		pt_remote_peer_dp_event(soc->ctrl_psoc, vdev_id, peer_mac_addr,
++					peer_id, PT_REMOTE_HTT_MAP);
++#endif
+ 
+ 	dp_cfg_event_record_peer_map_unmap_evt(soc, DP_CFG_EVENT_PEER_MAP,
+ 					       NULL, peer_mac_addr, 1, peer_id,
+@@ -3101,6 +3119,10 @@
+ #ifdef DRIVER_PASSTHRU_DP
+ 	pt_ba_peer_unmap(peer, peer_id);
+ #endif
++#ifdef DRIVER_PASSTHRU_OWNER
++	pt_remote_peer_dp_event(soc->ctrl_psoc, peer->vdev->vdev_id,
++				peer->mac_addr.raw, peer_id, PT_REMOTE_HTT_UNMAP);
++#endif
+ 	dp_peer_clean_wds_entries(soc, peer, free_wds_count);
+ 
+ 	dp_cfg_event_record_peer_map_unmap_evt(soc, DP_CFG_EVENT_PEER_UNMAP,
+diff --git a/qca-wifi-host-cmn/dp/wifi3.0/dp_main.c b/qca-wifi-host-cmn/dp/wifi3.0/dp_main.c
+--- a/qca-wifi-host-cmn/dp/wifi3.0/dp_main.c
++++ b/qca-wifi-host-cmn/dp/wifi3.0/dp_main.c
+@@ -23,6 +23,10 @@
+ #endif
+ #include <wlan_ipa_obj_mgmt_api.h>
+ #include <qdf_types.h>
++
++#ifdef DRIVER_PASSTHRU_OWNER
++#include <qdf_pt_remote_peer.h>
++#endif
+ #include <qdf_lock.h>
+ #include <qdf_net_types.h>
+ #include <qdf_lro.h>
+@@ -6873,6 +6877,10 @@
+ 	 * concurrently with the empty check.
+ 	 */
+ 	if (qdf_atomic_dec_and_test(&peer->ref_cnt)) {
++#ifdef DRIVER_PASSTHRU_OWNER
++		u64 trial = pt_remote_peer_release_key(soc->ctrl_psoc, vdev->vdev_id,
++						      peer->mac_addr.raw);
++#endif
+ 		peer_id = peer->peer_id;
+ 
+ 		/*
+@@ -6923,6 +6931,9 @@
+ 		dp_peer_info("Deleted peer. Unref vdev %pK, vdev_ref_cnt %d",
+ 			     vdev, qdf_atomic_read(&vdev->ref_cnt));
+ 		dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CHILD);
++#ifdef DRIVER_PASSTHRU_OWNER
++		pt_remote_peer_released(trial, PT_REMOTE_DP_OBJECT);
++#endif
+ 	}
+ }
+ 
+diff --git a/qca-wifi-host-cmn/umac/cmn_services/obj_mgr/src/wlan_objmgr_peer_obj.c b/qca-wifi-host-cmn/umac/cmn_services/obj_mgr/src/wlan_objmgr_peer_obj.c
+--- a/qca-wifi-host-cmn/umac/cmn_services/obj_mgr/src/wlan_objmgr_peer_obj.c
++++ b/qca-wifi-host-cmn/umac/cmn_services/obj_mgr/src/wlan_objmgr_peer_obj.c
+@@ -28,6 +28,10 @@
+ #include <wlan_objmgr_debug.h>
+ #include <qdf_mem.h>
+ #include <qdf_module.h>
++
++#ifdef DRIVER_PASSTHRU_OWNER
++#include <qdf_pt_remote_peer.h>
++#endif
+ #include "wlan_objmgr_global_obj_i.h"
+ #include "wlan_objmgr_psoc_obj_i.h"
+ #include "wlan_objmgr_pdev_obj_i.h"
+@@ -76,6 +80,9 @@
+ 	uint8_t *macaddr;
+ 	uint8_t vdev_id;
+ 	bool peer_free_notify = true;
++#ifdef DRIVER_PASSTHRU_OWNER
++	u64 trial;
++#endif
+ 
+ 	if (!peer) {
+ 		obj_mgr_err("PEER is NULL");
+@@ -134,6 +141,9 @@
+ 		wlan_objmgr_vdev_release_ref(vdev, WLAN_OBJMGR_ID);
+ 		return QDF_STATUS_E_FAILURE;
+ 	}
++#ifdef DRIVER_PASSTHRU_OWNER
++	trial = pt_remote_peer_release_key(psoc, vdev_id, macaddr);
++#endif
+ 	wlan_objmgr_peer_trace_del_ref_list(peer);
+ 	wlan_objmgr_peer_trace_deinit_lock(peer);
+ 	qdf_spinlock_destroy(&peer->peer_lock);
+@@ -144,6 +154,9 @@
+ 		wlan_objmgr_vdev_peer_freed_notify(vdev);
+ 
+ 	wlan_objmgr_vdev_release_ref(vdev, WLAN_OBJMGR_ID);
++#ifdef DRIVER_PASSTHRU_OWNER
++	pt_remote_peer_released(trial, PT_REMOTE_OBJMGR_OBJECT);
++#endif
+ 
+ 	return QDF_STATUS_SUCCESS;
+ 

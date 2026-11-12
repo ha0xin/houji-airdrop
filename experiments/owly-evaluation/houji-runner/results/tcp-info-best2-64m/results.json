@@ -1,0 +1,124 @@
+{
+  "channel": 149,
+  "profile": "vht80-sgi",
+  "aggregation": "amsdu",
+  "ack": "ack",
+  "tcp_mss": 1160,
+  "tun_queue": 500,
+  "rx_block_ack": false,
+  "ba_observer": "reference",
+  "vht_amsdu": false,
+  "mac_awdl": "02:00:00:00:00:01",
+  "samples": [
+    {
+      "direction": "Mac\u2192\u5c0f\u7c73",
+      "sample": 1,
+      "mode": 0,
+      "bytes": 67108864,
+      "status": "verified",
+      "mac_tcp_info": {
+        "before": {
+          "mss": 1148,
+          "rtt_current_ms": 0,
+          "rtt_smoothed_ms": 0,
+          "tx_packets": 0,
+          "tx_bytes": 0,
+          "tx_retransmit_packets": 0,
+          "tx_retransmit_bytes": 0,
+          "rx_packets": 0,
+          "rx_bytes": 0,
+          "rx_out_of_order_bytes": 0
+        },
+        "after": {
+          "mss": 1148,
+          "rtt_current_ms": 25,
+          "rtt_smoothed_ms": 27,
+          "tx_packets": 27769,
+          "tx_bytes": 67524452,
+          "tx_retransmit_packets": 369,
+          "tx_retransmit_bytes": 415576,
+          "rx_packets": 2,
+          "rx_bytes": 32,
+          "rx_out_of_order_bytes": 0
+        },
+        "delta": {
+          "tx_packets": 27769,
+          "tx_bytes": 67524452,
+          "tx_retransmit_packets": 369,
+          "tx_retransmit_bytes": 415576,
+          "rx_packets": 2,
+          "rx_bytes": 32,
+          "rx_out_of_order_bytes": 0
+        }
+      },
+      "seconds": 31.131464084,
+      "MBps": 2.155660389724188,
+      "sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "pair": 1,
+      "phone_seconds": 31.122443
+    },
+    {
+      "direction": "\u5c0f\u7c73\u2192Mac",
+      "sample": 2,
+      "mode": 1,
+      "bytes": 67108864,
+      "status": "verified",
+      "mac_tcp_info": {
+        "before": {
+          "mss": 1148,
+          "rtt_current_ms": 0,
+          "rtt_smoothed_ms": 0,
+          "tx_packets": 0,
+          "tx_bytes": 0,
+          "tx_retransmit_packets": 0,
+          "tx_retransmit_bytes": 0,
+          "rx_packets": 0,
+          "rx_bytes": 0,
+          "rx_out_of_order_bytes": 0
+        },
+        "after": {
+          "mss": 1148,
+          "rtt_current_ms": 7,
+          "rtt_smoothed_ms": 19,
+          "tx_packets": 2,
+          "tx_bytes": 44,
+          "tx_retransmit_packets": 0,
+          "tx_retransmit_bytes": 0,
+          "rx_packets": 6347,
+          "rx_bytes": 67112308,
+          "rx_out_of_order_bytes": 6491940
+        },
+        "delta": {
+          "tx_packets": 2,
+          "tx_bytes": 44,
+          "tx_retransmit_packets": 0,
+          "tx_retransmit_bytes": 0,
+          "rx_packets": 6347,
+          "rx_bytes": 67112308,
+          "rx_out_of_order_bytes": 6491940
+        }
+      },
+      "seconds": 10.442560208000003,
+      "MBps": 6.426476138350456,
+      "sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "pair": 1,
+      "phone_seconds": 10.44313
+    }
+  ],
+  "mac_tcp_info": {
+    "abi": "awdl_tcp_info_sample/10",
+    "helper_sha256": "a3cd67d04ac1d9e5134e86167d753bc84bd341af63d9fb6fba0a4d3afe4c0652",
+    "reference_source_sha256": "2b2d16ba83dcd41d6d295bb5963620b66d24fb817b9fd5d61670a2fe8766ec41",
+    "field_source": "Darwin SDK netinet/tcp.h, tcp_connection_info",
+    "units": {
+      "mss": "bytes",
+      "rtt": "ms",
+      "packet_counters": "packets",
+      "byte_counters": "bytes"
+    }
+  },
+  "phone_owly0": "2001:db8::40",
+  "radio_exit": 0,
+  "restored": true,
+  "server_sha_receipts": 2
+}

@@ -1,0 +1,80 @@
+{
+  "interface": "awdl0",
+  "size_mib": 16,
+  "mss": "system-default",
+  "samples": [
+    {
+      "sample": 1,
+      "mode": 0,
+      "bytes": 16777216,
+      "port": 54195,
+      "awdl_counter_deltas": {
+        "mac": {
+          "Ibytes": 43966,
+          "Obytes": 17789796,
+          "Ierrs": 0,
+          "Oerrs": 0
+        },
+        "iphone": {
+          "Ibytes": 17632220,
+          "Obytes": 45210,
+          "Ierrs": 0,
+          "Oerrs": 0
+        }
+      },
+      "status": "verified",
+      "iphone_exit": 0,
+      "listener_cancelled": true,
+      "iphone": {
+        "seconds": 0.849428,
+        "MBps": 19.751193,
+        "sha256": "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1",
+        "path": "awdl0"
+      },
+      "mac": {
+        "seconds": 0.857076,
+        "MBps": 19.574946,
+        "sha256": "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1",
+        "path": "awdl0"
+      }
+    },
+    {
+      "sample": 2,
+      "mode": 1,
+      "bytes": 16777216,
+      "port": 49925,
+      "awdl_counter_deltas": {
+        "mac": {
+          "Ibytes": 17794558,
+          "Obytes": 49532,
+          "Ierrs": 0,
+          "Oerrs": 0
+        },
+        "iphone": {
+          "Ibytes": 41568,
+          "Obytes": 17791473,
+          "Ierrs": 0,
+          "Oerrs": 0
+        }
+      },
+      "status": "verified",
+      "iphone_exit": 0,
+      "listener_cancelled": true,
+      "iphone": {
+        "seconds": 2.075823,
+        "MBps": 8.0822,
+        "sha256": "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1",
+        "path": "awdl0"
+      },
+      "mac": {
+        "seconds": 2.07687,
+        "MBps": 8.078125,
+        "sha256": "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1",
+        "path": "awdl0"
+      }
+    }
+  ],
+  "probe_sha256": "daf5ff4aadfe8ac4ee96e3fcda512c910c15c41fb094047abe1cb8f20faa4ff2",
+  "post_execution_probe_sha256_verified": true,
+  "temporary_device_directory_removed": true
+}

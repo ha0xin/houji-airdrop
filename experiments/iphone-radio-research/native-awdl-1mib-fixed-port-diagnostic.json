@@ -1,0 +1,72 @@
+{
+  "interface": "awdl0",
+  "size_mib": 1,
+  "mss": "system-default",
+  "samples": [
+    {
+      "sample": 1,
+      "mode": 0,
+      "bytes": 1048576,
+      "port": 18870,
+      "awdl_counter_deltas": {
+        "mac": {
+          "Ibytes": 19038,
+          "Obytes": 1112340,
+          "Ierrs": 0,
+          "Oerrs": 0
+        },
+        "iphone": {
+          "Ibytes": 1109074,
+          "Obytes": 20775,
+          "Ierrs": 0,
+          "Oerrs": 0
+        }
+      },
+      "status": "verified",
+      "iphone_exit": 0,
+      "listener_cancelled": true,
+      "iphone": {
+        "seconds": 0.211148,
+        "MBps": 4.966071,
+        "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83",
+        "path": "awdl0"
+      },
+      "mac": {
+        "seconds": 0.218551,
+        "MBps": 4.797855,
+        "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83",
+        "path": "awdl0"
+      }
+    },
+    {
+      "sample": 2,
+      "mode": 1,
+      "bytes": 1048576,
+      "port": 18870,
+      "awdl_counter_deltas": {
+        "mac": {
+          "Ibytes": 133,
+          "Obytes": 0,
+          "Ierrs": 0,
+          "Oerrs": 0
+        },
+        "iphone": {
+          "Ibytes": 0,
+          "Obytes": 0,
+          "Ierrs": 0,
+          "Oerrs": 0
+        }
+      },
+      "status": "failed",
+      "iphone_exit": 1,
+      "listener_cancelled": true,
+      "diagnostics": [
+        "listener failed: domain=1 code=48",
+        "LISTENER_CANCELLED"
+      ]
+    }
+  ],
+  "probe_sha256": "daf5ff4aadfe8ac4ee96e3fcda512c910c15c41fb094047abe1cb8f20faa4ff2",
+  "post_execution_probe_sha256_verified": true,
+  "temporary_device_directory_removed": true
+}

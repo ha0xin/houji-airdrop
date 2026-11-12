@@ -1,0 +1,331 @@
+diff --git a/qcacld-3.0/core/wma/inc/wma_api.h b/qcacld-3.0/core/wma/inc/wma_api.h
+--- a/qcacld-3.0/core/wma/inc/wma_api.h
++++ b/qcacld-3.0/core/wma/inc/wma_api.h
+@@ -952,8 +952,15 @@
+  */
+ QDF_STATUS wma_passthru_reap_failed_deletes(void);
+ #ifdef DRIVER_PASSTHRU_OWNER
++struct wma_pt_peer_hold_ops {
++	int (*admit)(void *context);
++	bool (*closing)(void *context);
++	int (*quiesce)(void *context);
++};
+ int wma_pt_remote_peer_run(struct wlan_objmgr_vdev *vdev, u64 generation,
+-			  struct qdf_mac_addr *remote, bool *retire);
++			  struct qdf_mac_addr *remote,
++			  const struct wma_pt_peer_hold_ops *ops,
++			  void *hold_ctx, bool *retire);
+ #endif
+ /* Post-fence serialized snapshot: an exact blocked parameter still owns the
+  * SME reference, so one request_put cannot trigger last-ref FW deletion.
+diff --git a/qcacld-3.0/core/wma/src/wma_dev_if.c b/qcacld-3.0/core/wma/src/wma_dev_if.c
+--- a/qcacld-3.0/core/wma/src/wma_dev_if.c
++++ b/qcacld-3.0/core/wma/src/wma_dev_if.c
+@@ -2466,6 +2466,8 @@
+ /* Empty/false unless the independent setup-only candidate is selected. */
+ static bool pt_remote_reo;
+ module_param(pt_remote_reo, bool, 0400);
++static bool pt_remote_reo_flow;
++module_param(pt_remote_reo_flow, bool, 0400);
+ 
+ bool pt_remote_peer_reo_enabled(void)
+ {
+@@ -2526,6 +2528,16 @@
+ 	u32 reo_dma_freed;
+ 	u32 reo_dma_duplicates;
+ 	u32 reo_dma_conflict;
++	bool flow_ready;
++	bool flow_opened;
++	bool flow_stop;
++	bool flow_cpu_quiet;
++	bool flow_tx_quiet;
++	int flow_status;
++	int flow_quiesce_status;
++	int flow_tx_status;
++	u32 flow_tx_first;
++	u32 flow_tx_last;
+ };
+ static struct wma_pt_peer_trial wma_pt_peer_trial;
+ 
+@@ -2985,6 +2997,7 @@
+ 	WMA_PT_PEER_COMPENSATED,
+ 	WMA_PT_PEER_BLOCKED,
+ 	WMA_PT_PEER_SETUP_FAILED_CLEAN,
++	WMA_PT_PEER_FLOW_FAILED_CLEAN,
+ };
+ 
+ static enum wma_pt_peer_result wma_pt_peer_result;
+@@ -3016,9 +3029,136 @@
+ 	       trial->dp_released && trial->obj_released && !trial->dp_conflict;
+ }
+ 
++#define WMA_PT_FLOW_HOLD_MS 45000
++#define WMA_PT_FLOW_TX_DRAIN_MS 1500
++
++static int wma_pt_peer_flow_stop(const char *value, const struct kernel_param *kp)
++{
++	unsigned long flags;
++	bool stop;
++	int ret;
++
++	ret = kstrtobool(value, &stop);
++	if (ret)
++		return ret;
++	if (!stop || !READ_ONCE(pt_remote_reo_flow))
++		return -EINVAL;
++	spin_lock_irqsave(&wma_pt_peer_lock, flags);
++	if (!wma_pt_peer_trial.flow_ready || wma_pt_peer_trial.flow_stop)
++		ret = -ESHUTDOWN;
++	else
++		wma_pt_peer_trial.flow_stop = true;
++	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
++	return ret;
++}
++
++static const struct kernel_param_ops wma_pt_peer_flow_stop_ops = {
++	.set = wma_pt_peer_flow_stop,
++};
++module_param_cb(pt_remote_reo_stop, &wma_pt_peer_flow_stop_ops, NULL, 0200);
++
++static bool wma_pt_peer_flow_live(void)
++{
++	unsigned long flags;
++	bool live;
++
++	spin_lock_irqsave(&wma_pt_peer_lock, flags);
++	live = wma_pt_peer_live_slot(&wma_pt_peer_trial) &&
++	       !wma_pt_peer_trial.create_conflict &&
++	       !wma_pt_peer_trial.reo_conflict;
++	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
++	return live;
++}
++
++static int wma_pt_peer_hold(struct wlan_objmgr_vdev *vdev,
++			    const struct wma_pt_peer_hold_ops *ops,
++			    void *ctx, bool *delete_safe)
++{
++	void *soc = cds_get_context(QDF_MODULE_ID_SOC);
++	struct wlan_objmgr_pdev *pdev = wlan_vdev_get_pdev(vdev);
++	cdp_config_param_type val;
++	unsigned long flags, deadline;
++	QDF_STATUS status;
++	int ret, drain;
++	bool pending_seen = false;
++
++	*delete_safe = false;
++	if (!ops || !pdev || !soc)
++		return -EINVAL;
++
++	ret = wma_pt_peer_flow_live() ? ops->admit(ctx) : -ESTALE;
++	if (!ret) {
++		deadline = jiffies + msecs_to_jiffies(WMA_PT_FLOW_HOLD_MS);
++		spin_lock_irqsave(&wma_pt_peer_lock, flags);
++		wma_pt_peer_trial.flow_ready = true;
++		wma_pt_peer_trial.flow_opened = true;
++		spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
++		while (!READ_ONCE(wma_pt_peer_trial.flow_stop) && !ops->closing(ctx) &&
++		       wma_pt_peer_flow_live() && time_before(jiffies, deadline))
++			usleep_range(8000, 12000);
++		if (ops->closing(ctx))
++			ret = -ESHUTDOWN;
++		else if (!wma_pt_peer_flow_live())
++			ret = -ESTALE;
++		else if (!READ_ONCE(wma_pt_peer_trial.flow_stop))
++			ret = -ETIMEDOUT;
++	}
++	spin_lock_irqsave(&wma_pt_peer_lock, flags);
++	wma_pt_peer_trial.flow_ready = false;
++	wma_pt_peer_trial.flow_status = ret;
++	wma_pt_peer_trial.flow_quiesce_status = -EINPROGRESS;
++	wma_pt_peer_trial.flow_tx_status = -EINPROGRESS;
++	wma_pt_peer_trial.flow_tx_first = U32_MAX;
++	wma_pt_peer_trial.flow_tx_last = U32_MAX;
++	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
++
++	/* Both normal stop and deadline close host admission before any delete. */
++	drain = ops->quiesce(ctx);
++	spin_lock_irqsave(&wma_pt_peer_lock, flags);
++	wma_pt_peer_trial.flow_quiesce_status = drain;
++	wma_pt_peer_trial.flow_cpu_quiet = !drain;
++	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
++	if (drain)
++		return drain;
++
++	/* Exclusive one-pdev mode: include every ordinary raw TX descriptor. */
++	deadline = jiffies + msecs_to_jiffies(WMA_PT_FLOW_TX_DRAIN_MS);
++	drain = -ETIMEDOUT;
++	do {
++		val.cdp_pdev_param_tx_pending = U32_MAX;
++		status = cdp_txrx_get_pdev_param(soc, wlan_objmgr_pdev_get_pdev_id(pdev),
++						CDP_TX_PENDING, &val);
++		if (QDF_IS_STATUS_ERROR(status) || val.cdp_pdev_param_tx_pending == U32_MAX) {
++			drain = QDF_IS_STATUS_ERROR(status) ? qdf_status_to_os_return(status) : -EIO;
++			break;
++		}
++		spin_lock_irqsave(&wma_pt_peer_lock, flags);
++		if (!pending_seen) {
++			wma_pt_peer_trial.flow_tx_first = val.cdp_pdev_param_tx_pending;
++			pending_seen = true;
++		}
++		wma_pt_peer_trial.flow_tx_last = val.cdp_pdev_param_tx_pending;
++		spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
++		if (!val.cdp_pdev_param_tx_pending) {
++			drain = 0;
++			break;
++		}
++		usleep_range(3000, 5000);
++	} while (time_before(jiffies, deadline));
++
++	spin_lock_irqsave(&wma_pt_peer_lock, flags);
++	wma_pt_peer_trial.flow_tx_status = drain;
++	wma_pt_peer_trial.flow_tx_quiet = !drain;
++	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
++	*delete_safe = !drain;
++	return drain ? drain : ret;
++}
++
+ /* Owner holds its handoff ticket and parent DSC operation, with no RTNL. */
+ int wma_pt_remote_peer_run(struct wlan_objmgr_vdev *vdev, u64 generation,
+-			  struct qdf_mac_addr *remote, bool *retire)
++			  struct qdf_mac_addr *remote,
++			  const struct wma_pt_peer_hold_ops *ops,
++			  void *hold_ctx, bool *retire)
+ {
+ 	tp_wma_handle wma = cds_get_context(QDF_MODULE_ID_WMA);
+ 	struct wma_pt_peer_trial trial;
+@@ -3026,9 +3166,14 @@
+ 	QDF_STATUS status;
+ 	int ret = -ETIMEDOUT;
+ 	int reo_error = 0;
++	int flow_error = 0;
+ 	enum wma_pt_peer_result result = WMA_PT_PEER_BLOCKED;
+ 
+ 	*retire = false;
++	if (READ_ONCE(pt_remote_reo_flow) && !pt_remote_peer_reo_enabled()) {
++		*retire = true;
++		return -EINVAL;
++	}
+ 	WRITE_ONCE(wma_pt_peer_result, WMA_PT_PEER_RUNNING);
+ 	status = wma_pt_peer_create(wma, vdev, generation, remote);
+ 	deadline = jiffies + msecs_to_jiffies(WMA_PT_PEER_WAIT_MS);
+@@ -3106,6 +3251,17 @@
+ 			    (i && (trial.reo_flags[i] & expected) != expected))
+ 				reo_error = -EIO;
+ 	}
++	if (READ_ONCE(pt_remote_reo_flow) && !reo_error &&
++	    trial.create_returned && !QDF_IS_STATUS_ERROR(trial.create_submit) &&
++	    trial.create_confirmed && !trial.create_status && !trial.create_conflict) {
++		bool delete_safe;
++
++		flow_error = wma_pt_peer_hold(vdev, ops, hold_ctx, &delete_safe);
++		if (!delete_safe) {
++			ret = flow_error;
++			goto done;
++		}
++	}
+ 	status = wma_pt_peer_delete(wma, vdev, generation, remote);
+ 	if (QDF_IS_STATUS_ERROR(status)) {
+ 		ret = qdf_status_to_os_return(status);
+@@ -3126,6 +3282,9 @@
+ 				     (trial.reo_qref_write & ~trial.reo_qref_clear)))) {
+ 				result = WMA_PT_PEER_SETUP_FAILED_CLEAN;
+ 				ret = reo_error ? reo_error : -EIO;
++			} else if (flow_error) {
++				result = WMA_PT_PEER_FLOW_FAILED_CLEAN;
++				ret = flow_error;
+ 			} else {
+ 				result = WMA_PT_PEER_COMPLETE;
+ 				ret = 0;
+@@ -3160,7 +3319,10 @@
+ 			 "nonqos_setup=%u tid0_setup=%u "
+ 			 "nonqos_flags=%u tid0_flags=%u reo_queue_posted=%x "
+ 			 "reo_queue_tail=%x reo_queue_error=%x reo_queue_duplicates=%x reo_qref_write=%x reo_qref_clear=%x addba_suppressed=%u "
+-			 "reo_dma_detached=%x reo_dma_freed=%x reo_dma_duplicates=%x reo_dma_conflict=%x\n",
++			 "reo_dma_detached=%x reo_dma_freed=%x reo_dma_duplicates=%x reo_dma_conflict=%x "
++			 "flow_enabled=%u flow_ready=%u flow_opened=%u flow_stop=%u "
++			 "flow_cpu_quiet=%u flow_tx_quiet=%u flow_status=%d "
++			 "flow_quiesce_status=%d flow_tx_status=%d flow_tx_first=%u flow_tx_last=%u\n",
+ 			 READ_ONCE(wma_pt_peer_result), trial.generation, trial.vdev_id,
+ 			 trial.peer_id, trial.obj_attached, trial.obj_created, trial.dp_created,
+ 			 trial.create_issued, trial.create_returned, trial.create_submit,
+@@ -3181,7 +3343,11 @@
+ 			 trial.reo_flags[PT_REMOTE_REO_TID0], trial.reo_queue_posted,
+ 			 trial.reo_queue_tail, trial.reo_queue_error, trial.reo_queue_duplicates,
+ 			 trial.reo_qref_write, trial.reo_qref_clear, trial.reo_addba_suppressed, trial.reo_dma_detached, trial.reo_dma_freed,
+-			 trial.reo_dma_duplicates, trial.reo_dma_conflict);
++			 trial.reo_dma_duplicates, trial.reo_dma_conflict,
++			 READ_ONCE(pt_remote_reo_flow), trial.flow_ready, trial.flow_opened,
++			 trial.flow_stop, trial.flow_cpu_quiet, trial.flow_tx_quiet,
++			 trial.flow_status, trial.flow_quiesce_status, trial.flow_tx_status,
++			 trial.flow_tx_first, trial.flow_tx_last);
+ }
+ 
+ static const struct kernel_param_ops wma_pt_remote_peer_stats_ops = {
+diff --git a/qcacld-3.0/core/hdd/src/wlan_hdd_passthru_owner.c b/qcacld-3.0/core/hdd/src/wlan_hdd_passthru_owner.c
+--- a/qcacld-3.0/core/hdd/src/wlan_hdd_passthru_owner.c
++++ b/qcacld-3.0/core/hdd/src/wlan_hdd_passthru_owner.c
+@@ -806,6 +806,54 @@
+ }
+ 
+ #ifndef HOUJI_PT_OWNER_HOST_TEST
++static bool hdd_pt_peer_hold_closing(void *context)
++{
++	struct hdd_pt_owner *owner = context;
++
++	return atomic_read(&owner->closing) || atomic_read(&owner->recovering);
++}
++
++static int hdd_pt_peer_hold_admit(void *context)
++{
++	struct hdd_pt_owner *owner = context;
++	QDF_STATUS status;
++
++	if (hdd_pt_peer_hold_closing(owner))
++		return -ESHUTDOWN;
++	/* Initial matched START is still current; no tune or WMI call here. */
++	status = ucfg_dp_passthru_set_channel(owner->endpoint, owner->frequency);
++	if (QDF_IS_STATUS_ERROR(status))
++		return qdf_status_to_os_return(status);
++	smp_store_release(&owner->active, true);
++	if (hdd_pt_peer_hold_closing(owner)) {
++		smp_store_release(&owner->active, false);
++		return -ESHUTDOWN;
++	}
++	return 0;
++}
++
++static int hdd_pt_peer_hold_quiesce(void *context)
++{
++	struct hdd_pt_owner *owner = context;
++	unsigned long deadline = jiffies + msecs_to_jiffies(500);
++	QDF_STATUS status;
++
++	smp_store_release(&owner->active, false);
++	do {
++		status = ucfg_dp_passthru_pause(owner->endpoint);
++		if (status != QDF_STATUS_E_BUSY)
++			return qdf_status_to_os_return(status);
++		usleep_range(1000, 2000);
++	} while (time_before(jiffies, deadline));
++	return -ETIMEDOUT;
++}
++
++static const struct wma_pt_peer_hold_ops hdd_pt_peer_hold_ops = {
++	.admit = hdd_pt_peer_hold_admit,
++	.closing = hdd_pt_peer_hold_closing,
++	.quiesce = hdd_pt_peer_hold_quiesce,
++};
++
+ /*
+  * One-shot diagnostic. The registry user and handoff ticket hold the owner,
+  * endpoint and owner-held vdev ref until the WMI/DP work has returned.
+@@ -849,7 +897,8 @@
+ 	} while (time_before(jiffies, deadline));
+ 	ret = qdf_status_to_os_return(status);
+ 	if (!ret && !atomic_read(&owner->closing))
+-		ret = wma_pt_remote_peer_run(owner->vdev, generation, peer, &retire);
++		ret = wma_pt_remote_peer_run(owner->vdev, generation, peer,
++					     &hdd_pt_peer_hold_ops, owner, &retire);
+ 
+ finish:
+ 	mutex_lock(&owner->control);

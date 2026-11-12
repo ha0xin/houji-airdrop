@@ -1,0 +1,41 @@
+--- /work/houji-build/src/baseline/wlan/qca-wifi-host-cmn/dp/wifi3.0/dp_tx.c	2026-11-10 02:41:35.701927936 +0000
++++ /work/houji-build/src/wideband/wlan/qca-wifi-host-cmn/dp/wifi3.0/dp_tx.c	2026-11-10 05:04:16.013182392 +0000
+@@ -62,6 +62,8 @@
+ #include <dp_sawf.h>
+ #endif
+ 
++#include "dp_pt_rate_observer.h"
++
+ /* Flag to skip CCE classify when mesh or tid override enabled */
+ #define DP_TX_SKIP_CCE_CLASSIFY \
+ 	(DP_TXRX_HLOS_TID_OVERRIDE_ENABLED | DP_TX_MESH_ENABLED)
+@@ -3245,7 +3247,11 @@
+ 	    !soc->num_tcl_data_rings || !soc->arch_ops.tx_hw_enqueue)
+ 		goto leave;
+ 	dp_tx_get_queue(vdev, nbuf, &msdu_info.tx_queue);
+-	/* This profile uses only ordinary data rings and descriptor pools. */
++    if (pt_single_ring) {
++        msdu_info.tx_queue.ring_id = 0;
++        msdu_info.tx_queue.desc_pool_id = 0;
++    }
++    /* This profile uses only ordinary data rings and descriptor pools. */
+ 	if (msdu_info.tx_queue.ring_id >= soc->num_tcl_data_rings ||
+ 	    msdu_info.tx_queue.ring_id >= MAX_TCL_DATA_RINGS ||
+ 	    msdu_info.tx_queue.ring_id >= CDP_MAX_TX_COMP_RINGS ||
+@@ -3255,6 +3261,8 @@
+ 	    !dp_tx_get_hal_ring_hdl(soc, msdu_info.tx_queue.ring_id))
+ 		goto leave;
+ 
++	dp_pt_ring_begin(msdu_info.tx_queue.ring_id);
++
+ 	/* The caller's mac80211 cb must not be interpreted as QDF TX flags.
+ 	 * A returned skb has its original cb, data and length restored.
+ 	 */
+@@ -6380,6 +6388,7 @@
+ 
+ 	if (dp_tx_desc_is_passthru(tx_desc)) {
+ 		/* No Ethernet statistics, peer lookup or fabricated ACK callback. */
++		dp_pt_rate_end(ts);
+ 		DP_STATS_INCC(soc, tx.dropped_fw_removed, 1,
+ 			      (ts->status == HAL_TX_TQM_RR_REM_CMD_REM));
+ 		return;

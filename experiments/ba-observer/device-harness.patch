@@ -1,0 +1,154 @@
+--- a/bench.py
++++ b/bench.py
+@@ -45,15 +45,21 @@
+     raise TimeoutError("device state deadline")
+ 
+ 
+-def deploy(variant):
++def deploy(variant, include_observer=False):
+     stage = adb("shell", "mktemp -d /data/local/tmp/owly-stage.XXXXXX").strip()
+     if not re.fullmatch(r"/data/local/tmp/owly-stage\.[a-zA-Z0-9]+", stage):
+         raise ValueError("unexpected staging directory")
+     files = ["houji-owly", "wonder-init", "owly-hashprobe", "SHA256SUMS", "radio-owly.sh"]
++    observer_name = "qca_cld3_kiwi_v2-observer.ko"
++    if include_observer:
++        files.append(observer_name)
+     try:
+         for name in files:
+             dist = HERE / "dist" if variant == "baseline" else HERE / "dist" / variant
+-            source = HERE / name if name.endswith(".sh") else dist / name
++            if name == observer_name:
++                source = HERE.parents[1] / "ba-observer" / "qca_cld3_kiwi_v2.ko"
++            else:
++                source = HERE / name if name.endswith(".sh") else dist / name
+             adb("push", str(source), f"{stage}/{name}")
+         install = f"""set -eu
+ test ! -e {STATE}/saved.env
+@@ -66,6 +72,7 @@
+ done
+ chmod 700 {ROOT}/houji-owly {ROOT}/wonder-init {ROOT}/owly-hashprobe {RADIO}
+ chmod 600 {ROOT}/SHA256SUMS
++{"chmod 600 " + ROOT + "/" + observer_name if include_observer else ""}
+ cd {ROOT}
+ sha256sum -c SHA256SUMS
+ sh -n {RADIO}
+@@ -165,10 +172,12 @@
+     expected = hashlib.sha256(payload).digest()
+     token = uuid.uuid4().hex
+     summary = dict(channel=149, profile=args.profile, aggregation=args.aggregation,
+-                   ack=args.ack, tcp_mss=args.mss, tun_queue=args.queue_len, rx_block_ack=False, mac_awdl=peer, samples=[])
++                   ack=args.ack, tcp_mss=args.mss, tun_queue=args.queue_len,
++                   rx_block_ack=False, ba_observer=args.ba_observer, mac_awdl=peer, samples=[])
+     log = f"{STATE}/job-{token}.log"
+     command = shlex.join(["sh", RADIO, "run", token, args.profile, args.aggregation, args.ack,
+-                          peer, str(args.pairs * 2), str(size), str(args.mss), str(args.queue_len)])
++                          peer, str(args.pairs * 2), str(size), str(args.mss), str(args.queue_len),
++                          args.ba_observer])
+     completion = f"{STATE}/exit-{token}"
+     launcher = shlex.quote(f'{command}; rc=$?; echo "$rc" >{completion}; exit "$rc"')
+ 
+@@ -260,6 +269,7 @@
+     sub = parser.add_subparsers(dest="command", required=True)
+     install = sub.add_parser("deploy")
+     install.add_argument("--variant", choices=("baseline", "coalesce", "mss"), default="baseline")
++    install.add_argument("--include-ba-observer", action="store_true")
+     trial = sub.add_parser("measure")
+     trial.add_argument("name")
+     trial.add_argument("profile", choices=("ht20", "vht80", "vht80-sgi"))
+@@ -268,13 +278,18 @@
+     trial.add_argument("--mib", type=int, choices=range(1, 129), default=64)
+     trial.add_argument("--mss", type=int, choices=(0, 1160), default=0)
+     trial.add_argument("--queue-len", type=int, choices=(500, 2048), default=500)
++    trial.add_argument("--ba-observer", choices=("reference", "off", "on"), default="reference")
+     trial.add_argument("--pairs", type=int, choices=range(1, 5), default=2)
+     args = parser.parse_args()
+     if args.command == "deploy":
+-        deploy(args.variant)
++        deploy(args.variant, args.include_ba_observer)
+         return 0
+     if args.queue_len != 500 and args.mss != 1160:
+         parser.error("queue control requires the MSS 1160 comparison")
++    if args.ba_observer != "reference" and (
++        args.profile, args.aggregation, args.ack, args.mss, args.queue_len
++    ) != ("vht80-sgi", "amsdu", "ack", 1160, 500):
++        parser.error("BA observer comparison requires VHT80 SGI, A-MSDU, ACK, MSS 1160 and queue 500")
+     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*", args.name):
+         parser.error("invalid trial name")
+     return 0 if measure(args) else 1
+--- a/radio-owly.sh
++++ b/radio-owly.sh
+@@ -15,6 +15,8 @@
+ ORIG=4db7b0e1aa7e4ec071708359c9d0db8d3d7872390cd8e88ffa0bbb30d560bcc8
+ CANDIDATE=13f01cb46efbe498c854352bfc253fa3665c14a14c37a0a6ed6a609a48a8709c
+ NOTE=a3e9bd62646444e1ecbe0f421c95ec46e6caf69a78323efb2f6ebe00e6b2bd8b
++RING_SHA=481e3474ea6b42acab5bb5a35b5be7b5e291aa975d7422034ca4e750e857d71c
++BA_OBSERVER_SHA=b9f0a77ec9132e57677f83e75e4e3185087b8c4a104878db532a894cb0c4637b
+ TABLE=10075
+ IFACE=owly0
+ driver=
+@@ -191,6 +193,10 @@
+ 
+ collect() {
+  cat "$W/parameters/pt_activate" "$W/parameters/pt_rate_stats"
++ if test "$ba_mode" != reference; then
++  echo "BA_OBSERVER_PARAM=$(cat "$W/parameters/pt_ba_observe")"
++  cat "$W/parameters/pt_ba_stats"
++ fi
+  ip -s link show dev "$IFACE"
+  ip -s link show dev wonder0
+  tc -s qdisc show dev wonder0
+@@ -202,7 +208,14 @@
+  sha256sum -c SHA256SUMS
+  check "$CANDIDATE" "$RADIO/amss20.bin"
+  check 9a8345d87ec1186a29b413935b4efdbd38566e7e22374e70a7a85510b2970e9a "$RADIO/houji_wonder_bridge.ko"
+- check 481e3474ea6b42acab5bb5a35b5be7b5e291aa975d7422034ca4e750e857d71c "$RADIO/qca_cld3_kiwi_v2.ko"
++ qca="$RADIO/qca_cld3_kiwi_v2.ko"
++ qca_sha=$RING_SHA
++ if test "$ba_mode" != reference; then
++  qca="$ROOT/qca_cld3_kiwi_v2-observer.ko"
++  qca_sha=$BA_OBSERVER_SHA
++ fi
++ check "$qca_sha" "$qca"
++ echo "WLAN_BUILD_SHA=$qca_sha BA_OBSERVER_REQUEST=$ba_mode"
+  check 9d60988f896669604ff2e8cdfa1ba91a7047c1ddd2210b1fa494f506f5eb039c "$RADIO/wonder.ko"
+  test "$(uname -r)" = 6.1.138-android14-11-g0c3d559bcd85-ab14529422
+  snapshot
+@@ -228,8 +241,13 @@
+  insmod "$RADIO/houji_wonder_bridge.ko"
+  vht=0
+  case "$profile" in vht80|vht80-sgi) vht=1;; esac
+- bounded insmod "$RADIO/qca_cld3_kiwi_v2.ko" pt_exclusive=1 pt_zero_serial=1 pt_rx_metadata=1 \
+-  pt_vht80="$vht" pt_rate_observe=1 pt_single_ring=1
++ set -- pt_exclusive=1 pt_zero_serial=1 pt_rx_metadata=1 pt_vht80="$vht" pt_rate_observe=1 pt_single_ring=1
++ if test "$ba_mode" = on; then set -- "$@" pt_ba_observe=1; fi
++ bounded insmod "$qca" "$@"
++ case "$ba_mode" in
++  off) test "$(cat "$W/parameters/pt_ba_observe")" = N ;;
++  on) test "$(cat "$W/parameters/pt_ba_observe")" = Y ;;
++ esac
+  sleep 2
+  echo on > "$PCI"
+  bounded sh -c 'echo 1 > /sys/module/qca_cld3_kiwi_v2/parameters/pt_activate'
+@@ -286,7 +304,7 @@
+ }
+ 
+ run_locked() {
+- token=$1 profile=$2 aggregation=$3 ack=$4 peer=$5 count=$6 size=$7 mss=$8 qlen=$9
++ token=$1 profile=$2 aggregation=$3 ack=$4 peer=$5 count=$6 size=$7 mss=$8 qlen=$9 ba_mode=${10}
+  test ! -e "$STATE/saved.env"
+  no_native_bridge
+  trap finish_locked EXIT
+@@ -425,7 +443,12 @@
+ case "${1:-}" in
+  run)
+   shift
+-  test "$#" = 9
++  test "$#" = 10
++  case "${10}" in
++   reference) ;;
++   off|on) test "$2:$3:$4:$8:$9" = vht80-sgi:amsdu:ack:1160:500 ;;
++   *) exit 2 ;;
++  esac
+   case "$8:$9" in 0:500|1160:500|1160:2048) ;; *) exit 2;; esac
+   case "$1" in ''|*[!a-zA-Z0-9-]*) exit 2;; esac
+   case "$2:$3:$4" in

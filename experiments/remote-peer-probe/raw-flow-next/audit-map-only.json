@@ -1,0 +1,71 @@
+{
+  "checks": {
+    "aarch64": true,
+    "both_params_0444": true,
+    "observer_default_off": true,
+    "candidate_code_changed": true,
+    "abi_matches_both_references": true
+  },
+  "abi_by_reference": {
+    "tested_wideband_ring": {
+      "machine": true,
+      "vermagic": true,
+      "depends": true,
+      "module_name": true,
+      "versions": true,
+      "exports": true,
+      "undefined": true,
+      "module_size": true,
+      "module_relocations": true
+    },
+    "wideband_source_tree_module": {
+      "machine": true,
+      "vermagic": true,
+      "depends": true,
+      "module_name": true,
+      "versions": true,
+      "exports": true,
+      "undefined": true,
+      "module_size": true,
+      "module_relocations": true
+    }
+  },
+  "reference_executable_sections_match_each_other": true,
+  "reference_sha256": {
+    "tested_wideband_ring": "481e3474ea6b42acab5bb5a35b5be7b5e291aa975d7422034ca4e750e857d71c",
+    "wideband_source_tree_module": "b79d17b7b9fc18f75e3404104f84d59fd51ac8a60f20d8fbe5a9a913249ffe21"
+  },
+  "candidate_sha256": "664ae1db5cfbaaad7f06385f26617a7d14b66e6a8a42e541e561534fca789adb",
+  "candidate_vermagic": [
+    "6.1.68 SMP preempt mod_unload modversions aarch64"
+  ],
+  "candidate_depends": [
+    "cfg80211,cnss_utils,hwid,cnss_nl,ipam,houji_wonder_bridge,cnss_prealloc,qcom_iommu_util,sched-walt,qcom_va_minidump,cnss2"
+  ],
+  "candidate_import_count": 567,
+  "candidate_param_permissions": {
+    "pt_ba_observe": "0o444",
+    "pt_ba_stats": "0o444",
+    "pt_ba_peer": "0o444",
+    "pt_ba_peer_stats": "0o444",
+    "pt_peer_caps_observe": "0o444",
+    "pt_peer_caps": "0o444",
+    "pt_remote_peer_mac": "0o400",
+    "pt_remote_peer_run": "0o200",
+    "pt_remote_peer_stats": "0o400",
+    "pt_remote_reo": "0o400",
+    "pt_remote_reo_flow": "0o400",
+    "pt_remote_reo_stop": "0o200",
+    "pt_remote_preserve_self_ast": "0o400",
+    "pt_remote_map_only_flow": "0o400"
+  },
+  "candidate_flag_initial_byte": 0,
+  "device_validation": "not performed",
+  "peer_configured_default": 0,
+  "peer_caps_observer_default": 0,
+  "remote_peer_mac_default_empty": true,
+  "reo_setup_default": 0,
+  "bounded_flow_default": 0,
+  "preserve_self_ast_default": 0,
+  "map_only_flow_default": 0
+}

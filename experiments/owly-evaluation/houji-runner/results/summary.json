@@ -1,0 +1,390 @@
+{
+  "channel": 149,
+  "verified_transfers": 38,
+  "transfer_failures": 0,
+  "setup_errors": [
+    {
+      "trial": "ht20-smoke1",
+      "result": "argv 保护拒绝，未切换"
+    },
+    {
+      "trial": "ht20-smoke2",
+      "result": "rate BW NLA 长度错误，切换后安全恢复"
+    },
+    {
+      "trial": "coalesce-sgi-64m-harness-mismatch",
+      "result": "脚本版本不匹配，未切换，旧日志未计入"
+    }
+  ],
+  "trials": [
+    {
+      "trial": "ht20-smoke3",
+      "label": "HT20 / 单帧 / ACK",
+      "MiB": 8,
+      "pairs": 1,
+      "verified": 2,
+      "failures": 0,
+      "directions": {
+        "Mac→小米": {
+          "weighted_MBps": 0.6329683649516741,
+          "samples_MBps": [
+            0.6329683649516741
+          ],
+          "max_MBps": 0.6329683649516741
+        },
+        "小米→Mac": {
+          "weighted_MBps": 2.626616828657037,
+          "samples_MBps": [
+            2.626616828657037
+          ],
+          "max_MBps": 2.626616828657037
+        }
+      }
+    },
+    {
+      "trial": "vht80-single-screen",
+      "label": "VHT80 / 单帧 / LGI",
+      "MiB": 16,
+      "pairs": 1,
+      "verified": 2,
+      "failures": 0,
+      "directions": {
+        "Mac→小米": {
+          "weighted_MBps": 2.3264283610816574,
+          "samples_MBps": [
+            2.3264283610816574
+          ],
+          "max_MBps": 2.3264283610816574
+        },
+        "小米→Mac": {
+          "weighted_MBps": 3.33022584208552,
+          "samples_MBps": [
+            3.33022584208552
+          ],
+          "max_MBps": 3.33022584208552
+        }
+      }
+    },
+    {
+      "trial": "vht80-amsdu-screen",
+      "label": "VHT80 / 原版合包 / LGI",
+      "MiB": 16,
+      "pairs": 1,
+      "verified": 2,
+      "failures": 0,
+      "directions": {
+        "Mac→小米": {
+          "weighted_MBps": 2.2965520845103295,
+          "samples_MBps": [
+            2.2965520845103295
+          ],
+          "max_MBps": 2.2965520845103295
+        },
+        "小米→Mac": {
+          "weighted_MBps": 3.4100938468590507,
+          "samples_MBps": [
+            3.4100938468590507
+          ],
+          "max_MBps": 3.4100938468590507
+        }
+      }
+    },
+    {
+      "trial": "coalesce-lgi-screen",
+      "label": "VHT80 / 1 ms 合包 / LGI",
+      "MiB": 16,
+      "pairs": 1,
+      "verified": 2,
+      "failures": 0,
+      "directions": {
+        "Mac→小米": {
+          "weighted_MBps": 2.1169820687384773,
+          "samples_MBps": [
+            2.1169820687384773
+          ],
+          "max_MBps": 2.1169820687384773
+        },
+        "小米→Mac": {
+          "weighted_MBps": 6.495411933074693,
+          "samples_MBps": [
+            6.495411933074693
+          ],
+          "max_MBps": 6.495411933074693
+        }
+      },
+      "amsdu_mpdu": 5960,
+      "amsdu_msdu": 11977,
+      "amsdu_members_per_mpdu": 2.0095637583892616
+    },
+    {
+      "trial": "coalesce-sgi-screen",
+      "label": "VHT80 / 1 ms 合包 / SGI",
+      "MiB": 16,
+      "pairs": 1,
+      "verified": 2,
+      "failures": 0,
+      "directions": {
+        "Mac→小米": {
+          "weighted_MBps": 2.405825472621957,
+          "samples_MBps": [
+            2.405825472621957
+          ],
+          "max_MBps": 2.405825472621957
+        },
+        "小米→Mac": {
+          "weighted_MBps": 6.357132832171051,
+          "samples_MBps": [
+            6.357132832171051
+          ],
+          "max_MBps": 6.357132832171051
+        }
+      },
+      "amsdu_mpdu": 6057,
+      "amsdu_msdu": 12218,
+      "amsdu_members_per_mpdu": 2.0171702162786858
+    },
+    {
+      "trial": "coalesce-sgi-mss1160-screen",
+      "label": "VHT80 / 1 ms 合包 / SGI / MSS 1160",
+      "MiB": 16,
+      "pairs": 1,
+      "verified": 2,
+      "failures": 0,
+      "directions": {
+        "Mac→小米": {
+          "weighted_MBps": 1.96650597707354,
+          "samples_MBps": [
+            1.96650597707354
+          ],
+          "max_MBps": 1.96650597707354
+        },
+        "小米→Mac": {
+          "weighted_MBps": 7.933103256567215,
+          "samples_MBps": [
+            7.933103256567215
+          ],
+          "max_MBps": 7.933103256567215
+        }
+      },
+      "amsdu_mpdu": 4900,
+      "amsdu_msdu": 14657,
+      "amsdu_members_per_mpdu": 2.9912244897959184
+    },
+    {
+      "trial": "vht80-single-64m",
+      "label": "VHT80 / 单帧 / LGI",
+      "MiB": 64,
+      "pairs": 2,
+      "verified": 4,
+      "failures": 0,
+      "directions": {
+        "Mac→小米": {
+          "weighted_MBps": 2.3067560112064918,
+          "samples_MBps": [
+            2.4524713015732833,
+            2.1773851557717765
+          ],
+          "max_MBps": 2.4524713015732833
+        },
+        "小米→Mac": {
+          "weighted_MBps": 3.0019399179262294,
+          "samples_MBps": [
+            2.9721796714952613,
+            3.03230216709011
+          ],
+          "max_MBps": 3.03230216709011
+        }
+      }
+    },
+    {
+      "trial": "vht80-amsdu-64m",
+      "label": "VHT80 / 原版合包 / LGI",
+      "MiB": 64,
+      "pairs": 2,
+      "verified": 4,
+      "failures": 0,
+      "directions": {
+        "Mac→小米": {
+          "weighted_MBps": 2.5115822791933278,
+          "samples_MBps": [
+            2.4966626482952003,
+            2.526681296421607
+          ],
+          "max_MBps": 2.526681296421607
+        },
+        "小米→Mac": {
+          "weighted_MBps": 2.9302831467981836,
+          "samples_MBps": [
+            2.8539971747089683,
+            3.0107592949806574
+          ],
+          "max_MBps": 3.0107592949806574
+        }
+      }
+    },
+    {
+      "trial": "coalesce-lgi-64m",
+      "label": "VHT80 / 1 ms 合包 / LGI",
+      "MiB": 64,
+      "pairs": 2,
+      "verified": 4,
+      "failures": 0,
+      "directions": {
+        "Mac→小米": {
+          "weighted_MBps": 2.5748964088311213,
+          "samples_MBps": [
+            2.5136667900036453,
+            2.639183448469064
+          ],
+          "max_MBps": 2.639183448469064
+        },
+        "小米→Mac": {
+          "weighted_MBps": 5.322818396694142,
+          "samples_MBps": [
+            5.560992099938795,
+            5.104208442734303
+          ],
+          "max_MBps": 5.560992099938795
+        }
+      },
+      "amsdu_mpdu": 48029,
+      "amsdu_msdu": 96161,
+      "amsdu_members_per_mpdu": 2.0021445376751545
+    },
+    {
+      "trial": "coalesce-sgi-64m",
+      "label": "VHT80 / 1 ms 合包 / SGI",
+      "MiB": 64,
+      "pairs": 2,
+      "verified": 4,
+      "failures": 0,
+      "directions": {
+        "Mac→小米": {
+          "weighted_MBps": 2.5531133935626387,
+          "samples_MBps": [
+            2.544564936843956,
+            2.561719480910179
+          ],
+          "max_MBps": 2.561719480910179
+        },
+        "小米→Mac": {
+          "weighted_MBps": 5.223025371099822,
+          "samples_MBps": [
+            4.973586702252389,
+            5.498805149106586
+          ],
+          "max_MBps": 5.498805149106586
+        }
+      },
+      "amsdu_mpdu": 48177,
+      "amsdu_msdu": 96563,
+      "amsdu_members_per_mpdu": 2.004338169666023
+    },
+    {
+      "trial": "coalesce-sgi-mss1160-64m",
+      "label": "VHT80 / 1 ms 合包 / SGI / MSS 1160",
+      "MiB": 64,
+      "pairs": 3,
+      "verified": 6,
+      "failures": 0,
+      "directions": {
+        "Mac→小米": {
+          "weighted_MBps": 2.1440151974305697,
+          "samples_MBps": [
+            2.101085787938258,
+            2.1614701234583973,
+            2.170839223859122
+          ],
+          "max_MBps": 2.170839223859122
+        },
+        "小米→Mac": {
+          "weighted_MBps": 6.4699911166758675,
+          "samples_MBps": [
+            6.628848161613715,
+            6.609564231162688,
+            6.190897160686203
+          ],
+          "max_MBps": 6.628848161613715
+        }
+      },
+      "amsdu_mpdu": 58884,
+      "amsdu_msdu": 175109,
+      "amsdu_members_per_mpdu": 2.973795937775966
+    },
+    {
+      "trial": "coalesce-sgi-mss1160-q2048-64m",
+      "label": "VHT80 / 1 ms 合包 / SGI / MSS 1160 / TUN qlen 2048",
+      "MiB": 64,
+      "pairs": 2,
+      "verified": 4,
+      "failures": 0,
+      "directions": {
+        "Mac→小米": {
+          "weighted_MBps": 2.0098914617114145,
+          "samples_MBps": [
+            2.127919355952941,
+            1.9042686529569874
+          ],
+          "max_MBps": 2.127919355952941
+        },
+        "小米→Mac": {
+          "weighted_MBps": 6.311339493039554,
+          "samples_MBps": [
+            6.188209091505763,
+            6.4394693666517355
+          ],
+          "max_MBps": 6.4394693666517355
+        }
+      },
+      "amsdu_mpdu": 39244,
+      "amsdu_msdu": 116703,
+      "amsdu_members_per_mpdu": 2.973779431250637
+    }
+  ],
+  "best_repeated_64MiB_by_direction": {
+    "Mac→小米": {
+      "trial": "coalesce-lgi-64m",
+      "weighted_MBps": 2.5748964088311213,
+      "samples_MBps": [
+        2.5136667900036453,
+        2.639183448469064
+      ],
+      "max_MBps": 2.639183448469064
+    },
+    "小米→Mac": {
+      "trial": "coalesce-sgi-mss1160-64m",
+      "weighted_MBps": 6.4699911166758675,
+      "samples_MBps": [
+        6.628848161613715,
+        6.609564231162688,
+        6.190897160686203
+      ],
+      "max_MBps": 6.628848161613715
+    }
+  },
+  "peak_verified_by_direction": {
+    "Mac→小米": {
+      "trial": "coalesce-lgi-64m",
+      "MiB": 64,
+      "max_MBps": 2.639183448469064
+    },
+    "小米→Mac": {
+      "trial": "coalesce-sgi-mss1160-screen",
+      "MiB": 16,
+      "max_MBps": 7.933103256567215
+    }
+  },
+  "queue_control": {
+    "same_build_manifest": true,
+    "qlen_500": {
+      "trial": "coalesce-sgi-mss1160-64m",
+      "tun_tx_dropped": 1147,
+      "tun_qdisc_dropped": 0
+    },
+    "qlen_2048": {
+      "trial": "coalesce-sgi-mss1160-q2048-64m",
+      "tun_tx_dropped": 0,
+      "tun_qdisc_dropped": 0
+    }
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "recorded_at": "2026-11-11T00:27:00+08:00",
+  "mac_modified": false,
+  "peers": {
+    "Apple phone": {
+      "model": "iPhone18,3 (Apple phone)",
+      "os_version": "iOS 26.5.2",
+      "awdl_mac": "02:00:00:00:00:04",
+      "awdl_ipv6": "2001:db8::4e%awdl0",
+      "mac_kernel_cache_signature": "Caching peer: (02:00:00:00:00:04) (I:36) (V:a0) (CC:149) SDB.",
+      "cached_state": "(SDB:infra on 36) (infraRT:No)",
+      "election_master_metric": 522,
+      "awdl0_cold_16mib": {
+        "conns_succeeded": 39,
+        "conns_total": 44,
+        "elapsed_sec": 1.448,
+        "awdl0_out_bytes": 16927744,
+        "awdl0_out_mib": 16.14,
+        "rate_mb_s": 11.15,
+        "txQ": 11365,
+        "txFail": 8,
+        "txAMPDU": 557,
+        "rxBACK": 260,
+        "rxaddbareq": 1,
+        "txaddbaresp": 1
+      },
+      "awdl0_warm_data_state_16mib_x3": {
+        "rounds": [
+          {"round": 1, "elapsed_sec": 0.399, "awdl0_out_bytes": 17700864, "awdl0_out_mib": 16.88, "rate_mb_s": 42.27},
+          {"round": 2, "elapsed_sec": 0.324, "awdl0_out_bytes": 16329728, "awdl0_out_mib": 15.57, "rate_mb_s": 48.05},
+          {"round": 3, "elapsed_sec": 0.412, "awdl0_out_bytes": 15993856, "awdl0_out_mib": 15.25, "rate_mb_s": 37.03}
+        ],
+        "total_bytes": 50024448,
+        "total_mib": 47.71,
+        "total_elapsed_sec": 1.135,
+        "weighted_rate_mb_s": 42.03,
+        "peak_rate_mb_s": 48.05,
+        "kernel_cached_txQ": 35187,
+        "kernel_cached_txOk_slots_0_to_15": [1630, 1513, 2725, 2777, 2519, 2095, 1164, 1953, 342, 2192, 3046, 3332, 3785, 2251, 1702, 2151],
+        "kernel_cached_RxPkts_slots_0_to_15": [207, 218, 331, 314, 305, 283, 147, 281, 32, 267, 400, 422, 497, 262, 227, 276],
+        "kernel_cached_txNoAck_slots_0_to_15": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        "kernel_cached_txFail": 14,
+        "lqm_txAMPDU_sum": 863,
+        "lqm_rxBACK_sum": 759,
+        "avg_mpdu_per_ampdu": 40.77,
+        "lqm_rxaddbareq": 2,
+        "lqm_txaddbaresp": 2
+      },
+      "devicectl_en0_he80_2ss_16mib_x3": {
+        "rounds": [
+          {"round": 1, "mac_to_iphone_mb_s": 4.25, "iphone_to_mac_mb_s": 6.48},
+          {"round": 2, "mac_to_iphone_mb_s": 17.96, "iphone_to_mac_mb_s": 5.28},
+          {"round": 3, "mac_to_iphone_mb_s": 16.53, "iphone_to_mac_mb_s": 6.13}
+        ]
+      }
+    },
+    "iphone6s_plus": {
+      "model": "iPhone8,2 (Apple phone)",
+      "os_version": "iOS 15.7.1",
+      "awdl_mac": "02:00:00:00:00:05",
+      "mac_kernel_cache_signature": "Caching peer: (02:00:00:00:00:05) (I:36) (V:65) (CC:149).",
+      "cached_state": "(Non-SDB:infra on 36) (infraRT:No)",
+      "awdl0_16mib_weighted_mac_to_iphone_mb_s": 18.41,
+      "awdl0_16mib_weighted_iphone_to_mac_mb_s": 8.77,
+      "awdl0_64mib_mac_to_iphone_mb_s": 26.19,
+      "awdl0_64mib_peak_mb_s": 41.99,
+      "kernel_cached_txQ": 64037,
+      "kernel_cached_txOk_slots_0_to_15": [3861, 2255, 2312, 4208, 4835, 3835, 2159, 2215, 630, 5075, 4712, 4295, 6576, 4224, 6631, 5479],
+      "lqm_txAMPDU": 1186,
+      "lqm_rxBACK": 1146,
+      "lqm_txRTSFrm": 389,
+      "lqm_rxACKUcast": 43,
+      "avg_mpdu_per_ampdu": 53.37,
+      "lqm_rxaddbareq": 2,
+      "lqm_txaddbaresp": 2
+    },
+    "xiaomi14_houji": {
+      "model": "Xiaomi 14 (houji, WCN7850 / qca_cld3_kiwi_v2)",
+      "awdl_mac": "02:00:00:00:00:06",
+      "mac_kernel_cache_signature": "Caching peer: (02:00:00:00:00:06) (I:0) (V:34) (CC:149).",
+      "cached_state": "(Non-SDB:infra on 0) (infraRT:No)",
+      "awdl0_64mib_x3_weighted_mac_to_houji_mb_s": 4.532,
+      "awdl0_64mib_x3_peak_mac_to_houji_mb_s": 4.662,
+      "awdl0_64mib_x3_weighted_houji_to_mac_mb_s": 6.590,
+      "awdl0_16mib_peak_houji_to_mac_mb_s": 8.894,
+      "kernel_cached_txQ": 16739,
+      "kernel_cached_txOk_slots_0_to_15": [1742, 1490, 1587, 1518, 1414, 1413, 3, 0, 0, 1748, 1722, 1888, 1922, 1689, 12, 3],
+      "lqm_txAMPDU": 5777,
+      "lqm_rxBACK": 38,
+      "lqm_txRTSFrm": 5916,
+      "lqm_rxCTSUcast": 5712,
+      "lqm_txUcast": 5807,
+      "lqm_rxACKUcast": 5766,
+      "avg_mpdu_per_ampdu": 1.005,
+      "lqm_rxaddbareq": 0,
+      "lqm_txaddbaresp": 0
+    }
+  }
+}

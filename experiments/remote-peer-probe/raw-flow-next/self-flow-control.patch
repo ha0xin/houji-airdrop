@@ -1,0 +1,145 @@
+--- a/qcacld-3.0/core/wma/src/wma_dev_if.c
++++ b/qcacld-3.0/core/wma/src/wma_dev_if.c
+@@ -2468,6 +2468,8 @@
+ module_param(pt_remote_reo, bool, 0400);
+ static bool pt_remote_reo_flow;
+ module_param(pt_remote_reo_flow, bool, 0400);
++static bool pt_remote_self_flow;
++module_param(pt_remote_self_flow, bool, 0400);
+ 
+ bool pt_remote_peer_reo_enabled(void)
+ {
+@@ -2528,6 +2530,7 @@
+ 	u32 reo_dma_freed;
+ 	u32 reo_dma_duplicates;
+ 	u32 reo_dma_conflict;
++	u64 flow_self_generation;
+ 	bool flow_ready;
+ 	bool flow_opened;
+ 	bool flow_stop;
+@@ -3064,6 +3067,7 @@
+ 	WMA_PT_PEER_BLOCKED,
+ 	WMA_PT_PEER_SETUP_FAILED_CLEAN,
+ 	WMA_PT_PEER_FLOW_FAILED_CLEAN,
++	WMA_PT_PEER_SELF_FLOW_COMPLETE,
+ };
+ 
+ static enum wma_pt_peer_result wma_pt_peer_result;
+@@ -3123,22 +3127,25 @@
+ };
+ module_param_cb(pt_remote_reo_stop, &wma_pt_peer_flow_stop_ops, NULL, 0200);
+ 
+-static bool wma_pt_peer_flow_live(void)
++static bool wma_pt_peer_flow_live(u64 self_generation)
+ {
+ 	unsigned long flags;
+ 	bool live;
+ 
+ 	spin_lock_irqsave(&wma_pt_peer_lock, flags);
+-	live = wma_pt_peer_live_slot(&wma_pt_peer_trial) &&
+-	       !wma_pt_peer_trial.create_conflict &&
+-	       !wma_pt_peer_trial.reo_conflict;
++	if (self_generation)
++		live = wma_pt_peer_trial.flow_self_generation == self_generation;
++	else
++		live = wma_pt_peer_live_slot(&wma_pt_peer_trial) &&
++		       !wma_pt_peer_trial.create_conflict &&
++		       !wma_pt_peer_trial.reo_conflict;
+ 	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
+ 	return live;
+ }
+ 
+ static int wma_pt_peer_hold(struct wlan_objmgr_vdev *vdev,
+ 			    const struct wma_pt_peer_hold_ops *ops,
+-			    void *ctx, bool *delete_safe)
++			    void *ctx, u64 self_generation, bool *delete_safe)
+ {
+ 	void *soc = cds_get_context(QDF_MODULE_ID_SOC);
+ 	struct wlan_objmgr_pdev *pdev = wlan_vdev_get_pdev(vdev);
+@@ -3152,7 +3159,7 @@
+ 	if (!ops || !pdev || !soc)
+ 		return -EINVAL;
+ 
+-	ret = wma_pt_peer_flow_live() ? ops->admit(ctx) : -ESTALE;
++	ret = wma_pt_peer_flow_live(self_generation) ? ops->admit(ctx) : -ESTALE;
+ 	if (!ret) {
+ 		deadline = jiffies + msecs_to_jiffies(WMA_PT_FLOW_HOLD_MS);
+ 		spin_lock_irqsave(&wma_pt_peer_lock, flags);
+@@ -3160,11 +3167,11 @@
+ 		wma_pt_peer_trial.flow_opened = true;
+ 		spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
+ 		while (!READ_ONCE(wma_pt_peer_trial.flow_stop) && !ops->closing(ctx) &&
+-		       wma_pt_peer_flow_live() && time_before(jiffies, deadline))
++		       wma_pt_peer_flow_live(self_generation) && time_before(jiffies, deadline))
+ 			usleep_range(8000, 12000);
+ 		if (ops->closing(ctx))
+ 			ret = -ESHUTDOWN;
+-		else if (!wma_pt_peer_flow_live())
++		else if (!wma_pt_peer_flow_live(self_generation))
+ 			ret = -ESTALE;
+ 		else if (!READ_ONCE(wma_pt_peer_trial.flow_stop))
+ 			ret = -ETIMEDOUT;
+@@ -3236,6 +3243,34 @@
+ 	enum wma_pt_peer_result result = WMA_PT_PEER_BLOCKED;
+ 
+ 	*retire = false;
++	if (READ_ONCE(pt_remote_self_flow)) {
++		u8 id = wlan_vdev_get_id(vdev);
++		unsigned long flags;
++
++		/* The same owner pause/reopen and DSC lease. Keep the remote
++		 * generation/key unarmed and bypass all remote WMI/DP calls.
++		 */
++		if (!generation || !wma || id >= wma->max_bssid ||
++		    !READ_ONCE(pt_remote_reo_flow) || pt_remote_peer_reo_enabled() ||
++		    READ_ONCE(wma->interfaces[id].peer_count) != 1) {
++			*retire = true;
++			result = WMA_PT_PEER_HOST_CLEAN;
++			ret = -EINVAL;
++			goto done;
++		}
++		spin_lock_irqsave(&wma_pt_peer_lock, flags);
++		wma_pt_peer_trial.flow_self_generation = generation;
++		spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
++		WRITE_ONCE(wma_pt_peer_result, WMA_PT_PEER_RUNNING);
++		ret = wma_pt_peer_hold(vdev, ops, hold_ctx, generation, retire);
++		if (*retire) {
++			if (READ_ONCE(wma->interfaces[id].peer_count) != 1)
++				ret = -EIO;
++			result = ret ? WMA_PT_PEER_FLOW_FAILED_CLEAN :
++				       WMA_PT_PEER_SELF_FLOW_COMPLETE;
++		}
++		goto done;
++	}
+ 	if (READ_ONCE(pt_remote_reo_flow) && !pt_remote_peer_reo_enabled()) {
+ 		*retire = true;
+ 		return -EINVAL;
+@@ -3322,7 +3357,7 @@
+ 	    trial.create_confirmed && !trial.create_status && !trial.create_conflict) {
+ 		bool delete_safe;
+ 
+-		flow_error = wma_pt_peer_hold(vdev, ops, hold_ctx, &delete_safe);
++		flow_error = wma_pt_peer_hold(vdev, ops, hold_ctx, 0, &delete_safe);
+ 		if (!delete_safe) {
+ 			ret = flow_error;
+ 			goto done;
+@@ -3390,7 +3425,8 @@
+ 			 "flow_cpu_quiet=%u flow_tx_quiet=%u flow_status=%d "
+ 			 "flow_quiesce_status=%d flow_tx_status=%d flow_tx_first=%u flow_tx_last=%u "
+ 			 "flow_be_pass=%u flow_be_reject=%u flow_raw_qos_submit=%u "
+-			 "flow_buf_cfg=%u flow_tlv_size=%u flow_capacity_max=%u\n",
++			 "flow_buf_cfg=%u flow_tlv_size=%u flow_capacity_max=%u "
++			 "flow_self_only=%u flow_self_generation=%llu\n",
+ 			 READ_ONCE(wma_pt_peer_result), trial.generation, trial.vdev_id,
+ 			 trial.peer_id, trial.obj_attached, trial.obj_created, trial.dp_created,
+ 			 trial.create_issued, trial.create_returned, trial.create_submit,
+@@ -3417,7 +3453,8 @@
+ 			 trial.flow_status, trial.flow_quiesce_status, trial.flow_tx_status,
+ 			 trial.flow_tx_first, trial.flow_tx_last,
+ 			 trial.flow_be_pass, trial.flow_be_reject, trial.flow_raw_qos_submit,
+-			 trial.flow_buf_cfg, trial.flow_tlv_size, trial.flow_capacity_max);
++			 trial.flow_buf_cfg, trial.flow_tlv_size, trial.flow_capacity_max,
++			 READ_ONCE(pt_remote_self_flow), trial.flow_self_generation);
+ }
+ 
+ static const struct kernel_param_ops wma_pt_remote_peer_stats_ops = {

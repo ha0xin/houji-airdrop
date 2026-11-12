@@ -1,0 +1,86 @@
+--- a/qcacld-3.0/core/wma/src/wma_dev_if.c
++++ b/qcacld-3.0/core/wma/src/wma_dev_if.c
+@@ -27,6 +27,7 @@
+ #include "wma.h"
+ #include "wma_api.h"
+ #ifdef DRIVER_PASSTHRU_OWNER
++#include <linux/moduleparam.h>
+ #include <scheduler_core.h>
+ #include "target_if_vdev_mgr_rx_ops.h"
+ #endif
+@@ -3109,6 +3110,64 @@
+ 	wma_cleanup_vdev_internal(vdev);
+ }
+ 
++#ifdef DRIVER_PASSTHRU_OWNER
++static bool pt_peer_caps_observe;
++module_param(pt_peer_caps_observe, bool, 0444);
++MODULE_PARM_DESC(pt_peer_caps_observe, "Snapshot firmware peer services on PASSTHRU self-peer creation");
++
++enum pt_peer_caps_bits {
++	PT_PEER_CAPS_SAMPLED = BIT(0),
++	PT_PEER_CAPS_CREATE_CONF = BIT(1),
++	PT_PEER_CAPS_SYNC_DELETE = BIT(2),
++	PT_PEER_CAPS_FW_UNMAP_CONF = BIT(3),
++	PT_PEER_CAPS_DP_UNMAP_CONF = BIT(4),
++};
++
++static atomic_t pt_peer_caps_snapshot = ATOMIC_INIT(0);
++
++static void wma_pt_capture_peer_caps(tp_wma_handle wma,
++				     struct wlan_objmgr_vdev *vdev)
++{
++	void *dp_soc;
++	u32 caps = PT_PEER_CAPS_SAMPLED;
++
++	if (!READ_ONCE(pt_peer_caps_observe) || !wma_is_passthru_vdev(vdev) ||
++	    !wma->wmi_handle)
++		return;
++	dp_soc = cds_get_context(QDF_MODULE_ID_SOC);
++	if (!dp_soc)
++		return;
++
++	if (wmi_service_enabled(wma->wmi_handle, wmi_service_peer_create_conf))
++		caps |= PT_PEER_CAPS_CREATE_CONF;
++	if (wmi_service_enabled(wma->wmi_handle, wmi_service_sync_delete_cmds))
++		caps |= PT_PEER_CAPS_SYNC_DELETE;
++	if (wmi_service_enabled(wma->wmi_handle, wmi_service_peer_unmap_cnf_support))
++		caps |= PT_PEER_CAPS_FW_UNMAP_CONF;
++	if (cdp_cfg_get_peer_unmap_conf_support(dp_soc))
++		caps |= PT_PEER_CAPS_DP_UNMAP_CONF;
++	atomic_set(&pt_peer_caps_snapshot, caps);
++}
++
++static int wma_pt_peer_caps_get(char *buf, const struct kernel_param *kp)
++{
++	u32 caps = atomic_read(&pt_peer_caps_snapshot);
++
++	return scnprintf(buf, PAGE_SIZE,
++			 "schema=1 enabled=%u sampled=%u create_conf=%u "
++			 "sync_delete=%u fw_unmap_conf=%u dp_unmap_conf=%u\n",
++			 READ_ONCE(pt_peer_caps_observe), !!(caps & PT_PEER_CAPS_SAMPLED),
++			 !!(caps & PT_PEER_CAPS_CREATE_CONF), !!(caps & PT_PEER_CAPS_SYNC_DELETE),
++			 !!(caps & PT_PEER_CAPS_FW_UNMAP_CONF), !!(caps & PT_PEER_CAPS_DP_UNMAP_CONF));
++}
++
++static const struct kernel_param_ops wma_pt_peer_caps_ops = {
++	.get = wma_pt_peer_caps_get,
++};
++module_param_cb(pt_peer_caps, &wma_pt_peer_caps_ops, NULL, 0444);
++MODULE_PARM_DESC(pt_peer_caps, "Read-only PASSTHRU peer service snapshot");
++#endif
++
+ QDF_STATUS wma_vdev_self_peer_create(struct vdev_mlme_obj *vdev_mlme)
+ {
+ 	struct wlan_objmgr_peer *obj_peer;
+@@ -3120,6 +3179,10 @@
+ 	wma_handle = cds_get_context(QDF_MODULE_ID_WMA);
+ 	if (!wma_handle)
+ 		return QDF_STATUS_E_FAILURE;
++
++#ifdef DRIVER_PASSTHRU_OWNER
++	wma_pt_capture_peer_caps(wma_handle, vdev);
++#endif
+ 
+ 	if (mlme_vdev_uses_self_peer(vdev_mlme->mgmt.generic.type,
+ 				     vdev_mlme->mgmt.generic.subtype)) {

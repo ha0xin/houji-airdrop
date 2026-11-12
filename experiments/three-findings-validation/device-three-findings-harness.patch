@@ -1,0 +1,255 @@
+--- a/radio-owly.sh
++++ b/radio-owly.sh
+@@ -23,6 +23,7 @@
+ IFACE=owly0
+ driver=
+ probe=
++ping_pid=
+ paused=0
+ 
+ bounded() { "$BB" timeout -s TERM -k 2 25 "$@"; }
+@@ -178,7 +179,32 @@
+-  bounded sh -c 'echo 1 > /sys/module/houji_wonder_bridge/parameters/pt_release'
++  for release_try in $(seq 1 15); do
++   bounded sh -c 'echo 1 > /sys/module/houji_wonder_bridge/parameters/pt_release' || true
++   if grep -qx 'armed=0 releasing=0 released=1 result=0' /sys/module/houji_wonder_bridge/parameters/pt_release; then break; fi
++   sleep 0.2
++  done
+   grep -qx 'armed=0 releasing=0 released=1 result=0' /sys/module/houji_wonder_bridge/parameters/pt_release
+   if test -e "$W"; then
+-   grep -qx 'exclusive=1 published=0 pinned=0 sealed=1' "$W/parameters/pt_activate"
++   grep -qE '^exclusive=[01] published=0 pinned=0 sealed=1$' "$W/parameters/pt_activate"
++   cat "$W/parameters/pt_remote_peer_stats" > "$STATE/last-peer-teardown.txt"
++   echo "PT_REMOTE_PEER_TEARDOWN=$(cat "$STATE/last-peer-teardown.txt")"
++   if test "$(cat "$W/parameters/pt_sta_coexist" 2>/dev/null || echo N)" = Y; then
++    {
++     echo "=== CMD_WIFI_STATUS_AFTER_PT_RELEASE ==="
++     cmd wifi status || true
++     echo "=== IW_WLAN0_LINK_AFTER_PT_RELEASE ==="
++     iw dev wlan0 link || true
++    } > "$STATE/coexist-wlan0-after-pt-release.txt"
++    stop vendor.cnd
++    cmd wifi set-scan-always-available disabled
++    cmd wifi set-wifi-enabled disabled
++    stop vendor.wifi_hal_legacy
++    sleep 2
++    for i in $(seq 1 12); do
++     if test "$(getprop init.svc.vendor.cnd):$(getprop init.svc.vendor.wifi_hal_legacy)" = stopped:stopped && test "$(cat "$W/refcnt")" = 0; then break; fi
++     stop vendor.wifi_hal_legacy
++     sleep 1
++    done
++    test "$(getprop init.svc.vendor.cnd):$(getprop init.svc.vendor.wifi_hal_legacy)" = stopped:stopped
++   fi
+    test "$(cat "$W/refcnt")" = 0
+    test -z "$(ls -A "$W/holders")"
+    bounded rmmod qca_cld3_kiwi_v2
+@@ -223,11 +245,13 @@
+ }
+ 
+ stop_workers() {
++ stop_worker "$ping_pid"
++ ping_rc=$?
+  stop_worker "$probe"
+  probe_rc=$?
+  stop_worker "$driver"
+  driver_rc=$?
+- test "$probe_rc:$driver_rc" = 0:0
++ test "$ping_rc:$probe_rc:$driver_rc" = 0:0:0
+ }
+ 
+ collect() {
+@@ -259,6 +283,16 @@
+  case "$winit_sha" in *[!0-9a-f]*) return 1;; esac
+  check "$winit_sha" "$ROOT/wonder-init-2ss"
+  echo "WONDER_INIT_2SS_SHA=$winit_sha"
++ tf_sha=$(cat "$ROOT/three-findings.sha")
++ test "${#tf_sha}" = 64
++ case "$tf_sha" in *[!0-9a-f]*) return 1;; esac
++ check "$tf_sha" "$ROOT/three-findings.env"
++ . "$ROOT/three-findings.env"
++ case "$tf_remote_reo" in 0|1|2) ;; *) return 1;; esac
++ for v in "$tf_remote_assoc" "$tf_remote_ast_override" "$tf_remote_hash_override" "$tf_fw_addba" "$tf_tx_ampdu" "$tf_dynamic_rate" "$tf_sta_coexist"; do
++  case "$v" in 0|1) ;; *) return 1;; esac
++ done
++ echo "THREE_FINDINGS_ENV assoc=$tf_remote_assoc reo=$tf_remote_reo tx_ampdu=$tf_tx_ampdu dyn_rate=$tf_dynamic_rate sta_coexist=$tf_sta_coexist"
+  check "$CANDIDATE" "$RADIO/amss20.bin"
+  check 9a8345d87ec1186a29b413935b4efdbd38566e7e22374e70a7a85510b2970e9a "$RADIO/houji_wonder_bridge.ko"
+  qca="$ROOT/qca_cld3_kiwi_v2-remote-peer.ko"
+@@ -312,13 +345,19 @@
+   vht80|vht80-sgi) vht=1 ;;
+   vht80-2ss-sgi|vht80-2ss-mcs8-sgi|vht80-2ss-mcs9-sgi) vht=1; vht_2ss=1 ;;
+  esac
+- set -- pt_exclusive=1 pt_zero_serial=1 pt_rx_metadata=1 pt_vht80="$vht" pt_rate_observe=1 pt_single_ring=1
++ pt_excl=$(if test "$tf_sta_coexist" = 1; then echo 0; else echo 1; fi)
++ set -- pt_exclusive="$pt_excl" pt_sta_coexist="$tf_sta_coexist" pt_zero_serial=1 pt_rx_metadata=1 pt_vht80="$vht" pt_rate_observe=1 pt_single_ring=1
+  case "$ba_mode" in
+   on) set -- "$@" pt_ba_observe=1 ;;
+   peer) set -- "$@" pt_ba_observe=1 "pt_ba_peer=$peer" ;;
+   caps) set -- "$@" pt_peer_caps_observe=1 ;;
+  esac
+- bounded insmod "$qca" "$@" pt_rx_capacity_4224=1 "pt_rx_phy_peer=$peer" pt_vht80_2ss="$vht_2ss"
++ set -- "$@" pt_rx_capacity_4224=1 "pt_rx_phy_peer=$peer" pt_vht80_2ss="$vht_2ss"
++ set -- "$@" pt_remote_assoc="$tf_remote_assoc" pt_remote_ast_override="$tf_remote_ast_override" pt_remote_hash_override="$tf_remote_hash_override" pt_remote_reo="$tf_remote_reo" pt_fw_addba="$tf_fw_addba" pt_tx_ampdu="$tf_tx_ampdu" pt_dynamic_rate="$tf_dynamic_rate"
++ if test "$tf_remote_assoc" = 1; then
++  set -- "$@" "pt_remote_mac=$peer"
++ fi
++ bounded insmod "$qca" "$@"
+  test "$(cat "$W/parameters/pt_rx_phy_peer")" = "$peer"
+  echo RX_PHY_PEER_READBACK=Y
+  test "$(cat "$W/parameters/pt_rx_capacity_4224")" = Y
+@@ -326,6 +365,16 @@
+  expected_2ss=$(if test "$vht_2ss" = 1; then echo Y; else echo N; fi)
+  test "$(cat "$W/parameters/pt_vht80_2ss")" = "$expected_2ss"
+  echo "VHT80_2SS_LOAD_READBACK=$expected_2ss"
++ expected_coex=$(if test "$tf_sta_coexist" = 1; then echo Y; else echo N; fi)
++ test "$(cat "$W/parameters/pt_sta_coexist")" = "$expected_coex"
++ expected_assoc=$(if test "$tf_remote_assoc" = 1; then echo Y; else echo N; fi)
++ test "$(cat "$W/parameters/pt_remote_assoc")" = "$expected_assoc"
++ expected_ast=$(if test "$tf_remote_ast_override" = 1; then echo Y; else echo N; fi)
++ test "$(cat "$W/parameters/pt_remote_ast_override")" = "$expected_ast"
++ expected_hash=$(if test "$tf_remote_hash_override" = 1; then echo Y; else echo N; fi)
++ test "$(cat "$W/parameters/pt_remote_hash_override")" = "$expected_hash"
++ expected_ampdu=$(if test "$tf_tx_ampdu" = 1; then echo Y; else echo N; fi)
++ test "$(cat "$W/parameters/pt_tx_ampdu")" = "$expected_ampdu"
+  case "$ba_mode" in
+   off) test "$(cat "$W/parameters/pt_ba_observe")" = N ;;
+   on|peer) test "$(cat "$W/parameters/pt_ba_observe")" = Y ;;
+@@ -341,9 +386,52 @@
+  if test "$ba_mode" = peer; then
+   test "$(cat "$W/parameters/pt_ba_peer")" = 1
+  fi
+- sleep 2
+- echo on > "$PCI"
+- bounded sh -c 'echo 1 > /sys/module/qca_cld3_kiwi_v2/parameters/pt_activate'
++ if test "$tf_sta_coexist" = 1; then
++  . "$STATE/saved.env"
++  restore_service vendor.cnd "$saved_cnd"
++  restore_service vendor.wifi_hal_legacy "$saved_hal"
++  cmd wifi set-scan-always-available disabled
++  cmd wifi set-wifi-enabled enabled
++  wait_wifi
++  network_ready=0
++  for network_try in $(seq 1 30); do
++   if ip -4 addr show dev wlan0 | grep -q 'inet ' && ip -4 route show table all dev wlan0 | grep -q '^default '; then
++    network_ready=1
++    break
++   fi
++   sleep 1
++  done
++  {
++   echo "=== CMD_WIFI_STATUS_BEFORE_PT ==="
++   cmd wifi status
++   echo "=== IW_WLAN0_LINK_BEFORE_PT ==="
++   iw dev wlan0 link
++   echo "=== IP_ADDR_WLAN0_BEFORE_PT ==="
++   ip -4 addr show dev wlan0
++   echo "=== IP_ROUTE_WLAN0_BEFORE_PT ==="
++   ip -4 route show dev wlan0
++  } > "$STATE/coexist-wlan0-before.txt"
++  echo "COEXIST_NETWORK_READY=$network_ready"
++  test "$network_ready" = 1
++  grep -q 'Connected to ' "$STATE/coexist-wlan0-before.txt"
++  echo COEXIST_WLAN0_CONNECTED=1
++  echo on > "$PCI"
++  pt_ok=0
++  for i in $(seq 1 10); do
++   if bounded sh -c 'echo 1 > /sys/module/qca_cld3_kiwi_v2/parameters/pt_activate' 2>/dev/null; then
++    pt_ok=1
++    break
++   fi
++   sleep 1
++  done
++  test "$pt_ok" = 1
++ else
++  sleep 2
++  echo on > "$PCI"
++  bounded sh -c 'echo 1 > /sys/module/qca_cld3_kiwi_v2/parameters/pt_activate'
++ fi
++ cat "$W/parameters/pt_fw_caps" > "$STATE/fw-caps.txt"
++ echo "PT_FW_CAPS=$(cat "$STATE/fw-caps.txt")"
+  insmod "$RADIO/wonder.ko" synthetic_provider=1
+  phy=$(iw phy | awk '$0 == "Wiphy wonder" { found=1; next } found && $1 == "wiphy" && $2 == "index:" { print $3; exit }')
+  case "$phy" in ''|*[!0-9]*) return 1;; esac
+@@ -362,6 +440,17 @@
+  echo "$live"
+  echo "$live" | grep -q 'phase=3 error=0 closing=0 handle=1 freq=5745 '
+  test -e /sys/class/net/wondertap0/address
++ cat "$W/parameters/pt_remote_peer_stats" > "$STATE/peer-setup.txt"
++ echo "PT_REMOTE_PEER_SETUP=$(cat "$STATE/peer-setup.txt")"
++ if test "$tf_sta_coexist" = 1; then
++  {
++   echo "=== IW_WLAN0_LINK_DURING_WONDER ==="
++   iw dev wlan0 link
++   echo "=== IW_WONDER0_INFO ==="
++   iw dev wonder0 info
++  } > "$STATE/coexist-wlan0-during-wonder.txt"
++  grep -q 'Connected to ' "$STATE/coexist-wlan0-during-wonder.txt"
++ fi
+ }
+ 
+ routes() {
+@@ -397,7 +486,7 @@
+ }
+ 
+ run_phase() {
+- HOUJI_OWLY_OUTGOING_VHT="$outgoing_vht" HOUJI_OWLY_ACCEPT_ADDBA="$accept_addba" ./houji-owly-outgoing-vht "$peer" "$aggregation" "$ack" > "$STATE/runner.log" 2>&1 &
++ HOUJI_OWLY_OUTGOING_VHT="$outgoing_vht" HOUJI_OWLY_ACCEPT_ADDBA="$accept_addba" HOUJI_OWLY_TX_ADDBA="$tx_addba" ./houji-owly-outgoing-vht "$peer" "$aggregation" "$ack" > "$STATE/runner.log" 2>&1 &
+  driver=$!
+  for i in $(seq 1 10); do
+   if grep -q '^OWLY_READY ' "$STATE/runner.log"; then break; fi
+@@ -415,6 +504,21 @@
+  routes
+  cat "$W/parameters/pt_rx_phy_stats" > "$phase_dir/before"
+  cat "$W/parameters/pt_rate_stats" > "$phase_dir/rate-before"
++ cat "$W/parameters/pt_ampdu_peak" > "$phase_dir/ampdu-before"
++ cat "$W/parameters/pt_remote_peer_stats" > "$phase_dir/peer-before"
++ ping_pid=
++ if test "$tf_sta_coexist" = 1; then
++  iw dev wlan0 link > "$phase_dir/wlan0-link-before"
++  gw=$(ip -4 route show table all dev wlan0 | awk '$1=="default"{print $3; exit}')
++  if test -z "$gw"; then
++   gw=$(ip -4 neigh show dev wlan0 | awk 'NR==1{print $1}')
++  fi
++  echo "WLAN0_PING_TARGET=$gw" > "$phase_dir/wlan0-ping-target"
++  if test -n "$gw"; then
++   ping -I wlan0 -i 0.2 -W 1 "$gw" > "$phase_dir/wlan0-ping.log" 2>&1 &
++   ping_pid=$!
++  fi
++ fi
+  set -- "$count" "$size"
+  if test "$mss" != 0; then set -- "$@" "$mss"; fi
+  ./owly-hashprobe "$@" > "$STATE/server.log" 2>&1 &
+@@ -429,9 +533,19 @@
+   test "$(uptime_s)" -lt "$deadline"
+   sleep 1
+  done
++ if test -n "$ping_pid"; then
++  kill -INT "$ping_pid" 2>/dev/null || true
++  wait "$ping_pid" 2>/dev/null || true
++  ping_pid=
++ fi
++ if test "$tf_sta_coexist" = 1; then
++  iw dev wlan0 link > "$phase_dir/wlan0-link-after"
++ fi
+  test ! -e "$STATE/stop-$token"
+  cat "$W/parameters/pt_rx_phy_stats" > "$phase_dir/after"
+  cat "$W/parameters/pt_rate_stats" > "$phase_dir/rate-after"
++ cat "$W/parameters/pt_ampdu_peak" > "$phase_dir/ampdu-after"
++ cat "$W/parameters/pt_remote_peer_stats" > "$phase_dir/peer-after"
+  stop_workers
+  probe= driver=
+  clean_routes
+@@ -462,10 +576,10 @@
+    test "$(uptime_s)" -lt "$lease_deadline"
+    sleep 1
+   done
+-  read -r outgoing_vht accept_addba count size extra < "$phase_dir/request"
++  read -r outgoing_vht accept_addba tx_addba count size extra < "$phase_dir/request"
+   test -z "$extra"
+-  case "$outgoing_vht:$accept_addba:$count:$size" in
+-   0:0:2:1048576|1:0:2:1048576|2:0:2:1048576|2:1:2:1048576|2:2:2:1048576|0:0:2:16777216|1:0:2:16777216|2:0:2:16777216|2:1:2:16777216|2:2:2:16777216|0:0:6:67108864|1:0:6:67108864|2:0:6:67108864|2:1:6:67108864|2:2:6:67108864) ;;
++  case "$outgoing_vht:$accept_addba:$tx_addba:$count:$size" in
++   0:0:0:2:1048576|2:0:0:2:1048576|2:2:0:2:1048576|2:2:1:2:1048576|2:2:2:2:1048576|0:0:0:2:16777216|2:0:0:2:16777216|2:2:0:2:16777216|2:2:1:2:16777216|2:2:2:2:16777216|2:2:0:6:67108864|2:2:1:6:67108864|2:2:2:6:67108864) ;;
+    *) return 2 ;;
+   esac
+   run_phase

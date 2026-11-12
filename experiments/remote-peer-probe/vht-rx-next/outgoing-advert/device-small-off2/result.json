@@ -1,0 +1,330 @@
+{
+  "token": "[REDACTED]",
+  "module_sha256": "bbb6d59c67942ec57da12fb6f367c82d4430ebda1abfca88ffac24c977f49ba7",
+  "harness_sha256": "df40147c2e25019b7651a496dc41bcb5b5d2bc3edcabf18b0a8b2791ed154150",
+  "channel": 149,
+  "rx_ba": false,
+  "throughput_test": false,
+  "bounded_hash_flow": true,
+  "preserve_self_ast": false,
+  "self_only_flow": false,
+  "remote_map_only_flow": false,
+  "mac_awdl_ifindex": 13,
+  "mac_awdl_sha256": "88b2ae0c111a148731c60a6b2b82de55a31b4a6239931feb2c943a08b3e4564f",
+  "capacity_configuration": {
+    "rx_dma_bytes": 4224,
+    "tx_phy_request": "vht80-sgi",
+    "aggregation": "amsdu",
+    "ack": true,
+    "mss": 1160,
+    "tun_queue": 500,
+    "tx_vht_amsdu": false,
+    "outgoing_vht_advertisement": false,
+    "owly_variant": "outgoing-vht",
+    "tx_vht_extension_present": false,
+    "payload_bytes": 1048576,
+    "pairs": 1
+  },
+  "samples": [
+    {
+      "direction": "Mac→小米",
+      "sample": 1,
+      "mode": 0,
+      "bytes": 1048576,
+      "status": "verified",
+      "seconds": 1.556073208,
+      "MBps": 0.6738603264994971,
+      "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83",
+      "mac_wall_start_ns": 1794312141213083000,
+      "mac_wall_end_ns": 1794312142812328000,
+      "phone_seconds": 1.544436
+    },
+    {
+      "direction": "小米→Mac",
+      "sample": 2,
+      "mode": 1,
+      "bytes": 1048576,
+      "status": "verified",
+      "seconds": 0.120815875,
+      "MBps": 8.679124328653002,
+      "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83",
+      "mac_wall_start_ns": 1794312142812582000,
+      "mac_wall_end_ns": 1794312142939441000,
+      "phone_seconds": 0.117484
+    }
+  ],
+  "radio_exit": 0,
+  "initial": null,
+  "ready": null,
+  "terminal": null,
+  "final": null,
+  "drain": null,
+  "flow_hash_verified": true,
+  "outgoing_vht": {
+    "app_sha256": "ab84ddba4c05ee2a5f9bc0f5f304a1c053e1074cc7a268265c2026956bebcbf8",
+    "matching_app_load": true,
+    "requested": false,
+    "reported_switch": [
+      "OWLY_OUTGOING_VHT=false"
+    ],
+    "first_host_submitted_mif_container": [
+      "absent"
+    ],
+    "verified": true
+  },
+  "mac_awdl_schedule": [
+    {
+      "sample": 1,
+      "mac_wall_start_ns": 1794312141213083000,
+      "mac_wall_end_ns": 1794312142812328000,
+      "schedule": [
+        {
+          "wall_ns": 1794312142160000000,
+          "infra_channel": 36,
+          "infra_percent_raw": 78,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            36,
+            36,
+            149,
+            0,
+            0,
+            0,
+            0,
+            36,
+            6,
+            36,
+            149,
+            36,
+            0,
+            0,
+            0,
+            36
+          ],
+          "state": "Infra Priority"
+        },
+        {
+          "wall_ns": 1794312142160999936,
+          "infra_channel": 36,
+          "infra_percent_raw": 24,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36,
+            6,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36
+          ],
+          "state": "Data"
+        }
+      ],
+      "rrm": [
+        {
+          "wall_ns": 1794312142160000000,
+          "channels": [
+            {
+              "channel": 6,
+              "bitmap": [
+                "00",
+                "00",
+                "00",
+                "00",
+                "0f",
+                "00",
+                "00",
+                "00"
+              ]
+            },
+            {
+              "channel": 36,
+              "bitmap": [
+                "ff",
+                "00",
+                "00",
+                "f0",
+                "f0",
+                "f0",
+                "00",
+                "f0"
+              ]
+            },
+            {
+              "channel": 149,
+              "bitmap": [
+                "00",
+                "0f",
+                "00",
+                "00",
+                "00",
+                "0f",
+                "00",
+                "00"
+              ]
+            }
+          ]
+        },
+        {
+          "wall_ns": 1794312142160999936,
+          "channels": [
+            {
+              "channel": 6,
+              "bitmap": [
+                "00",
+                "00",
+                "00",
+                "00",
+                "0f",
+                "00",
+                "00",
+                "00"
+              ]
+            },
+            {
+              "channel": 149,
+              "bitmap": [
+                "ff",
+                "ff",
+                "ff",
+                "00",
+                "f0",
+                "ff",
+                "ff",
+                "00"
+              ]
+            },
+            {
+              "channel": 36,
+              "bitmap": [
+                "00",
+                "00",
+                "00",
+                "ff",
+                "00",
+                "00",
+                "00",
+                "ff"
+              ]
+            }
+          ]
+        }
+      ],
+      "steering": [
+        {
+          "wall_ns": 1794312142160999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312142160999936,
+          "matched_roles": []
+        }
+      ],
+      "peer_dumps": [],
+      "rows_seen": 46,
+      "phy_or_ba_labels": 0
+    },
+    {
+      "sample": 2,
+      "mac_wall_start_ns": 1794312142812582000,
+      "mac_wall_end_ns": 1794312142939441000,
+      "schedule": [],
+      "rrm": [],
+      "steering": [],
+      "peer_dumps": [],
+      "rows_seen": 0,
+      "phy_or_ba_labels": 0
+    }
+  ],
+  "restored": true,
+  "rx_capacity": {
+    "same_boot": true,
+    "kernel_log_coverage": true,
+    "matching_load": true,
+    "boot_before": "428f3996-861d-4bf7-af96-a31d3a5a35a4",
+    "boot_after": "428f3996-861d-4bf7-af96-a31d3a5a35a4",
+    "dmesg_time_before": [
+      9.136438,
+      2454.441836
+    ],
+    "dmesg_time_after": [
+      10.701047,
+      2479.943303
+    ],
+    "observed": {
+      "cfg": [
+        [
+          4224
+        ]
+      ],
+      "pool": [
+        [
+          4224,
+          128,
+          16384
+        ]
+      ],
+      "map": [
+        [
+          4224,
+          7808
+        ],
+        [
+          4224,
+          7680
+        ]
+      ],
+      "htt": [
+        [
+          4224,
+          0,
+          0
+        ],
+        [
+          4224,
+          1,
+          0
+        ]
+      ],
+      "raw": [
+        [
+          130,
+          272,
+          0,
+          7680
+        ]
+      ]
+    },
+    "unexpected": [],
+    "new_lines": [
+      "[ 2462.018569] PT_RX_CAPACITY cfg_bytes=4224",
+      "[ 2462.037212] PT_RX_CAPACITY pool_bytes=4224 align=128 entries=16384",
+      "[ 2462.037229] PT_RX_CAPACITY map_bytes=4224 linear=7808",
+      "[ 2462.039966] PT_RX_CAPACITY map_bytes=4224 linear=7680",
+      "[ 2462.214599] PT_RX_CAPACITY htt_bytes=4224 mac_id=0 host_submit_status=0",
+      "[ 2462.214617] PT_RX_CAPACITY htt_bytes=4224 mac_id=1 host_submit_status=0",
+      "[ 2466.904963] PT_RX_CAPACITY raw_osif_bytes=130 tlv=272 pad=0 linear_span=7680"
+    ],
+    "verified": true
+  },
+  "verified": true
+}

@@ -1,0 +1,80 @@
+{
+  "interface": "awdl0",
+  "size_mib": 16,
+  "mss": "system-default",
+  "samples": [
+    {
+      "sample": 1,
+      "mode": 0,
+      "bytes": 16777216,
+      "port": 56725,
+      "awdl_counter_deltas": {
+        "mac": {
+          "Ibytes": 69859,
+          "Obytes": 17788540,
+          "Ierrs": 0,
+          "Oerrs": 0
+        },
+        "iphone": {
+          "Ibytes": 17630852,
+          "Obytes": 71291,
+          "Ierrs": 0,
+          "Oerrs": 0
+        }
+      },
+      "status": "verified",
+      "iphone_exit": 0,
+      "listener_cancelled": true,
+      "iphone": {
+        "seconds": 0.830491,
+        "MBps": 20.201563,
+        "sha256": "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1",
+        "path": "awdl0"
+      },
+      "mac": {
+        "seconds": 0.839064,
+        "MBps": 19.995157,
+        "sha256": "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1",
+        "path": "awdl0"
+      }
+    },
+    {
+      "sample": 2,
+      "mode": 1,
+      "bytes": 16777216,
+      "port": 59184,
+      "awdl_counter_deltas": {
+        "mac": {
+          "Ibytes": 17793757,
+          "Obytes": 51240,
+          "Ierrs": 0,
+          "Oerrs": 0
+        },
+        "iphone": {
+          "Ibytes": 43010,
+          "Obytes": 17875021,
+          "Ierrs": 0,
+          "Oerrs": 0
+        }
+      },
+      "status": "verified",
+      "iphone_exit": 0,
+      "listener_cancelled": true,
+      "iphone": {
+        "seconds": 2.436758,
+        "MBps": 6.885056,
+        "sha256": "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1",
+        "path": "awdl0"
+      },
+      "mac": {
+        "seconds": 2.436472,
+        "MBps": 6.885864,
+        "sha256": "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1",
+        "path": "awdl0"
+      }
+    }
+  ],
+  "probe_sha256": "daf5ff4aadfe8ac4ee96e3fcda512c910c15c41fb094047abe1cb8f20faa4ff2",
+  "post_execution_probe_sha256_verified": true,
+  "temporary_device_directory_removed": true
+}

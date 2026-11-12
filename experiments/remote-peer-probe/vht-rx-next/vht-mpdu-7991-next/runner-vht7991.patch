@@ -1,0 +1,77 @@
+diff -ruN a/src/android.rs b/src/android.rs
+--- a/src/android.rs	2026-11-10 22:42:04
++++ b/src/android.rs	2026-11-10 22:42:04
+@@ -163,8 +163,12 @@
+             return;
+         };
+         let mut container = None;
++        let mut ht_caps = None;
+         for entry in tlv::tlvs(tlvs) {
+             let Ok(entry) = entry else { return };
++            if entry.kind == tlv::kind::HT_CAPABILITIES {
++                ht_caps = Some(entry.value);
++            }
+             if entry.kind == tlv::kind::IEEE80211_CONTAINER &&
+                 container.replace(entry.value).is_some()
+             {
+@@ -175,7 +179,12 @@
+             || "absent".to_owned(),
+             |value| value.iter().map(|byte| format!("{byte:02x}")).collect::<String>(),
+         );
++        let ht_wire = ht_caps.map_or_else(
++            || "absent".to_owned(),
++            |value| value.iter().map(|byte| format!("{byte:02x}")).collect::<String>(),
++        );
+         println!("OWLY_MIF_SUBMITTED_VHT_CONTAINER={wire}");
++        println!("OWLY_MIF_SUBMITTED_HT_CAPABILITIES={ht_wire}");
+         self.mif_reported = true;
+     }
+ }
+@@ -227,7 +236,7 @@
+                         && raw[4..10] == self.own.0
+                         && raw[16..22] == [0x00, 0x25, 0, 0xff, 0x94, 0x73]
+                     {
+-                        self.rx_gaps.record(received.tsft_us, Instant::now());
++                        self.rx_gaps.record_frame(raw.len(), received.tsft_us, Instant::now());
+                     }
+                     return Ok(Received {
+                         bytes: raw.to_vec(),
+diff -ruN a/src/rx_gap.rs b/src/rx_gap.rs
+--- a/src/rx_gap.rs	2026-11-10 22:42:04
++++ b/src/rx_gap.rs	2026-11-10 22:42:04
+@@ -18,6 +18,8 @@
+     host_delayed: u64,
+     equal_host_delayed: u64,
+     host_caught_up: u64,
++    gt3895: u64,
++    max_bytes: u64,
+ }
+ 
+ fn bucket(gap: u64) -> usize {
+@@ -25,6 +27,12 @@
+ }
+ 
+ impl RxGaps {
++    pub fn record_frame(&mut self, len: usize, timestamp_us: Option<u64>, host: Instant) {
++        self.gt3895 += u64::from(len > 3895);
++        self.max_bytes = self.max_bytes.max(len as u64);
++        self.record(timestamp_us, host);
++    }
++
+     pub fn record(&mut self, timestamp_us: Option<u64>, host: Instant) {
+         self.matched += 1;
+         let host = self.previous_host.replace(host).map(|previous| {
+@@ -64,10 +72,10 @@
+ 
+     pub fn report(&self) {
+         println!(
+-            "OWLY_RX_GAPS schema=1 matched={} missing={} equal={} backwards={} host_delayed={} equal_host_delayed={} host_caught_up={} bounds_us={:?} radio_count={:?} radio_us={:?} host_count={:?} host_us={:?}",
++            "OWLY_RX_GAPS schema=1 matched={} missing={} equal={} backwards={} host_delayed={} equal_host_delayed={} host_caught_up={} gt3895={} max_bytes={} bounds_us={:?} radio_count={:?} radio_us={:?} host_count={:?} host_us={:?}",
+             self.matched, self.missing, self.equal, self.backwards, self.host_delayed,
+-            self.equal_host_delayed, self.host_caught_up, LIMITS_US, self.radio_count, self.radio_us, self.host_count,
+-            self.host_us,
++            self.equal_host_delayed, self.host_caught_up, self.gt3895, self.max_bytes, LIMITS_US,
++            self.radio_count, self.radio_us, self.host_count, self.host_us,
+         );
+     }
+ }

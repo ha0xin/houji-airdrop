@@ -1,0 +1,10 @@
+--- a/crates/owly-awdl/src/driver.rs
++++ b/crates/owly-awdl/src/driver.rs
+@@ -414,7 +414,6 @@
+             None => d.instant(d.timer),
+         };
+         tokio::select! {
+-            biased;
+             _ = d.stopped.changed() => return Ok(()),
+             r = d.air.recv() => match r {
+                 Ok(rx) => {

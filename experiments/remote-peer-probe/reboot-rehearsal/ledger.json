@@ -1,0 +1,14 @@
+{
+  "device": "DEVICE_SERIAL",
+  "purpose": "rehearsal",
+  "token": "[REDACTED]",
+  "candidate": "d3fbe4f1b62f8c3533609945b617508e8a585660f5640aeeda08f8508416137b",
+  "path": "/vendor_dlkm/lib/modules/qca_cld3_kiwi_v2.ko",
+  "saved": {
+    "saved_scan": "0",
+    "saved_cnd": "running",
+    "saved_hal": "running",
+    "saved_pci": "auto",
+    "saved_boot": "6cb7276f-5b7d-4aa3-a65b-f470b43f5008"
+  }
+}

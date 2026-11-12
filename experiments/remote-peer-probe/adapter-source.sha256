@@ -1,0 +1,5 @@
+cb4b1991010268ca239f5af1c216b6f04627b333e7df86668589b77ae78c0828  build-adapter.py
+7c744fd1328117c86b2f5b8b3be865246428019fdd7f860c94959caea7c91d0e  remote-peer-wma-stage1.patch
+c5e3dca0415e26c41eb95a55d836723c83486221c50383cd62df6015af4d89a8  remote-peer-dp-stage2.patch
+e7f91488ca2a68fcf447900ce41f9216d6a0e092425a63df7e0da43056e2c005  remote-peer-host-prep-stage3.patch
+a28c2eda5153bf5b358ece6391202f79edfab531b90edd0a5e2e73879df72a59  remote-peer-owner-stage4.patch

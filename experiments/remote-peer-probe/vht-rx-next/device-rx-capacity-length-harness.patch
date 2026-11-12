@@ -1,0 +1,15 @@
+--- a/radio-owly.sh
++++ b/radio-owly.sh
+@@ -528,7 +528,11 @@
+  run)
+   shift
+   test "$#" = 11
+-  test "$2:$3:$4:$6:$7:$8:$9:${10}:${11}" = vht80-sgi:amsdu:ack:2:1048576:1160:500:reference:0
++  test "$2:$3:$4:$8:$9:${10}:${11}" = vht80-sgi:amsdu:ack:1160:500:reference:0
++  case "$6:$7" in
++   2:1048576|6:67108864) ;;
++   *) exit 2 ;;
++  esac
+   case "${11:-0}" in
+    0) ;;
+    1) test "$2:$3:$4:$8:$9:${10}" = vht80-sgi:amsdu:ack:1160:500:reference ;;

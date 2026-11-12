@@ -1,0 +1,4 @@
+80752bea8cf625efe70b6e7602d4ad351e0dc252ffd813425a0fe370b0482df5  build-rx-capacity.py
+1f47cd0110d73b477d600fdf2fb8b9c916c2f4b30b5750765703fec4094f36be  verify-rx-capacity.py
+70e89a7ea15e6d8f31c8aee3f19edf0a3e3c3e2293abb985293aa56b7d97fa59  rx-capacity-4224.patch
+0808ebe0a98967baaa9014ce8ed9d4426e2e607b62ed0a6c984ccdb63d858016  device-rx-capacity-harness.patch

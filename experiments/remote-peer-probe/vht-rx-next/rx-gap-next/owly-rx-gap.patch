@@ -1,0 +1,50 @@
+--- a/crates/owly-radio/src/radiotap.rs
++++ b/crates/owly-radio/src/radiotap.rs
+@@ -13,8 +13,11 @@
+     pub rssi: Option<i8>,
+     /// The frequency it was heard on, MHz.
+     pub freq: Option<u16>,
+-}
+-
++    /// Receive clock in microseconds when the driver supplied TSFT.
++    pub tsft_us: Option<u64>,
++}
++
++const TSFT: u32 = 0;
+ const FLAGS: u32 = 1;
+ const RATE: u32 = 2;
+ const CHANNEL: u32 = 3;
+@@ -53,7 +56,7 @@
+         at += 4;
+     }
+     at += 4;
+-    let (mut flags, mut freq, mut rssi) = (0u8, None, None);
++    let (mut flags, mut freq, mut rssi, mut tsft_us) = (0u8, None, None, None);
+     for (bit, (align, size)) in FIELDS.iter().enumerate() {
+         if present & (1 << bit) == 0 {
+             continue;
+@@ -61,6 +64,7 @@
+         at = at.next_multiple_of(*align);
+         let f = header.get(at..at + size)?;
+         match bit as u32 {
++            TSFT => tsft_us = Some(u64::from_le_bytes(f.try_into().ok()?)),
+             FLAGS => flags = f[0],
+             CHANNEL => freq = Some(u16::from_le_bytes([f[0], f[1]])),
+             _ => {}
+@@ -77,7 +81,7 @@
+     if flags & F_FCS != 0 || ends_in_fcs(frame) {
+         frame = frame.get(..frame.len().checked_sub(4)?)?;
+     }
+-    Some(Rx { frame, rssi, freq })
++    Some(Rx { frame, rssi, freq, tsft_us })
+ }
+ 
+ /// ath12k (WCN7850) appends the FCS without setting radiotap's FCS flag.
+@@ -182,6 +186,7 @@
+         let rx = parse(&buf).unwrap();
+         assert_eq!(rx.frame, b"frame");
+         assert_eq!(rx.rssi, Some(-52));
++        assert_eq!(rx.tsft_us, Some(7));
+         assert_eq!(rx.freq, Some(5745));
+ 
+         buf[h.len() - 8] |= F_BADFCS;

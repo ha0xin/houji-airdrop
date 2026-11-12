@@ -1,0 +1,26 @@
+--- a/radio-owly.sh
++++ b/radio-owly.sh
+@@ -306,7 +306,10 @@
+   peer) set -- "$@" pt_ba_observe=1 "pt_ba_peer=$peer" ;;
+   caps) set -- "$@" pt_peer_caps_observe=1 ;;
+   remote) set -- "$@" pt_peer_caps_observe=1 pt_remote_reo=1 "pt_remote_peer_mac=$peer" ;;
+-  remote-flow) set -- "$@" pt_peer_caps_observe=1 pt_remote_reo=1 pt_remote_reo_flow=1 "pt_remote_peer_mac=$peer" ;;
++  remote-flow)
++   set -- "$@" pt_peer_caps_observe=1 pt_remote_reo=1 pt_remote_reo_flow=1 "pt_remote_peer_mac=$peer"
++   set -- "$@" pt_remote_preserve_self_ast=1
++   ;;
+  esac
+  bounded insmod "$qca" "$@"
+  case "$ba_mode" in
+@@ -317,7 +320,10 @@
+    test "$(cat "$W/parameters/pt_ba_peer")" = 0
+    test "$(cat "$W/parameters/pt_remote_peer_mac")" = "$peer"
+    test "$(cat "$W/parameters/pt_remote_reo")" = Y
+-   if test "$ba_mode" = remote-flow; then test "$(cat "$W/parameters/pt_remote_reo_flow")" = Y; fi
++   if test "$ba_mode" = remote-flow; then
++    test "$(cat "$W/parameters/pt_remote_reo_flow")" = Y
++    test "$(cat "$W/parameters/pt_remote_preserve_self_ast")" = Y
++   fi
+    ;;
+   caps)
+    test "$(cat "$W/parameters/pt_ba_observe")" = N

@@ -1,0 +1,440 @@
+[
+  {
+    "case": "peer-abba-20261111-self1",
+    "throughput": {
+      "Mac→小米": {
+        "verified": 1,
+        "failed_or_missing": 0,
+        "bytes": 16777216,
+        "seconds": 1.137164458,
+        "weighted_MBps": 14.753552911341519,
+        "peak_sample_MBps": 14.753552911341519
+      },
+      "小米→Mac": {
+        "verified": 1,
+        "failed_or_missing": 0,
+        "bytes": 16777216,
+        "seconds": 5.251262417,
+        "weighted_MBps": 3.194891945541863,
+        "peak_sample_MBps": 3.194891945541863
+      }
+    },
+    "completed": 5520,
+    "tries": 6767,
+    "status2": 238,
+    "agg_ppdus": 0,
+    "verified": true
+  },
+  {
+    "case": "peer-abba-20261111-remote1",
+    "throughput": {
+      "Mac→小米": {
+        "verified": 1,
+        "failed_or_missing": 0,
+        "bytes": 16777216,
+        "seconds": 3.859648083,
+        "weighted_MBps": 4.346825316509044,
+        "peak_sample_MBps": 4.346825316509044
+      },
+      "小米→Mac": {
+        "verified": 1,
+        "failed_or_missing": 0,
+        "bytes": 16777216,
+        "seconds": 29.360223416,
+        "weighted_MBps": 0.5714267143776969,
+        "peak_sample_MBps": 0.5714267143776969
+      }
+    },
+    "completed": 6629,
+    "tries": 10322,
+    "status2": 1079,
+    "agg_ppdus": 0,
+    "verified": true
+  },
+  {
+    "case": "peer-abba-20261111-remote2",
+    "throughput": {
+      "Mac→小米": {
+        "verified": 1,
+        "failed_or_missing": 0,
+        "bytes": 16777216,
+        "seconds": 4.063971625,
+        "weighted_MBps": 4.1282807923148335,
+        "peak_sample_MBps": 4.1282807923148335
+      },
+      "小米→Mac": {
+        "verified": 1,
+        "failed_or_missing": 0,
+        "bytes": 16777216,
+        "seconds": 7.573132083,
+        "weighted_MBps": 2.2153602784323705,
+        "peak_sample_MBps": 2.2153602784323705
+      }
+    },
+    "completed": 5825,
+    "tries": 6769,
+    "status2": 376,
+    "agg_ppdus": 0,
+    "verified": true
+  },
+  {
+    "case": "peer-abba-20261111-self2",
+    "throughput": {
+      "Mac→小米": {
+        "verified": 1,
+        "failed_or_missing": 0,
+        "bytes": 16777216,
+        "seconds": 1.81737275,
+        "weighted_MBps": 9.231576736252922,
+        "peak_sample_MBps": 9.231576736252922
+      },
+      "小米→Mac": {
+        "verified": 1,
+        "failed_or_missing": 0,
+        "bytes": 16777216,
+        "seconds": 1.99685325,
+        "weighted_MBps": 8.401827224909994,
+        "peak_sample_MBps": 8.401827224909994
+      }
+    },
+    "completed": 5271,
+    "tries": 5769,
+    "status2": 156,
+    "agg_ppdus": 0,
+    "verified": true
+  },
+  {
+    "case": "peer-tcp-20261111-self",
+    "throughput": {
+      "Mac→小米": {
+        "verified": 1,
+        "failed_or_missing": 0,
+        "bytes": 16777216,
+        "seconds": 1.176549375,
+        "weighted_MBps": 14.259678647145599,
+        "peak_sample_MBps": 14.259678647145599
+      },
+      "小米→Mac": {
+        "verified": 1,
+        "failed_or_missing": 0,
+        "bytes": 16777216,
+        "seconds": 1.882277334,
+        "weighted_MBps": 8.913254012546059,
+        "peak_sample_MBps": 8.913254012546059
+      }
+    },
+    "completed": 5329,
+    "tries": 5668,
+    "status2": 148,
+    "agg_ppdus": 0,
+    "verified": true,
+    "phone_tx_direction": {
+      "completed": 5001,
+      "valid": 4943,
+      "invalid": 58,
+      "tries": 5188,
+      "amsdu": 0,
+      "ldpc": 4943,
+      "ppdus": 4943,
+      "agg_ppdus": 0,
+      "agg_mpdus": 0,
+      "ast_overrides": 0,
+      "remote_peer_compl": 0,
+      "bw": [
+        0,
+        0,
+        4943,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "mcs": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        4943,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pkt": [
+        0,
+        0,
+        0,
+        4943,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "gi": [
+        0,
+        4943,
+        0,
+        0
+      ],
+      "status": [
+        4943,
+        0,
+        58,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "tx_ring": [
+        5001,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "ppdu_bin": [
+        4943,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "mac_rx_timeline": {
+      "status": "complete",
+      "count": 10,
+      "first": {
+        "offset_ns": 179667,
+        "mss": 1148,
+        "rtt_current_ms": 0,
+        "rtt_smoothed_ms": 0,
+        "tx_packets": 0,
+        "tx_bytes": 0,
+        "tx_retransmit_packets": 0,
+        "tx_retransmit_bytes": 0,
+        "rx_packets": 0,
+        "rx_bytes": 0,
+        "rx_out_of_order_bytes": 0,
+        "snd_cwnd_bytes": 11480,
+        "snd_wnd_bytes": 65535,
+        "snd_sbbytes": 0,
+        "loss_recovery": 0
+      },
+      "last": {
+        "offset_ns": 1805069875,
+        "mss": 1148,
+        "rtt_current_ms": 44,
+        "rtt_smoothed_ms": 7,
+        "tx_packets": 1,
+        "tx_bytes": 12,
+        "tx_retransmit_packets": 0,
+        "tx_retransmit_bytes": 0,
+        "rx_packets": 1498,
+        "rx_bytes": 15810256,
+        "rx_out_of_order_bytes": 3846948,
+        "snd_cwnd_bytes": 11492,
+        "snd_wnd_bytes": 65536,
+        "snd_sbbytes": 0,
+        "loss_recovery": 0
+      },
+      "max_rtt": 7
+    }
+  },
+  {
+    "case": "peer-tcp-20261111-remote",
+    "throughput": {
+      "Mac→小米": {
+        "verified": 1,
+        "failed_or_missing": 0,
+        "bytes": 16777216,
+        "seconds": 2.304947542,
+        "weighted_MBps": 7.2787843082287385,
+        "peak_sample_MBps": 7.2787843082287385
+      },
+      "小米→Mac": {
+        "verified": 1,
+        "failed_or_missing": 0,
+        "bytes": 16777216,
+        "seconds": 7.516880084,
+        "weighted_MBps": 2.231938758170563,
+        "peak_sample_MBps": 2.231938758170563
+      }
+    },
+    "completed": 5572,
+    "tries": 6336,
+    "status2": 316,
+    "agg_ppdus": 0,
+    "verified": true,
+    "phone_tx_direction": {
+      "completed": 5366,
+      "valid": 5145,
+      "invalid": 221,
+      "tries": 6114,
+      "amsdu": 0,
+      "ldpc": 5144,
+      "ppdus": 5145,
+      "agg_ppdus": 0,
+      "agg_mpdus": 0,
+      "ast_overrides": 5180,
+      "remote_peer_compl": 5366,
+      "bw": [
+        1,
+        0,
+        5144,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "mcs": [
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        5144,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "pkt": [
+        1,
+        0,
+        0,
+        5144,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "gi": [
+        1,
+        5144,
+        0,
+        0
+      ],
+      "status": [
+        5145,
+        0,
+        221,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "tx_ring": [
+        5366,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "ppdu_bin": [
+        5145,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    "mac_rx_timeline": {
+      "status": "complete",
+      "count": 38,
+      "first": {
+        "offset_ns": 413834,
+        "mss": 1148,
+        "rtt_current_ms": 0,
+        "rtt_smoothed_ms": 0,
+        "tx_packets": 0,
+        "tx_bytes": 0,
+        "tx_retransmit_packets": 0,
+        "tx_retransmit_bytes": 0,
+        "rx_packets": 0,
+        "rx_bytes": 0,
+        "rx_out_of_order_bytes": 0,
+        "snd_cwnd_bytes": 11480,
+        "snd_wnd_bytes": 65535,
+        "snd_sbbytes": 0,
+        "loss_recovery": 0
+      },
+      "last": {
+        "offset_ns": 7405070250,
+        "mss": 1148,
+        "rtt_current_ms": 9,
+        "rtt_smoothed_ms": 7,
+        "tx_packets": 1,
+        "tx_bytes": 12,
+        "tx_retransmit_packets": 0,
+        "tx_retransmit_bytes": 0,
+        "rx_packets": 1549,
+        "rx_bytes": 16392292,
+        "rx_out_of_order_bytes": 2871148,
+        "snd_cwnd_bytes": 11492,
+        "snd_wnd_bytes": 65536,
+        "snd_sbbytes": 0,
+        "loss_recovery": 0
+      },
+      "max_rtt": 7
+    }
+  }
+]

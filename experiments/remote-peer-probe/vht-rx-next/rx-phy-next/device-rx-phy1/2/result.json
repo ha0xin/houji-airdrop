@@ -1,0 +1,193 @@
+{
+  "token": "[REDACTED]",
+  "phase": 2,
+  "mode": "off",
+  "bytes_per_sample": 16777216,
+  "pairs": 1,
+  "samples": [
+    {
+      "direction": "Mac→小米",
+      "sample": 1,
+      "mode": 0,
+      "bytes": 16777216,
+      "status": "verified",
+      "seconds": 6.913882083,
+      "MBps": 2.4265985156518903,
+      "sha256": "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1",
+      "mac_wall_start_ns": 1794314966807059000,
+      "mac_wall_end_ns": 1794314973995901000,
+      "phone_seconds": 6.898159
+    },
+    {
+      "direction": "小米→Mac",
+      "sample": 2,
+      "mode": 1,
+      "bytes": 16777216,
+      "status": "verified",
+      "seconds": 2.1025405,
+      "MBps": 7.979497184477541,
+      "sha256": "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1",
+      "mac_wall_start_ns": 1794314973996238000,
+      "mac_wall_end_ns": 1794314976104751000,
+      "phone_seconds": 2.099704
+    }
+  ],
+  "advertisement": {
+    "app_sha256": "ab84ddba4c05ee2a5f9bc0f5f304a1c053e1074cc7a268265c2026956bebcbf8",
+    "matching_app_load": true,
+    "requested": false,
+    "reported_switch": [
+      "OWLY_OUTGOING_VHT=false"
+    ],
+    "first_host_submitted_mif_container": [
+      "absent"
+    ],
+    "verified": true
+  },
+  "flow_hash_verified": true,
+  "verified": true,
+  "rx_phy_delta": {
+    "matched": 5773,
+    "fcs": 0,
+    "layout": 0,
+    "not_done": 0,
+    "ppdu_mismatch": 0,
+    "range": 0,
+    "outside_scope": 0,
+    "valid": 5773,
+    "retry": 26,
+    "amsdu": 5064,
+    "packet_type": [
+      0,
+      0,
+      0,
+      5773,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "ofdm_bw": [
+      0,
+      0,
+      0
+    ],
+    "cck_bw": [
+      0,
+      0,
+      0
+    ],
+    "ht_bw": [
+      0,
+      0,
+      0
+    ],
+    "vht_bw": [
+      0,
+      0,
+      5773
+    ],
+    "ht_mcs": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "vht_mcs": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      5773,
+      0,
+      0
+    ],
+    "ht_nss": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "vht_nss": [
+      0,
+      5773,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "ht_gi": [
+      0,
+      0
+    ],
+    "vht_gi": [
+      5773,
+      0
+    ],
+    "reception": [
+      5773,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "qos_ack_policy": [
+      5773,
+      0,
+      0,
+      0
+    ],
+    "raw_len": [
+      475,
+      395,
+      379,
+      4524
+    ]
+  },
+  "rx_phy_has_valid_samples": true,
+  "throughput_by_direction": {
+    "Mac→小米": {
+      "verified": 1,
+      "failed_or_missing": 0,
+      "bytes": 16777216,
+      "seconds": 6.913882083,
+      "weighted_MBps": 2.4265985156518903,
+      "peak_sample_MBps": 2.4265985156518903
+    },
+    "小米→Mac": {
+      "verified": 1,
+      "failed_or_missing": 0,
+      "bytes": 16777216,
+      "seconds": 2.1025405,
+      "weighted_MBps": 7.979497184477541,
+      "peak_sample_MBps": 7.979497184477541
+    }
+  },
+  "radio_idle": true
+}

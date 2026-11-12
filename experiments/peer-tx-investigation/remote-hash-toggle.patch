@@ -1,0 +1,83 @@
+--- a/src/wlan/qca-wifi-host-cmn/dp/wifi3.0/be/dp_be_tx.c
++++ b/src/wlan/qca-wifi-host-cmn/dp/wifi3.0/be/dp_be_tx.c
+@@ -27,6 +27,69 @@
+ #include <hal_be_tx.h>
+ #include <dp_htt.h>
+ #include "dp_internal.h"
++#ifdef DRIVER_PASSTHRU_OWNER
++#include <linux/moduleparam.h>
++#include <linux/spinlock.h>
++
++static bool pt_remote_hash_override = true;
++module_param(pt_remote_hash_override, bool, 0400);
++MODULE_PARM_DESC(pt_remote_hash_override,
++	"Use remote AST hash with remote index; false retains BSS hash");
++
++/* Capture the first remote-index selection only. No per-packet logging or
++ * steady-state lock: immutable until module reload, protected for publication.
++ */
++struct pt_ast_selection_snapshot {
++	bool valid;
++	u8 vdev_id;
++	u16 bss_index, bss_hash, remote_index, remote_hash;
++	u16 selected_index, selected_hash;
++};
++static struct pt_ast_selection_snapshot pt_ast_selection;
++static DEFINE_SPINLOCK(pt_ast_selection_lock);
++
++static void pt_record_ast_selection(struct dp_vdev *vdev,
++				    struct dp_tx_msdu_info_s *msdu_info,
++				    u16 selected_index, u16 selected_hash)
++{
++	unsigned long flags;
++
++	if (READ_ONCE(pt_ast_selection.valid))
++		return;
++	spin_lock_irqsave(&pt_ast_selection_lock, flags);
++	if (!pt_ast_selection.valid) {
++		pt_ast_selection.vdev_id = vdev->vdev_id;
++		pt_ast_selection.bss_index = vdev->bss_ast_idx;
++		pt_ast_selection.bss_hash = vdev->bss_ast_hash;
++		pt_ast_selection.remote_index = msdu_info->passthru_ast_idx;
++		pt_ast_selection.remote_hash = msdu_info->passthru_ast_hash;
++		pt_ast_selection.selected_index = selected_index;
++		pt_ast_selection.selected_hash = selected_hash;
++		WRITE_ONCE(pt_ast_selection.valid, true);
++	}
++	spin_unlock_irqrestore(&pt_ast_selection_lock, flags);
++}
++
++static int pt_ast_selection_get(char *buf, const struct kernel_param *kp)
++{
++	struct pt_ast_selection_snapshot s;
++	unsigned long flags;
++
++	(void)kp;
++	spin_lock_irqsave(&pt_ast_selection_lock, flags);
++	s = pt_ast_selection;
++	spin_unlock_irqrestore(&pt_ast_selection_lock, flags);
++	return scnprintf(buf, PAGE_SIZE,
++		"valid=%u vdev=%u bss_index=%u bss_hash=%u remote_index=%u remote_hash=%u selected_index=%u selected_hash=%u selected_cache_set=%u hash_override=%u\n",
++		s.valid, s.vdev_id, s.bss_index, s.bss_hash,
++		s.remote_index, s.remote_hash, s.selected_index, s.selected_hash,
++		s.selected_hash & 0xf, pt_remote_hash_override);
++}
++static const struct kernel_param_ops pt_ast_selection_ops = {
++	.get = pt_ast_selection_get,
++};
++module_param_cb(pt_ast_selection, &pt_ast_selection_ops, NULL, 0400);
++#endif
+ #ifdef FEATURE_WDS
+ #include "dp_txrx_wds.h"
+ #endif
+@@ -1326,7 +1389,9 @@
+ #ifdef DRIVER_PASSTHRU_OWNER
+ 	if (msdu_info->passthru_ast_override) {
+ 		ast_idx = msdu_info->passthru_ast_idx;
+-		ast_hash = msdu_info->passthru_ast_hash;
++		if (pt_remote_hash_override)
++			ast_hash = msdu_info->passthru_ast_hash;
++		pt_record_ast_selection(vdev, msdu_info, ast_idx, ast_hash);
+ 	}
+ #endif
+ 

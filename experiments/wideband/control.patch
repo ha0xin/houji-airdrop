@@ -1,0 +1,126 @@
+--- /work/houji-build/src/baseline/wlan/qcacld-3.0/core/hdd/src/wlan_hdd_passthru_control.c	2026-11-10 02:41:35.685927816 +0000
++++ /work/houji-build/src/wideband/wlan/qcacld-3.0/core/hdd/src/wlan_hdd_passthru_control.c	2026-11-10 04:26:41.372403540 +0000
+@@ -14,6 +14,23 @@
+ #include "cdp_txrx_peer_ops.h"
+ #include "sme_api.h"
+ #include "wma.h"
++#include <linux/moduleparam.h>
++
++/* Load-time opt-in, restricted to the tested non-DFS 149-161 block.
++ * Retain HT20 as the default and retain single-MPDU TX throughout.
++ */
++static bool pt_vht80;
++module_param(pt_vht80, bool, 0444);
++MODULE_PARM_DESC(pt_vht80, "Experimental VHT80 NSS1 on primary 149");
++
++static bool hdd_pt_vht80(const struct wondertap_init_params *p)
++{
++    return p && pt_vht80 && p->channel.freq == 5745 &&
++        p->channel.bandwidth == WONDERTAP_RATE_BW_80 &&
++        p->tx_rate.bw == WONDERTAP_RATE_BW_80 &&
++        p->tx_rate.preamble == WONDERTAP_RATE_PREAMBLE_VHT;
++}
++
+ 
+ static int hdd_pt_control_channel(struct hdd_context *hdd, u32 freq)
+ {
+@@ -46,9 +63,10 @@
+ 	    params->reserved2 || params->reserved3 ||
+ 	    params->tx_rate.reserved[0] || params->tx_rate.reserved[1])
+ 		return -EINVAL;
+-	if (params->channel.bandwidth != WONDERTAP_RATE_BW_20 ||
++	if ((!hdd_pt_vht80(params) &&
++	    (params->channel.bandwidth != WONDERTAP_RATE_BW_20 ||
+ 	    params->tx_rate.bw != WONDERTAP_RATE_BW_20 ||
+-	    params->tx_rate.preamble != WONDERTAP_RATE_PREAMBLE_HT ||
++	    params->tx_rate.preamble != WONDERTAP_RATE_PREAMBLE_HT)) ||
+ 	    params->tx_rate.nss != 1 || params->tx_rate.mcs > 7 ||
+ 	    (params->tx_rate.gi != WONDERTAP_RATE_GI_DEFAULT &&
+ 	     params->tx_rate.gi != WONDERTAP_RATE_GI_SHORT) ||
+@@ -62,7 +80,16 @@
+ 		return -EOPNOTSUPP;
+ 	if (ucfg_scan_get_pdev_status(hdd->pdev) != SCAN_NOT_IN_PROGRESS)
+ 		return -EBUSY;
+-	return hdd_pt_control_channel(hdd, params->channel.freq);
++	if (hdd_pt_vht80(params)) {
++        u32 freq;
++        int ret;
++        for (freq = 5745; freq <= 5805; freq += 20) {
++            ret = hdd_pt_control_channel(hdd, freq);
++            if (ret)
++                return ret;
++        }
++    }
++    return hdd_pt_control_channel(hdd, params->channel.freq);
+ }
+ 
+ static int hdd_pt_control_state(struct hdd_pt_iface *iface,
+@@ -98,7 +125,9 @@
+ 		const struct wondertap_init_params *params, u32 cookie, bool changing)
+ {
+ 	struct channel_change_req request = {0};
+-	struct ch_params channel = { .ch_width = CH_WIDTH_20MHZ };
++	enum phy_ch_width width = hdd_pt_vht80(params) ?
++        CH_WIDTH_80MHZ : CH_WIDTH_20MHZ;
++    struct ch_params channel = { .ch_width = width };
+ 	struct wlan_objmgr_vdev *vdev;
+ 	struct vdev_mlme_obj *mlme;
+ 	struct hdd_adapter *adapter;
+@@ -110,12 +139,12 @@
+ 		return ret;
+ 	adapter = iface->adapter;
+ 	ret = hdd_validate_channel_and_bandwidth(adapter, params->channel.freq,
+-						 CH_WIDTH_20MHZ);
++						 width);
+ 	if (ret)
+ 		return ret;
+ 	wlan_reg_set_channel_params_for_pwrmode(iface->hdd->pdev,
+ 			params->channel.freq, 0, &channel, REG_CURRENT_PWR_MODE);
+-	if (channel.ch_width != CH_WIDTH_20MHZ)
++	if (channel.ch_width != width)
+ 		return -EOPNOTSUPP;
+ 
+ 	vdev = hdd_objmgr_get_vdev_by_user(adapter->deflink, WLAN_OSIF_ID);
+@@ -146,9 +175,10 @@
+ 	request.center_freq_seg0 = channel.center_freq_seg0;
+ 	request.center_freq_seg1 = channel.center_freq_seg1;
+ 	sme_fill_channel_change_request(iface->hdd->mac_handle, &request,
+-				       eCSR_DOT11_MODE_11n);
+-	/* SME fills from global PHY policy; this PT profile is fixed HT. */
+-	request.dot11mode = MLME_DOT11_MODE_11N;
++				       hdd_pt_vht80(params) ? eCSR_DOT11_MODE_11ac : eCSR_DOT11_MODE_11n);
++	/* Do not let global PHY policy override the explicit profile. */
++    request.dot11mode = hdd_pt_vht80(params) ?
++        MLME_DOT11_MODE_11AC : MLME_DOT11_MODE_11N;
+ 	status = sme_send_channel_change_req(iface->hdd->mac_handle, &request);
+ 	if (QDF_IS_STATUS_ERROR(status)) {
+ 		wlan_vdev_obj_lock(vdev);
+@@ -326,7 +356,8 @@
+ 	soc = cds_get_context(QDF_MODULE_ID_SOC);
+ 	if (!wma || !wma->wmi_handle || !soc)
+ 		return -ENODEV;
+-	rate = hdd_assemble_rate_code(WMI_RATE_PREAMBLE_HT, 0,
++	rate = hdd_assemble_rate_code(hdd_pt_vht80(params) ?
++        WMI_RATE_PREAMBLE_VHT : WMI_RATE_PREAMBLE_HT, 0,
+ 				    params->tx_rate.mcs);
+ 	if (rate < 0)
+ 		return rate;
+@@ -339,7 +370,7 @@
+ 	if (ret)
+ 		return ret;
+ 	ret = hdd_pt_control_vdev_param(wma, vdev_id,
+-					wmi_vdev_param_chwidth, 0);
++					wmi_vdev_param_chwidth, hdd_pt_vht80(params) ? 2 : 0);
+ 	if (ret)
+ 		return ret;
+ 	ret = hdd_pt_control_no_sw_retry(wma, vdev_id);
+@@ -352,7 +383,8 @@
+ 	qdf_mem_copy(peer.peer_addr.bytes, adapter->mac_addr.bytes,
+ 		     QDF_MAC_ADDR_SIZE);
+ 	peer.is_qos_enabled = 1;
+-	peer.bw = hdd_convert_ch_width_to_cdp_peer_bw(CH_WIDTH_20MHZ);
++	peer.bw = hdd_convert_ch_width_to_cdp_peer_bw(hdd_pt_vht80(params) ?
++        CH_WIDTH_80MHZ : CH_WIDTH_20MHZ);
+ 	status = cdp_peer_register(soc, OL_TXRX_PDEV_ID, &peer);
+ 	if (QDF_IS_STATUS_ERROR(status))
+ 		return qdf_status_to_os_return(status);

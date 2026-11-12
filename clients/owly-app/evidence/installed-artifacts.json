@@ -1,0 +1,11 @@
+{
+  "houji-owly-outgoing-vht": "03cb3594456d82cc3d2ba40866e39da647b48a61e034969c234a0e367d6a6fe6",
+  "wonder-init-2ss": "051263b0e329d5da75e07c77381c1d575e79883ec4c790cbd414d080de2ddeb4",
+  "qca_cld3_kiwi_v2-remote-peer.ko": "6914d32ece387172706e740cf63284daf9e9cd72b2f6f91dc2a3f678fc5dc6bb",
+  "radio.sh": "b7af2e4fa400f3b9339863927f97a938c4c9ec93a7267863598eaaa6adaa4844",
+  "control.sh": "731131bdb7f0d5f9931dcc3926aaaf7a751cb50b394c4a6fe4cd855532799ccc",
+  "firmware/ezif.bin": "37d409044902fb5e4eb47aff5c543adb0dfd6a56e4e38ff723feb823bc8b522f",
+  "firmware/dzf2.bin": "13f01cb46efbe498c854352bfc253fa3665c14a14c37a0a6ed6a609a48a8709c",
+  "radio/houji_wonder_bridge.ko": "9a8345d87ec1186a29b413935b4efdbd38566e7e22374e70a7a85510b2970e9a",
+  "radio/wonder.ko": "9d60988f896669604ff2e8cdfa1ba91a7047c1ddd2210b1fa494f506f5eb039c"
+}

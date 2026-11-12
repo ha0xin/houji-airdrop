@@ -1,0 +1,11 @@
+{
+  "bytes": 38149367,
+  "received_sha256": "01472c89996f7485da5f6a3c8268389e212a6024affc4e8bf5f21a59d08ba2a2",
+  "body_elapsed_ms": 17693,
+  "http_200": true,
+  "task_success": true,
+  "user_report": "transfer completed",
+  "stock_firmware_and_driver_restored": true,
+  "wifi_reconnected": true,
+  "playback": "not explicitly confirmed"
+}

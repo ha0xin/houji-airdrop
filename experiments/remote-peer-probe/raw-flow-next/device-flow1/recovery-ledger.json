@@ -1,0 +1,15 @@
+{
+  "device": "DEVICE_SERIAL",
+  "purpose": "trial",
+  "token": "[REDACTED]",
+  "candidate": "6c4e2e5e5c71d4f1a7b67eb5be5de9b0e6e9311d6b0b7294fe9866a0f61205b7",
+  "path": "/data/local/tmp/houji-buildtest-20261110/owly/qca_cld3_kiwi_v2-remote-peer.ko",
+  "harness": "5f79c112b0d7eb9c153d75a3441a4aa47f3e535d9a959b50a06be49957a4da60",
+  "saved": {
+    "saved_scan": "0",
+    "saved_cnd": "running",
+    "saved_hal": "running",
+    "saved_pci": "auto",
+    "saved_boot": "b9361e8c-20fd-4306-9dca-75b3afe731e2"
+  }
+}

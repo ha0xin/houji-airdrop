@@ -1,0 +1,237 @@
+diff -ruN a/crates/owly-awdl/src/ip.rs b/crates/owly-awdl/src/ip.rs
+--- a/crates/owly-awdl/src/ip.rs	2026-11-10 14:05:51
++++ b/crates/owly-awdl/src/ip.rs	2026-11-10 22:06:56
+@@ -84,6 +84,42 @@
+         flags == 0x02 && offset >= 20 && tcp.len() == offset
+     }
+ 
++    /// The TCP 4-tuple, when this packet carries a TCP segment without IPv6
++    /// extension headers.
++    pub fn tcp_flow(&self) -> Option<(Ipv6Addr, Ipv6Addr, u16, u16)> {
++        let (src, dst) = addrs(&self.data)?;
++        let tcp = upper(&self.data, TCP)?;
++        if tcp.len() < 20 {
++            return None;
++        }
++        let src_port = u16::from_be_bytes([tcp[0], tcp[1]]);
++        let dst_port = u16::from_be_bytes([tcp[2], tcp[3]]);
++        Some((src, dst, src_port, dst_port))
++    }
++
++    /// A TCP segment with only the ACK flag set and no payload.
++    pub fn pure_tcp_ack(&self) -> Option<PureTcpAck> {
++        let (src, dst) = addrs(&self.data)?;
++        let tcp = upper(&self.data, TCP)?;
++        if self.data.len() != HEADER_LEN + tcp.len() || tcp.len() < 20 {
++            return None;
++        }
++        let offset = (tcp[12] >> 4) as usize * 4;
++        if offset < 20 || tcp.len() != offset || (tcp[12] & 0x01) != 0 || tcp[13] != 0x10 {
++            return None;
++        }
++        Some(PureTcpAck {
++            src,
++            dst,
++            src_port: u16::from_be_bytes([tcp[0], tcp[1]]),
++            dst_port: u16::from_be_bytes([tcp[2], tcp[3]]),
++            seq: u32::from_be_bytes([tcp[4], tcp[5], tcp[6], tcp[7]]),
++            ack: u32::from_be_bytes([tcp[8], tcp[9], tcp[10], tcp[11]]),
++            window: u16::from_be_bytes([tcp[14], tcp[15]]),
++            simple_options: simple_tcp_options(&tcp[20..offset]),
++        })
++    }
++
+     /// An ICMPv6 echo request from `src` to `dst`, link-local to
+     /// link-local.
+     pub fn echo_request(
+@@ -137,6 +173,57 @@
+     }
+     let len = u16::from_be_bytes([data[4], data[5]]) as usize;
+     data.get(HEADER_LEN..HEADER_LEN + len)
++}
++
++#[derive(Debug, Clone, Copy, PartialEq, Eq)]
++pub struct PureTcpAck {
++    pub src: Ipv6Addr,
++    pub dst: Ipv6Addr,
++    pub src_port: u16,
++    pub dst_port: u16,
++    pub seq: u32,
++    pub ack: u32,
++    pub window: u16,
++    pub simple_options: bool,
++}
++
++impl PureTcpAck {
++    pub fn flow(&self) -> (Ipv6Addr, Ipv6Addr, u16, u16) {
++        (self.src, self.dst, self.src_port, self.dst_port)
++    }
++
++    /// Whether `self` is a strictly newer cumulative ACK on the same flow
++    /// with no SACK/non-timestamp options and nonzero windows on both sides.
++    pub fn supersedes(&self, earlier: &PureTcpAck) -> bool {
++        if self.flow() != earlier.flow()
++            || self.seq != earlier.seq
++            || !self.simple_options
++            || !earlier.simple_options
++            || self.window == 0
++            || earlier.window == 0
++        {
++            return false;
++        }
++        let delta = self.ack.wrapping_sub(earlier.ack);
++        delta > 0 && delta < 0x8000_0000
++    }
++}
++
++fn simple_tcp_options(mut opts: &[u8]) -> bool {
++    while let Some(&kind) = opts.first() {
++        match kind {
++            0 => return true,
++            1 => opts = &opts[1..],
++            8 => {
++                if opts.len() < 10 || opts[1] != 10 {
++                    return false;
++                }
++                opts = &opts[10..];
++            }
++            _ => return false,
++        }
++    }
++    true
+ }
+ 
+ /// The Internet checksum over the IPv6 pseudo-header and `message`.
+diff -ruN a/crates/owly-awdl/src/node.rs b/crates/owly-awdl/src/node.rs
+--- a/crates/owly-awdl/src/node.rs	2026-11-10 22:06:56
++++ b/crates/owly-awdl/src/node.rs	2026-11-10 22:06:56
+@@ -546,9 +546,28 @@
+             }
+             &mut self.multicast
+         } else {
+-            if !self.peers.contains_key(&packet.dst) {
++            let Some(peer) = self.peers.get(&packet.dst) else {
+                 self.stats.dropped_no_peer += 1;
+                 return;
++            };
++            if self.cfg.amsdu
++                && peer.ht.is_some()
++                && let Some(ack) = packet.pure_tcp_ack()
++            {
++                let flow = ack.flow();
++                let mut same_flow = self
++                    .unicast
++                    .iter_mut()
++                    .filter(|q| q.packet.dst == packet.dst && q.packet.tcp_flow() == Some(flow));
++                if let (Some(existing), None) = (same_flow.next(), same_flow.next())
++                    && existing
++                        .packet
++                        .pure_tcp_ack()
++                        .is_some_and(|queued| ack.supersedes(&queued))
++                {
++                    existing.packet = packet;
++                    return;
++                }
+             }
+             if self.unicast.len() == UNICAST_QUEUE {
+                 self.unicast.pop_front();
+@@ -798,6 +817,10 @@
+     const AMSDU_COALESCE_US: u64 = 1_000;
+     const AMSDU_COALESCE_MIN_BYTES: usize = 512;
+ 
++    fn should_coalesce(packet: &Ipv6Packet) -> bool {
++        packet.data.len() >= Self::AMSDU_COALESCE_MIN_BYTES || packet.pure_tcp_ack().is_some()
++    }
++
+     fn send_unicast(&mut self, now: Time, sent: &mut usize, out: &mut Vec<Action>) {
+         if self.unicast.is_empty() {
+             return;
+@@ -854,7 +877,7 @@
+                     && batch.len() < AMSDU_PACKETS
+                     && len + first_len + 3 <= limit;
+                 if can_grow
+-                    && oldest.packet.data.len() >= Self::AMSDU_COALESCE_MIN_BYTES
++                    && Self::should_coalesce(&oldest.packet)
+                     && now.since(oldest.at) < Self::AMSDU_COALESCE_US
+                 {
+                     blocked.push(dst);
+@@ -910,7 +933,7 @@
+                 if wait == 0
+                     && self.cfg.amsdu
+                     && p.ht.is_some()
+-                    && q.packet.data.len() >= Self::AMSDU_COALESCE_MIN_BYTES
++                    && Self::should_coalesce(&q.packet)
+                 {
+                     wait = Self::AMSDU_COALESCE_US.saturating_sub(now.since(q.at));
+                 }
+diff -ruN a/crates/owly-awdl/tests/node.rs b/crates/owly-awdl/tests/node.rs
+--- a/crates/owly-awdl/tests/node.rs	2026-11-10 22:06:56
++++ b/crates/owly-awdl/tests/node.rs	2026-11-10 22:06:56
+@@ -667,3 +667,67 @@
+     let reopen = next_shared(&node, expired);
+     assert_eq!(phone_payloads(&tick(&mut node, reopen)), expected);
+ }
++
++
++fn tcp_ack_to_phone(ack_num: u32, window: u16, options: &[u8]) -> Ipv6Packet {
++    assert_eq!(options.len() % 4, 0);
++    let hdr_len = 20 + options.len();
++    let mut seg = Vec::with_capacity(hdr_len);
++    seg.extend_from_slice(&50000u16.to_be_bytes());
++    seg.extend_from_slice(&9000u16.to_be_bytes());
++    seg.extend_from_slice(&1u32.to_be_bytes());
++    seg.extend_from_slice(&ack_num.to_be_bytes());
++    seg.push(((hdr_len / 4) as u8) << 4);
++    seg.push(0x10);
++    seg.extend_from_slice(&window.to_be_bytes());
++    seg.extend_from_slice(&[0, 0, 0, 0]);
++    seg.extend_from_slice(options);
++    let mut data = vec![0x60, 0, 0, 0];
++    data.extend_from_slice(&(seg.len() as u16).to_be_bytes());
++    data.extend_from_slice(&[6, 64]);
++    data.extend_from_slice(&US.link_local().octets());
++    data.extend_from_slice(&PHONE.link_local().octets());
++    data.extend_from_slice(&seg);
++    Ipv6Packet {
++        dst: PHONE,
++        src: US,
++        data,
++    }
++}
++
++#[test]
++fn cumulative_pure_tcp_acks_coalesce_and_supersede_within_hold_window() {
++    let mut node = coalescing_node(3839);
++    let now = meet(&mut node, &seq([149; SLOTS])).plus(100);
++    let ts_opt = [1, 1, 8, 10, 0, 0, 0, 1, 0, 0, 0, 1];
++    let ack1 = tcp_ack_to_phone(1000, 4096, &ts_opt);
++    let ack2 = tcp_ack_to_phone(2000, 4095, &ts_opt);
++    let ack3 = tcp_ack_to_phone(3000, 4094, &ts_opt);
++    assert!(phone_payloads(&outgoing(&mut node, now, ack1)).is_empty());
++    assert!(phone_payloads(&outgoing(&mut node, now.plus(300), ack2)).is_empty());
++    assert!(phone_payloads(&outgoing(&mut node, now.plus(600), ack3.clone())).is_empty());
++    assert_eq!(node.backlog(), 1);
++    assert!(phone_payloads(&tick(&mut node, now.plus(999))).is_empty());
++    let sent = tick(&mut node, now.plus(1000));
++    assert_eq!(transmits(&sent).iter().filter(|f| f.to == PHONE).count(), 1);
++    assert_eq!(phone_payloads(&sent), [ack3.data]);
++}
++
++#[test]
++fn duplicate_and_sack_tcp_acks_are_kept_and_aggregated() {
++    let mut node = coalescing_node(3839);
++    let now = meet(&mut node, &seq([149; SLOTS])).plus(100);
++    let ts_opt = [1, 1, 8, 10, 0, 0, 0, 1, 0, 0, 0, 1];
++    let sack_opt = [1, 1, 5, 10, 0, 0, 8, 0, 0, 0, 12, 0];
++    let ack1 = tcp_ack_to_phone(1000, 4096, &ts_opt);
++    let dup2 = tcp_ack_to_phone(1000, 4096, &ts_opt);
++    let sack3 = tcp_ack_to_phone(1000, 4096, &sack_opt);
++    let expected = [ack1.data.clone(), dup2.data.clone(), sack3.data.clone()];
++    assert!(phone_payloads(&outgoing(&mut node, now, ack1)).is_empty());
++    assert!(phone_payloads(&outgoing(&mut node, now.plus(200), dup2)).is_empty());
++    assert!(phone_payloads(&outgoing(&mut node, now.plus(400), sack3)).is_empty());
++    assert_eq!(node.backlog(), 3);
++    let sent = tick(&mut node, now.plus(1000));
++    assert_eq!(transmits(&sent).iter().filter(|f| f.to == PHONE).count(), 1);
++    assert_eq!(phone_payloads(&sent), expected);
++}

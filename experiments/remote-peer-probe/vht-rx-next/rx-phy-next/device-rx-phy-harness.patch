@@ -1,0 +1,189 @@
+--- a/radio-owly.sh
++++ b/radio-owly.sh
+@@ -136,6 +136,17 @@
+  test "$(cat "$PCI")" = "$saved_pci"
+ }
+ 
++clean_routes() {
++ # Delete only exact per-run rule selectors. Interface deletion takes its routes.
++ if test -f "$STATE/route-ip"; then
++  ip6=$(cat "$STATE/route-ip")
++  ip -6 rule del priority 10870 to fe80::/64 oif "$IFACE" uidrange 0-0 lookup "$TABLE" 2>/dev/null || true
++  ip -6 rule del priority 10871 to ff00::/8 oif "$IFACE" uidrange 0-0 lookup "$TABLE" 2>/dev/null || true
++  ip -6 rule del priority 10872 from "$ip6/128" lookup "$TABLE" 2>/dev/null || true
++  rm "$STATE/route-ip"
++ fi
++}
++
+ restore() {
+  if test ! -e "$STATE/saved.env"; then
+   stock_files
+@@ -155,14 +166,7 @@
+   state STOCK_RESTORED
+   return
+  fi
+- # Delete only exact per-run rule selectors. Interface deletion takes its routes.
+- if test -f "$STATE/route-ip"; then
+-  ip6=$(cat "$STATE/route-ip")
+-  ip -6 rule del priority 10870 to fe80::/64 oif "$IFACE" uidrange 0-0 lookup "$TABLE" 2>/dev/null || true
+-  ip -6 rule del priority 10871 to ff00::/8 oif "$IFACE" uidrange 0-0 lookup "$TABLE" 2>/dev/null || true
+-  ip -6 rule del priority 10872 from "$ip6/128" lookup "$TABLE" 2>/dev/null || true
+-  rm "$STATE/route-ip"
+- fi
++ clean_routes
+  test ! -e /sys/class/net/"$IFACE"
+  test ! -e /sys/class/net/xos0
+  if test -e /sys/class/net/wonder0; then iw dev wonder0 del; fi
+@@ -305,7 +309,9 @@
+   peer) set -- "$@" pt_ba_observe=1 "pt_ba_peer=$peer" ;;
+   caps) set -- "$@" pt_peer_caps_observe=1 ;;
+  esac
+- bounded insmod "$qca" "$@" pt_rx_capacity_4224=1
++ bounded insmod "$qca" "$@" pt_rx_capacity_4224=1 "pt_rx_phy_peer=$peer"
++ test "$(cat "$W/parameters/pt_rx_phy_peer")" = "$peer"
++ echo RX_PHY_PEER_READBACK=Y
+  test "$(cat "$W/parameters/pt_rx_capacity_4224")" = Y
+  echo RX_CAPACITY_LOAD_READBACK=Y
+  case "$ba_mode" in
+@@ -378,53 +384,79 @@
+  exit "$rc"
+ }
+ 
++run_phase() {
++ HOUJI_OWLY_OUTGOING_VHT="$outgoing_vht" ./houji-owly-outgoing-vht "$peer" "$aggregation" "$ack" > "$STATE/runner.log" 2>&1 &
++ driver=$!
++ for i in $(seq 1 10); do
++  if grep -q '^OWLY_READY ' "$STATE/runner.log"; then break; fi
++  kill -0 "$driver"
++  sleep 1
++ done
++ grep -q '^OWLY_READY ' "$STATE/runner.log"
++ if test "$vht_amsdu" = 1; then
++  grep -q '^OWLY_READY .* vht_amsdu=true$' "$STATE/runner.log"
++ fi
++ test -e /sys/class/net/"$IFACE"/tun_flags
++ ip -6 -o addr show dev "$IFACE" scope link | grep -q fe80:
++ if test "$qlen" != 500; then ip link set dev "$IFACE" txqueuelen "$qlen"; fi
++ test "$(cat /sys/class/net/"$IFACE"/tx_queue_len)" = "$qlen"
++ routes
++ cat "$W/parameters/pt_rx_phy_stats" > "$phase_dir/before"
++ set -- "$count" "$size"
++ if test "$mss" != 0; then set -- "$@" "$mss"; fi
++ ./owly-hashprobe "$@" > "$STATE/server.log" 2>&1 &
++ probe=$!
++ echo "$seq" > "$STATE/phy-ready-$token"
++ state OWLY_READY
++ deadline=$(($(uptime_s) + (count == 6 ? 440 : 150)))
++ while test ! -e "$STATE/stop-$token"; do
++  kill -0 "$driver"
++  if ! kill -0 "$probe" 2>/dev/null; then wait "$probe"; probe=; break; fi
++  test "$(uptime_s)" -lt "$deadline"
++  sleep 1
++ done
++ test ! -e "$STATE/stop-$token"
++ cat "$W/parameters/pt_rx_phy_stats" > "$phase_dir/after"
++ stop_workers
++ probe= driver=
++ clean_routes
++ test ! -e /sys/class/net/"$IFACE"
++ cp "$STATE/runner.log" "$STATE/server.log" "$phase_dir/"
++ : > "$phase_dir/done"
++}
++
+ run_locked() {
+- token=$1 profile=$2 aggregation=$3 ack=$4 peer=$5 count=$6 size=$7 mss=$8 qlen=$9 ba_mode=${10} vht_amsdu=${11:-0} outgoing_vht=${12}
++ token=$1 profile=$2 aggregation=$3 ack=$4 peer=$5 count=$6 size=$7 mss=$8 qlen=$9 ba_mode=${10} vht_amsdu=${11:-0}
+  test ! -e "$STATE/saved.env"
+  no_native_bridge
+  trap finish_locked EXIT
+  trap 'exit 143' TERM HUP
+  trap 'exit 130' INT
+  enter
+- if test "$ba_mode" = caps; then
+-  caps=$(cat "$W/parameters/pt_peer_caps")
+-  echo "PEER_CAPS_AFTER $caps"
+-  echo "$caps" | grep -q '^schema=1 enabled=1 sampled=1 '
+-  return 0
+- fi
+- if test "$vht_amsdu" = 1; then
+-  test "$(cat "$W/parameters/pt_vht80")" = Y
+-  test "$(cat /sys/class/net/wonder0/mtu)" = 8192
+- fi
+- HOUJI_OWLY_OUTGOING_VHT="$outgoing_vht" ./houji-owly-outgoing-vht "$peer" "$aggregation" "$ack" > "$STATE/runner.log" 2>&1 &
+- driver=$!
+- for i in $(seq 1 10); do
+-  if grep -q '^OWLY_READY ' "$STATE/runner.log"; then break; fi
+-  kill -0 "$driver"
+-  sleep 1
+- done
+- grep -q '^OWLY_READY ' "$STATE/runner.log"
+- if test "$vht_amsdu" = 1; then
+-  grep -q '^OWLY_READY .* vht_amsdu=true$' "$STATE/runner.log"
+- fi
+- test -e /sys/class/net/"$IFACE"/tun_flags
+- ip -6 -o addr show dev "$IFACE" scope link | grep -q fe80:
+- if test "$qlen" != 500; then ip link set dev "$IFACE" txqueuelen "$qlen"; fi
+- test "$(cat /sys/class/net/"$IFACE"/tx_queue_len)" = "$qlen"
+- routes
+- collect > "$STATE/before.txt"
+- set -- "$count" "$size"
+- if test "$mss" != 0; then set -- "$@" "$mss"; fi
+- ./owly-hashprobe "$@" > "$STATE/server.log" 2>&1 &
+- probe=$!
+- state OWLY_READY
+- deadline=$(($(uptime_s) + 440))
++
++ phy_dir="$STATE/phy-$token"
++ mkdir "$phy_dir"
++ seq=1
+  while test ! -e "$STATE/stop-$token"; do
+-  kill -0 "$driver"
+-  if ! kill -0 "$probe" 2>/dev/null; then wait "$probe"; probe=; break; fi
+-  test "$(uptime_s)" -lt "$deadline"
+-  sleep 1
+- done
++  state PHY_IDLE
++  lease_deadline=$(($(uptime_s) + 600))
++  phase_dir="$phy_dir/$seq"
++  mkdir "$phase_dir"
++  while test ! -e "$phase_dir/request"; do
++   if test -e "$STATE/stop-$token"; then return 0; fi
++   test "$(uptime_s)" -lt "$lease_deadline"
++   sleep 1
++  done
++  read -r outgoing_vht count size extra < "$phase_dir/request"
++  test -z "$extra"
++  case "$outgoing_vht:$count:$size" in
++   0:2:1048576|1:2:1048576|0:2:16777216|1:2:16777216|0:6:67108864|1:6:67108864) ;;
++   *) return 2 ;;
++  esac
++  run_phase
++  seq=$((seq + 1))
++ done
++
+ }
+ 
+ native_pid_matches() {
+@@ -533,12 +565,9 @@
+  run)
+   shift
+   test "$#" = 12
+-  case "${12}" in 0|1) ;; *) exit 2;; esac
++  test "${12}" = 0
+   test "$2:$3:$4:$8:$9:${10}:${11}" = vht80-sgi:amsdu:ack:1160:500:reference:0
+-  case "$6:$7" in
+-   2:1048576|6:67108864) ;;
+-   *) exit 2 ;;
+-  esac
++  test "$6:$7" = 0:0
+   case "${11:-0}" in
+    0) ;;
+    1) test "$2:$3:$4:$8:$9:${10}" = vht80-sgi:amsdu:ack:1160:500:reference ;;
+@@ -555,6 +584,7 @@
+    ht20:single:ack|vht80:single:ack|vht80:amsdu:ack|vht80-sgi:amsdu:ack|vht80-sgi:amsdu:noack) ;;
+    *) exit 2;;
+   esac
++  echo "$5" | grep -Eq '^([0-9a-f]{2}:){5}[0-9a-f]{2}$'
+   run_job "$@"
+   ;;
+  caps)

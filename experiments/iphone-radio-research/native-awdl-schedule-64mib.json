@@ -1,0 +1,164 @@
+{
+  "interface": "awdl0",
+  "size_mib": 64,
+  "mss": "system-default",
+  "samples": [
+    {
+      "sample": 1,
+      "mode": 0,
+      "bytes": 67108864,
+      "port": 54024,
+      "awdl_counter_deltas": {
+        "mac": {
+          "Ibytes": 264018,
+          "Obytes": 71158916,
+          "Ierrs": 0,
+          "Oerrs": 0
+        },
+        "iphone": {
+          "Ibytes": 70500384,
+          "Obytes": 265228,
+          "Ierrs": 0,
+          "Oerrs": 0
+        }
+      },
+      "status": "verified",
+      "iphone_exit": 0,
+      "listener_cancelled": true,
+      "tcp_report": {
+        "iphone": {
+          "status": "collected",
+          "path": "awdl0",
+          "duration_ms": 2302,
+          "sent_app_bytes": 32,
+          "received_app_bytes": 67108876,
+          "sent_tcp_bytes": 32,
+          "received_tcp_bytes": 67108864,
+          "retransmitted_tcp_bytes": 0,
+          "duplicate_tcp_bytes": 0,
+          "out_of_order_tcp_bytes": 1446564,
+          "smoothed_rtt_ms": 0,
+          "min_rtt_ms": 0
+        },
+        "mac": {
+          "status": "collected",
+          "path": "awdl0",
+          "duration_ms": 2309,
+          "sent_app_bytes": 67108876,
+          "received_app_bytes": 32,
+          "sent_tcp_bytes": 67116016,
+          "received_tcp_bytes": 32,
+          "retransmitted_tcp_bytes": 7140,
+          "duplicate_tcp_bytes": 0,
+          "out_of_order_tcp_bytes": 0,
+          "smoothed_rtt_ms": 18,
+          "min_rtt_ms": 8
+        }
+      },
+      "iphone": {
+        "seconds": 2.301614,
+        "MBps": 29.157306,
+        "sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+        "path": "awdl0",
+        "transfer_clock": {
+          "start_mono_ns": 538501976274000,
+          "end_mono_ns": 538504277888000,
+          "start_wall_ns": 1794306198032518000,
+          "end_wall_ns": 1794306200334179000
+        }
+      },
+      "mac": {
+        "seconds": 2.309688,
+        "MBps": 29.055381,
+        "sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+        "path": "awdl0",
+        "transfer_clock": {
+          "start_mono_ns": 166902355939000,
+          "end_mono_ns": 166904665627000,
+          "start_wall_ns": 1794306198259282000,
+          "end_wall_ns": 1794306200568970000
+        }
+      }
+    },
+    {
+      "sample": 2,
+      "mode": 1,
+      "bytes": 67108864,
+      "port": 55544,
+      "awdl_counter_deltas": {
+        "mac": {
+          "Ibytes": 71158026,
+          "Obytes": 134574,
+          "Ierrs": 0,
+          "Oerrs": 0
+        },
+        "iphone": {
+          "Ibytes": 112764,
+          "Obytes": 71154313,
+          "Ierrs": 0,
+          "Oerrs": 0
+        }
+      },
+      "status": "verified",
+      "iphone_exit": 0,
+      "listener_cancelled": true,
+      "tcp_report": {
+        "iphone": {
+          "status": "collected",
+          "path": "awdl0",
+          "duration_ms": 4350,
+          "sent_app_bytes": 67108864,
+          "received_app_bytes": 44,
+          "sent_tcp_bytes": 67110292,
+          "received_tcp_bytes": 32,
+          "retransmitted_tcp_bytes": 1428,
+          "duplicate_tcp_bytes": 0,
+          "out_of_order_tcp_bytes": 0,
+          "smoothed_rtt_ms": 7,
+          "min_rtt_ms": 5
+        },
+        "mac": {
+          "status": "collected",
+          "path": "awdl0",
+          "duration_ms": 4344,
+          "sent_app_bytes": 44,
+          "received_app_bytes": 67108864,
+          "sent_tcp_bytes": 44,
+          "received_tcp_bytes": 67110292,
+          "retransmitted_tcp_bytes": 0,
+          "duplicate_tcp_bytes": 1428,
+          "out_of_order_tcp_bytes": 0,
+          "smoothed_rtt_ms": 4,
+          "min_rtt_ms": 5
+        }
+      },
+      "iphone": {
+        "seconds": 4.349698,
+        "MBps": 15.428396,
+        "sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+        "path": "awdl0",
+        "transfer_clock": {
+          "start_mono_ns": 538506541954000,
+          "end_mono_ns": 538510891652000,
+          "start_wall_ns": 1794306202598243000,
+          "end_wall_ns": 1794306206947943000
+        }
+      },
+      "mac": {
+        "seconds": 4.344774,
+        "MBps": 15.445881,
+        "sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+        "path": "awdl0",
+        "transfer_clock": {
+          "start_mono_ns": 166906923419000,
+          "end_mono_ns": 166911268193000,
+          "start_wall_ns": 1794306202826762000,
+          "end_wall_ns": 1794306207171537000
+        }
+      }
+    }
+  ],
+  "probe_sha256": "8f28d7b0493de018d76be990dd9ffd558dda9a1d437ca93919e9a06970ae8baf",
+  "post_execution_probe_sha256_verified": true,
+  "temporary_device_directory_removed": true
+}

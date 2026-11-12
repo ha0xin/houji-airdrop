@@ -1,0 +1,8 @@
+schema=1 enabled=1 completed=36 valid=1 invalid=35 tries=36 amsdu=0 ldpc=0 ppdus=1 agg_ppdus=0 agg_mpdus=0 ast_overrides=1 remote_peer_compl=0
+bw=1,0,0,0,0,0,0,0
+mcs=0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0
+pkt=1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+gi=1,0,0,0
+status=1,0,35,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+tx_ring=36,0,0,0,0,0,0,0
+ppdu_bin=0,0,0,0,0,0

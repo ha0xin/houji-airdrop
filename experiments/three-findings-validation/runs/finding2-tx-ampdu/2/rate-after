@@ -1,0 +1,8 @@
+schema=1 enabled=1 completed=11958 valid=10617 invalid=1341 tries=14204 amsdu=0 ldpc=10613 ppdus=10617 agg_ppdus=0 agg_mpdus=0 ast_overrides=10700 remote_peer_compl=11958
+bw=4,0,10613,0,0,0,0,0
+mcs=0,0,0,4,0,0,0,0,0,10613,0,0,0,0,0,0
+pkt=4,0,0,10613,0,0,0,0,0,0,0,0,0,0,0,0
+gi=4,10613,0,0
+status=10617,0,1341,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+tx_ring=11958,0,0,0,0,0,0,0
+ppdu_bin=10616,0,0,0,0,0

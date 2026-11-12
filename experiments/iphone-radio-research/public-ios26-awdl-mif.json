@@ -1,0 +1,2470 @@
+{
+  "source_commit": "6f2e8ea99aed0687558d78a1dd49154ab3a5fa76",
+  "captures": [
+    {
+      "file": "discovery-ios26.x-mt7925e-ch44-1.pcap",
+      "sha256": "3116ffb0f2d23246ed0f11c2f76b9f3a94a8c316adca168670195d270cb38b0c",
+      "manifest_sha256": "50298c566aedb1b905f67dc6c91419617102414e763a62904a26cd159264f897",
+      "packet_counts": {
+        "records": 1229,
+        "truncated_records": 0,
+        "bad_fcs_records": 0,
+        "unparseable_radiotap": 0,
+        "incomplete_ba_actions": 0
+      },
+      "roles": {
+        "linux_local": [
+          {
+            "count": 476,
+            "channel_sequence": [
+              "0f030003ffff2c8000002c8000000000000000000000000000002c8000000000000000000000000000"
+            ],
+            "data_path_flags": [
+              "8f24"
+            ],
+            "data_path_lengths": [
+              15
+            ],
+            "ht": [
+              {
+                "ampdu_params": "1b",
+                "cap_hex": "11ce",
+                "max_amsdu": 3839,
+                "raw": "0000ce111bff0000",
+                "rx_mcs_mask": "ff",
+                "width_20_40": true
+              }
+            ],
+            "order": [
+              4,
+              5,
+              18,
+              24,
+              6,
+              7,
+              16,
+              12,
+              21
+            ],
+            "subtype": 3,
+            "vht_containers": []
+          },
+          {
+            "count": 277,
+            "channel_sequence": [
+              "0f030003ffff2c8000002c8000000000000000000000000000002c8000000000000000000000000000"
+            ],
+            "data_path_flags": [
+              "8f24"
+            ],
+            "data_path_lengths": [
+              15
+            ],
+            "ht": [],
+            "order": [
+              4,
+              5,
+              18,
+              24,
+              6,
+              12,
+              21
+            ],
+            "subtype": 0,
+            "vht_containers": []
+          },
+          {
+            "count": 43,
+            "channel_sequence": [
+              "0f030003ffff2c802c802c800000000000000000000000002c802c8000000000000000000000000000"
+            ],
+            "data_path_flags": [
+              "8f24"
+            ],
+            "data_path_lengths": [
+              15
+            ],
+            "ht": [
+              {
+                "ampdu_params": "1b",
+                "cap_hex": "11ce",
+                "max_amsdu": 3839,
+                "raw": "0000ce111bff0000",
+                "rx_mcs_mask": "ff",
+                "width_20_40": true
+              }
+            ],
+            "order": [
+              4,
+              5,
+              18,
+              24,
+              6,
+              7,
+              16,
+              12,
+              21
+            ],
+            "subtype": 3,
+            "vht_containers": []
+          },
+          {
+            "count": 26,
+            "channel_sequence": [
+              "0f030003ffff2c802c802c800000000000000000000000002c802c8000000000000000000000000000"
+            ],
+            "data_path_flags": [
+              "8f24"
+            ],
+            "data_path_lengths": [
+              15
+            ],
+            "ht": [],
+            "order": [
+              4,
+              5,
+              18,
+              24,
+              6,
+              12,
+              21
+            ],
+            "subtype": 0,
+            "vht_containers": []
+          }
+        ],
+        "ios_peer": [
+          {
+            "count": 279,
+            "channel_sequence": [
+              "0f030003ffff2c8000002c8000000000000000000000065100002c8000000000000000000000000000"
+            ],
+            "data_path_flags": [
+              "9f23"
+            ],
+            "data_path_lengths": [
+              47
+            ],
+            "ht": [
+              {
+                "ampdu_params": "1f",
+                "cap_hex": "006f",
+                "max_amsdu": 3839,
+                "raw": "00006f001fffff0000",
+                "rx_mcs_mask": "ffff",
+                "width_20_40": true
+              }
+            ],
+            "order": [
+              4,
+              5,
+              18,
+              6,
+              24,
+              12,
+              7,
+              17,
+              21
+            ],
+            "subtype": 0,
+            "vht_containers": [
+              {
+                "ie_ids": [
+                  191
+                ],
+                "vht": [
+                  {
+                    "cap_hex": "03800032",
+                    "max_ampdu_exponent": 7,
+                    "max_mpdu": 11454,
+                    "rx_highest_rate_raw": 0,
+                    "rx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "sgi80": true,
+                    "tx_highest_rate_raw": 0,
+                    "tx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "width_set": 0
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "count": 92,
+            "channel_sequence": [
+              "0f030003ffff2c8000002c8000000000000000000000065100002c8000000000000000000000000000"
+            ],
+            "data_path_flags": [
+              "9f23"
+            ],
+            "data_path_lengths": [
+              47
+            ],
+            "ht": [
+              {
+                "ampdu_params": "1f",
+                "cap_hex": "006f",
+                "max_amsdu": 3839,
+                "raw": "00006f001fffff0000",
+                "rx_mcs_mask": "ffff",
+                "width_20_40": true
+              }
+            ],
+            "order": [
+              4,
+              5,
+              18,
+              24,
+              12,
+              7,
+              17,
+              16,
+              21,
+              6,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2
+            ],
+            "subtype": 3,
+            "vht_containers": [
+              {
+                "ie_ids": [
+                  191
+                ],
+                "vht": [
+                  {
+                    "cap_hex": "03800032",
+                    "max_ampdu_exponent": 7,
+                    "max_mpdu": 11454,
+                    "rx_highest_rate_raw": 0,
+                    "rx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "sgi80": true,
+                    "tx_highest_rate_raw": 0,
+                    "tx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "width_set": 0
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "count": 17,
+            "channel_sequence": [
+              "0f030003ffff2c802c802c800000000000000000000006512c802c8000000000000000000000000000"
+            ],
+            "data_path_flags": [
+              "9f23"
+            ],
+            "data_path_lengths": [
+              47
+            ],
+            "ht": [
+              {
+                "ampdu_params": "1f",
+                "cap_hex": "006f",
+                "max_amsdu": 3839,
+                "raw": "00006f001fffff0000",
+                "rx_mcs_mask": "ffff",
+                "width_20_40": true
+              }
+            ],
+            "order": [
+              4,
+              5,
+              18,
+              6,
+              24,
+              12,
+              7,
+              17,
+              21
+            ],
+            "subtype": 0,
+            "vht_containers": [
+              {
+                "ie_ids": [
+                  191
+                ],
+                "vht": [
+                  {
+                    "cap_hex": "03800032",
+                    "max_ampdu_exponent": 7,
+                    "max_mpdu": 11454,
+                    "rx_highest_rate_raw": 0,
+                    "rx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "sgi80": true,
+                    "tx_highest_rate_raw": 0,
+                    "tx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "width_set": 0
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "count": 9,
+            "channel_sequence": [
+              "0f030003ffff2c802c802c800000000000000000000006512c802c8000000000000000000000000000"
+            ],
+            "data_path_flags": [
+              "9f23"
+            ],
+            "data_path_lengths": [
+              47
+            ],
+            "ht": [
+              {
+                "ampdu_params": "1f",
+                "cap_hex": "006f",
+                "max_amsdu": 3839,
+                "raw": "00006f001fffff0000",
+                "rx_mcs_mask": "ffff",
+                "width_20_40": true
+              }
+            ],
+            "order": [
+              4,
+              5,
+              18,
+              24,
+              12,
+              7,
+              17,
+              16,
+              21,
+              6,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2
+            ],
+            "subtype": 3,
+            "vht_containers": [
+              {
+                "ie_ids": [
+                  191
+                ],
+                "vht": [
+                  {
+                    "cap_hex": "03800032",
+                    "max_ampdu_exponent": 7,
+                    "max_mpdu": 11454,
+                    "rx_highest_rate_raw": 0,
+                    "rx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "sgi80": true,
+                    "tx_highest_rate_raw": 0,
+                    "tx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "width_set": 0
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "incomplete": [],
+      "ba_actions": [
+        {
+          "sender": "ios_peer",
+          "receiver": "other",
+          "action": 0,
+          "dialog_token": 60,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 7
+        },
+        {
+          "sender": "ios_peer",
+          "receiver": "other",
+          "action": 0,
+          "dialog_token": 58,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 1
+        },
+        {
+          "sender": "ios_peer",
+          "receiver": "other",
+          "action": 0,
+          "dialog_token": 59,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "file": "receive-ios26.x-mt7925e-ch44-1.pcap",
+      "sha256": "57975da9340c2f1475ec87f51a1ec07d03cbb486bb0d9f9b7914b885a707b8b8",
+      "manifest_sha256": "90cf9cec9428c0f4e9125e6eeb04526312522ff230fa320869dba11d6c486eb7",
+      "packet_counts": {
+        "records": 5413,
+        "truncated_records": 0,
+        "bad_fcs_records": 0,
+        "unparseable_radiotap": 0,
+        "incomplete_ba_actions": 0
+      },
+      "roles": {
+        "linux_local": [
+          {
+            "count": 431,
+            "channel_sequence": [
+              "0f030003ffff2c8000002c8000000000000000000000000000002c8000000000000000000000000000"
+            ],
+            "data_path_flags": [
+              "8f24"
+            ],
+            "data_path_lengths": [
+              15
+            ],
+            "ht": [
+              {
+                "ampdu_params": "1b",
+                "cap_hex": "11ce",
+                "max_amsdu": 3839,
+                "raw": "0000ce111bff0000",
+                "rx_mcs_mask": "ff",
+                "width_20_40": true
+              }
+            ],
+            "order": [
+              4,
+              5,
+              18,
+              24,
+              6,
+              7,
+              16,
+              12,
+              21
+            ],
+            "subtype": 3,
+            "vht_containers": []
+          },
+          {
+            "count": 252,
+            "channel_sequence": [
+              "0f030003ffff2c8000002c8000000000000000000000000000002c8000000000000000000000000000"
+            ],
+            "data_path_flags": [
+              "8f24"
+            ],
+            "data_path_lengths": [
+              15
+            ],
+            "ht": [],
+            "order": [
+              4,
+              5,
+              18,
+              24,
+              6,
+              12,
+              21
+            ],
+            "subtype": 0,
+            "vht_containers": []
+          },
+          {
+            "count": 122,
+            "channel_sequence": [
+              "0f030003ffff2c802c802c800000000000000000000000002c802c8000000000000000000000000000"
+            ],
+            "data_path_flags": [
+              "8f24"
+            ],
+            "data_path_lengths": [
+              15
+            ],
+            "ht": [
+              {
+                "ampdu_params": "1b",
+                "cap_hex": "11ce",
+                "max_amsdu": 3839,
+                "raw": "0000ce111bff0000",
+                "rx_mcs_mask": "ff",
+                "width_20_40": true
+              }
+            ],
+            "order": [
+              4,
+              5,
+              18,
+              24,
+              6,
+              7,
+              16,
+              12,
+              21
+            ],
+            "subtype": 3,
+            "vht_containers": []
+          },
+          {
+            "count": 77,
+            "channel_sequence": [
+              "0f030003ffff2c802c802c802c802c802c802c802c8000002c802c802c802c802c802c802c80000000"
+            ],
+            "data_path_flags": [
+              "8f24"
+            ],
+            "data_path_lengths": [
+              15
+            ],
+            "ht": [
+              {
+                "ampdu_params": "1b",
+                "cap_hex": "11ce",
+                "max_amsdu": 3839,
+                "raw": "0000ce111bff0000",
+                "rx_mcs_mask": "ff",
+                "width_20_40": true
+              }
+            ],
+            "order": [
+              4,
+              5,
+              18,
+              24,
+              6,
+              7,
+              16,
+              12,
+              21
+            ],
+            "subtype": 3,
+            "vht_containers": []
+          },
+          {
+            "count": 71,
+            "channel_sequence": [
+              "0f030003ffff2c802c802c800000000000000000000000002c802c8000000000000000000000000000"
+            ],
+            "data_path_flags": [
+              "8f24"
+            ],
+            "data_path_lengths": [
+              15
+            ],
+            "ht": [],
+            "order": [
+              4,
+              5,
+              18,
+              24,
+              6,
+              12,
+              21
+            ],
+            "subtype": 0,
+            "vht_containers": []
+          },
+          {
+            "count": 44,
+            "channel_sequence": [
+              "0f030003ffff2c802c802c802c802c802c802c802c8000002c802c802c802c802c802c802c80000000"
+            ],
+            "data_path_flags": [
+              "8f24"
+            ],
+            "data_path_lengths": [
+              15
+            ],
+            "ht": [],
+            "order": [
+              4,
+              5,
+              18,
+              24,
+              6,
+              12,
+              21
+            ],
+            "subtype": 0,
+            "vht_containers": []
+          }
+        ],
+        "ios_peer": [
+          {
+            "count": 251,
+            "channel_sequence": [
+              "0f030003ffff2c8000002c8000000000000000000000065100002c8000000000000000000000000000"
+            ],
+            "data_path_flags": [
+              "9f23"
+            ],
+            "data_path_lengths": [
+              47
+            ],
+            "ht": [
+              {
+                "ampdu_params": "1f",
+                "cap_hex": "006f",
+                "max_amsdu": 3839,
+                "raw": "00006f001fffff0000",
+                "rx_mcs_mask": "ffff",
+                "width_20_40": true
+              }
+            ],
+            "order": [
+              4,
+              5,
+              18,
+              6,
+              24,
+              12,
+              7,
+              17,
+              21
+            ],
+            "subtype": 0,
+            "vht_containers": [
+              {
+                "ie_ids": [
+                  191
+                ],
+                "vht": [
+                  {
+                    "cap_hex": "03800032",
+                    "max_ampdu_exponent": 7,
+                    "max_mpdu": 11454,
+                    "rx_highest_rate_raw": 0,
+                    "rx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "sgi80": true,
+                    "tx_highest_rate_raw": 0,
+                    "tx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "width_set": 0
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "count": 81,
+            "channel_sequence": [
+              "0f030003ffff2c8000002c8000000000000000000000065100002c8000000000000000000000000000"
+            ],
+            "data_path_flags": [
+              "9f23"
+            ],
+            "data_path_lengths": [
+              47
+            ],
+            "ht": [
+              {
+                "ampdu_params": "1f",
+                "cap_hex": "006f",
+                "max_amsdu": 3839,
+                "raw": "00006f001fffff0000",
+                "rx_mcs_mask": "ffff",
+                "width_20_40": true
+              }
+            ],
+            "order": [
+              4,
+              5,
+              18,
+              24,
+              12,
+              7,
+              17,
+              16,
+              21,
+              6,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2
+            ],
+            "subtype": 3,
+            "vht_containers": [
+              {
+                "ie_ids": [
+                  191
+                ],
+                "vht": [
+                  {
+                    "cap_hex": "03800032",
+                    "max_ampdu_exponent": 7,
+                    "max_mpdu": 11454,
+                    "rx_highest_rate_raw": 0,
+                    "rx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "sgi80": true,
+                    "tx_highest_rate_raw": 0,
+                    "tx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "width_set": 0
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "count": 75,
+            "channel_sequence": [
+              "0f030003ffff2c802c802c802c802c802c802c802c8006512c802c802c802c802c802c802c80000000"
+            ],
+            "data_path_flags": [
+              "9f23"
+            ],
+            "data_path_lengths": [
+              47
+            ],
+            "ht": [
+              {
+                "ampdu_params": "1f",
+                "cap_hex": "006f",
+                "max_amsdu": 3839,
+                "raw": "00006f001fffff0000",
+                "rx_mcs_mask": "ffff",
+                "width_20_40": true
+              }
+            ],
+            "order": [
+              4,
+              5,
+              18,
+              24,
+              12,
+              7,
+              17,
+              16,
+              21,
+              6,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2
+            ],
+            "subtype": 3,
+            "vht_containers": [
+              {
+                "ie_ids": [
+                  191
+                ],
+                "vht": [
+                  {
+                    "cap_hex": "03800032",
+                    "max_ampdu_exponent": 7,
+                    "max_mpdu": 11454,
+                    "rx_highest_rate_raw": 0,
+                    "rx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "sgi80": true,
+                    "tx_highest_rate_raw": 0,
+                    "tx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "width_set": 0
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "count": 61,
+            "channel_sequence": [
+              "0f030003ffff2c802c802c800000000000000000000006512c802c8000000000000000000000000000"
+            ],
+            "data_path_flags": [
+              "9f23"
+            ],
+            "data_path_lengths": [
+              47
+            ],
+            "ht": [
+              {
+                "ampdu_params": "1f",
+                "cap_hex": "006f",
+                "max_amsdu": 3839,
+                "raw": "00006f001fffff0000",
+                "rx_mcs_mask": "ffff",
+                "width_20_40": true
+              }
+            ],
+            "order": [
+              4,
+              5,
+              18,
+              6,
+              24,
+              12,
+              7,
+              17,
+              21
+            ],
+            "subtype": 0,
+            "vht_containers": [
+              {
+                "ie_ids": [
+                  191
+                ],
+                "vht": [
+                  {
+                    "cap_hex": "03800032",
+                    "max_ampdu_exponent": 7,
+                    "max_mpdu": 11454,
+                    "rx_highest_rate_raw": 0,
+                    "rx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "sgi80": true,
+                    "tx_highest_rate_raw": 0,
+                    "tx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "width_set": 0
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "count": 34,
+            "channel_sequence": [
+              "0f030003ffff2c802c802c800000000000000000000006512c802c8000000000000000000000000000"
+            ],
+            "data_path_flags": [
+              "9f23"
+            ],
+            "data_path_lengths": [
+              47
+            ],
+            "ht": [
+              {
+                "ampdu_params": "1f",
+                "cap_hex": "006f",
+                "max_amsdu": 3839,
+                "raw": "00006f001fffff0000",
+                "rx_mcs_mask": "ffff",
+                "width_20_40": true
+              }
+            ],
+            "order": [
+              4,
+              5,
+              18,
+              24,
+              12,
+              7,
+              17,
+              16,
+              21,
+              6,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2
+            ],
+            "subtype": 3,
+            "vht_containers": [
+              {
+                "ie_ids": [
+                  191
+                ],
+                "vht": [
+                  {
+                    "cap_hex": "03800032",
+                    "max_ampdu_exponent": 7,
+                    "max_mpdu": 11454,
+                    "rx_highest_rate_raw": 0,
+                    "rx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "sgi80": true,
+                    "tx_highest_rate_raw": 0,
+                    "tx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "width_set": 0
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "incomplete": [],
+      "ba_actions": [
+        {
+          "sender": "ios_peer",
+          "receiver": "linux_local",
+          "action": 0,
+          "dialog_token": 72,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 1
+        },
+        {
+          "sender": "ios_peer",
+          "receiver": "linux_local",
+          "action": 0,
+          "dialog_token": 73,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 1
+        },
+        {
+          "sender": "ios_peer",
+          "receiver": "linux_local",
+          "action": 0,
+          "dialog_token": 74,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 1
+        },
+        {
+          "sender": "ios_peer",
+          "receiver": "linux_local",
+          "action": 0,
+          "dialog_token": 75,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 1
+        },
+        {
+          "sender": "ios_peer",
+          "receiver": "linux_local",
+          "action": 0,
+          "dialog_token": 76,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 1
+        },
+        {
+          "sender": "ios_peer",
+          "receiver": "linux_local",
+          "action": 0,
+          "dialog_token": 77,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 1
+        },
+        {
+          "sender": "ios_peer",
+          "receiver": "linux_local",
+          "action": 0,
+          "dialog_token": 78,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 1
+        },
+        {
+          "sender": "ios_peer",
+          "receiver": "linux_local",
+          "action": 0,
+          "dialog_token": 79,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 1
+        },
+        {
+          "sender": "ios_peer",
+          "receiver": "linux_local",
+          "action": 0,
+          "dialog_token": 80,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 1
+        },
+        {
+          "sender": "ios_peer",
+          "receiver": "linux_local",
+          "action": 0,
+          "dialog_token": 81,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 1
+        },
+        {
+          "sender": "ios_peer",
+          "receiver": "linux_local",
+          "action": 0,
+          "dialog_token": 82,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 1
+        },
+        {
+          "sender": "ios_peer",
+          "receiver": "linux_local",
+          "action": 0,
+          "dialog_token": 83,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 1
+        },
+        {
+          "sender": "ios_peer",
+          "receiver": "linux_local",
+          "action": 0,
+          "dialog_token": 84,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 1
+        },
+        {
+          "sender": "ios_peer",
+          "receiver": "linux_local",
+          "action": 0,
+          "dialog_token": 85,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 1
+        },
+        {
+          "sender": "ios_peer",
+          "receiver": "linux_local",
+          "action": 0,
+          "dialog_token": 86,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 1
+        },
+        {
+          "sender": "ios_peer",
+          "receiver": "linux_local",
+          "action": 0,
+          "dialog_token": 87,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 1
+        },
+        {
+          "sender": "ios_peer",
+          "receiver": "linux_local",
+          "action": 0,
+          "dialog_token": 88,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 1
+        },
+        {
+          "sender": "ios_peer",
+          "receiver": "linux_local",
+          "action": 0,
+          "dialog_token": 89,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "file": "send-ios26.x-mt7925e-ch44-1.pcap",
+      "sha256": "d310d579644d1f3e8be0f71608500718665ff7db31e286fa673ddd0809fd2f55",
+      "manifest_sha256": "d157061f75b281295d816e5cb74f0496d5ccc785fcd1f847f01cdccba69e5026",
+      "packet_counts": {
+        "records": 2731,
+        "truncated_records": 0,
+        "bad_fcs_records": 0,
+        "unparseable_radiotap": 0,
+        "incomplete_ba_actions": 0
+      },
+      "roles": {
+        "linux_local": [
+          {
+            "count": 708,
+            "channel_sequence": [
+              "0f030003ffff2c802c802c8000000000000000002c8000002c802c802c800000000000002c80000000"
+            ],
+            "data_path_flags": [
+              "8f24"
+            ],
+            "data_path_lengths": [
+              15
+            ],
+            "ht": [
+              {
+                "ampdu_params": "1b",
+                "cap_hex": "11ce",
+                "max_amsdu": 3839,
+                "raw": "0000ce111bff0000",
+                "rx_mcs_mask": "ff",
+                "width_20_40": true
+              }
+            ],
+            "order": [
+              4,
+              5,
+              18,
+              24,
+              6,
+              7,
+              16,
+              12,
+              21
+            ],
+            "subtype": 3,
+            "vht_containers": []
+          },
+          {
+            "count": 413,
+            "channel_sequence": [
+              "0f030003ffff2c802c802c8000000000000000002c8000002c802c802c800000000000002c80000000"
+            ],
+            "data_path_flags": [
+              "8f24"
+            ],
+            "data_path_lengths": [
+              15
+            ],
+            "ht": [],
+            "order": [
+              4,
+              5,
+              18,
+              24,
+              6,
+              12,
+              21
+            ],
+            "subtype": 0,
+            "vht_containers": []
+          },
+          {
+            "count": 204,
+            "channel_sequence": [
+              "0f030003ffff2c8000002c8000000000000000000000000000002c8000000000000000000000000000"
+            ],
+            "data_path_flags": [
+              "8f24"
+            ],
+            "data_path_lengths": [
+              15
+            ],
+            "ht": [
+              {
+                "ampdu_params": "1b",
+                "cap_hex": "11ce",
+                "max_amsdu": 3839,
+                "raw": "0000ce111bff0000",
+                "rx_mcs_mask": "ff",
+                "width_20_40": true
+              }
+            ],
+            "order": [
+              4,
+              5,
+              18,
+              24,
+              6,
+              7,
+              16,
+              12,
+              21
+            ],
+            "subtype": 3,
+            "vht_containers": []
+          },
+          {
+            "count": 118,
+            "channel_sequence": [
+              "0f030003ffff2c8000002c8000000000000000000000000000002c8000000000000000000000000000"
+            ],
+            "data_path_flags": [
+              "8f24"
+            ],
+            "data_path_lengths": [
+              15
+            ],
+            "ht": [],
+            "order": [
+              4,
+              5,
+              18,
+              24,
+              6,
+              12,
+              21
+            ],
+            "subtype": 0,
+            "vht_containers": []
+          },
+          {
+            "count": 60,
+            "channel_sequence": [
+              "0f030003ffff2c802c802c802c802c802c802c802c8000002c802c802c802c802c802c802c80000000"
+            ],
+            "data_path_flags": [
+              "8f24"
+            ],
+            "data_path_lengths": [
+              15
+            ],
+            "ht": [
+              {
+                "ampdu_params": "1b",
+                "cap_hex": "11ce",
+                "max_amsdu": 3839,
+                "raw": "0000ce111bff0000",
+                "rx_mcs_mask": "ff",
+                "width_20_40": true
+              }
+            ],
+            "order": [
+              4,
+              5,
+              18,
+              24,
+              6,
+              7,
+              16,
+              12,
+              21
+            ],
+            "subtype": 3,
+            "vht_containers": []
+          },
+          {
+            "count": 35,
+            "channel_sequence": [
+              "0f030003ffff2c802c802c802c802c802c802c802c8000002c802c802c802c802c802c802c80000000"
+            ],
+            "data_path_flags": [
+              "8f24"
+            ],
+            "data_path_lengths": [
+              15
+            ],
+            "ht": [],
+            "order": [
+              4,
+              5,
+              18,
+              24,
+              6,
+              12,
+              21
+            ],
+            "subtype": 0,
+            "vht_containers": []
+          },
+          {
+            "count": 31,
+            "channel_sequence": [
+              "0f030003ffff2c802c802c800000000000000000000000002c802c8000000000000000000000000000"
+            ],
+            "data_path_flags": [
+              "8f24"
+            ],
+            "data_path_lengths": [
+              15
+            ],
+            "ht": [
+              {
+                "ampdu_params": "1b",
+                "cap_hex": "11ce",
+                "max_amsdu": 3839,
+                "raw": "0000ce111bff0000",
+                "rx_mcs_mask": "ff",
+                "width_20_40": true
+              }
+            ],
+            "order": [
+              4,
+              5,
+              18,
+              24,
+              6,
+              7,
+              16,
+              12,
+              21
+            ],
+            "subtype": 3,
+            "vht_containers": []
+          },
+          {
+            "count": 18,
+            "channel_sequence": [
+              "0f030003ffff2c802c802c800000000000000000000000002c802c8000000000000000000000000000"
+            ],
+            "data_path_flags": [
+              "8f24"
+            ],
+            "data_path_lengths": [
+              15
+            ],
+            "ht": [],
+            "order": [
+              4,
+              5,
+              18,
+              24,
+              6,
+              12,
+              21
+            ],
+            "subtype": 0,
+            "vht_containers": []
+          },
+          {
+            "count": 16,
+            "channel_sequence": [
+              "0f030003ffff2c8000002c80000000002c802c802c80000000002c80000000002c802c802c80000000"
+            ],
+            "data_path_flags": [
+              "8f24"
+            ],
+            "data_path_lengths": [
+              15
+            ],
+            "ht": [
+              {
+                "ampdu_params": "1b",
+                "cap_hex": "11ce",
+                "max_amsdu": 3839,
+                "raw": "0000ce111bff0000",
+                "rx_mcs_mask": "ff",
+                "width_20_40": true
+              }
+            ],
+            "order": [
+              4,
+              5,
+              18,
+              24,
+              6,
+              7,
+              16,
+              12,
+              21
+            ],
+            "subtype": 3,
+            "vht_containers": []
+          },
+          {
+            "count": 9,
+            "channel_sequence": [
+              "0f030003ffff2c8000002c80000000002c802c802c80000000002c80000000002c802c802c80000000"
+            ],
+            "data_path_flags": [
+              "8f24"
+            ],
+            "data_path_lengths": [
+              15
+            ],
+            "ht": [],
+            "order": [
+              4,
+              5,
+              18,
+              24,
+              6,
+              12,
+              21
+            ],
+            "subtype": 0,
+            "vht_containers": []
+          }
+        ],
+        "ios_peer": [
+          {
+            "count": 293,
+            "channel_sequence": [
+              "0f030003ffff2c802c802c8000000000000000002c8006512c802c802c800000000000002c80000000"
+            ],
+            "data_path_flags": [
+              "9f23"
+            ],
+            "data_path_lengths": [
+              47
+            ],
+            "ht": [
+              {
+                "ampdu_params": "1f",
+                "cap_hex": "006f",
+                "max_amsdu": 3839,
+                "raw": "00006f001fffff0000",
+                "rx_mcs_mask": "ffff",
+                "width_20_40": true
+              }
+            ],
+            "order": [
+              4,
+              5,
+              18,
+              24,
+              12,
+              7,
+              17,
+              16,
+              21,
+              6,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2
+            ],
+            "subtype": 3,
+            "vht_containers": [
+              {
+                "ie_ids": [
+                  191
+                ],
+                "vht": [
+                  {
+                    "cap_hex": "03800032",
+                    "max_ampdu_exponent": 7,
+                    "max_mpdu": 11454,
+                    "rx_highest_rate_raw": 0,
+                    "rx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "sgi80": true,
+                    "tx_highest_rate_raw": 0,
+                    "tx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "width_set": 0
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "count": 77,
+            "channel_sequence": [
+              "0f030003ffff2c8000002c8000000000000000000000065100002c8000000000000000000000000000"
+            ],
+            "data_path_flags": [
+              "9f23"
+            ],
+            "data_path_lengths": [
+              47
+            ],
+            "ht": [
+              {
+                "ampdu_params": "1f",
+                "cap_hex": "006f",
+                "max_amsdu": 3839,
+                "raw": "00006f001fffff0000",
+                "rx_mcs_mask": "ffff",
+                "width_20_40": true
+              }
+            ],
+            "order": [
+              4,
+              5,
+              18,
+              6,
+              24,
+              12,
+              7,
+              17,
+              21
+            ],
+            "subtype": 0,
+            "vht_containers": [
+              {
+                "ie_ids": [
+                  191
+                ],
+                "vht": [
+                  {
+                    "cap_hex": "03800032",
+                    "max_ampdu_exponent": 7,
+                    "max_mpdu": 11454,
+                    "rx_highest_rate_raw": 0,
+                    "rx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "sgi80": true,
+                    "tx_highest_rate_raw": 0,
+                    "tx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "width_set": 0
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "count": 66,
+            "channel_sequence": [
+              "0f030003ffff2c802c802c8000000000000000002c8006512c802c802c800000000000002c80000000"
+            ],
+            "data_path_flags": [
+              "9f23"
+            ],
+            "data_path_lengths": [
+              47
+            ],
+            "ht": [
+              {
+                "ampdu_params": "1f",
+                "cap_hex": "006f",
+                "max_amsdu": 3839,
+                "raw": "00006f001fffff0000",
+                "rx_mcs_mask": "ffff",
+                "width_20_40": true
+              }
+            ],
+            "order": [
+              4,
+              5,
+              18,
+              24,
+              12,
+              7,
+              17,
+              16,
+              21,
+              6,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2
+            ],
+            "subtype": 3,
+            "vht_containers": [
+              {
+                "ie_ids": [
+                  191
+                ],
+                "vht": [
+                  {
+                    "cap_hex": "03800032",
+                    "max_ampdu_exponent": 7,
+                    "max_mpdu": 11454,
+                    "rx_highest_rate_raw": 0,
+                    "rx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "sgi80": true,
+                    "tx_highest_rate_raw": 0,
+                    "tx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "width_set": 0
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "count": 58,
+            "channel_sequence": [
+              "0f030003ffff2c802c802c802c802c802c802c802c8006512c802c802c802c802c802c802c80000000"
+            ],
+            "data_path_flags": [
+              "9f23"
+            ],
+            "data_path_lengths": [
+              47
+            ],
+            "ht": [
+              {
+                "ampdu_params": "1f",
+                "cap_hex": "006f",
+                "max_amsdu": 3839,
+                "raw": "00006f001fffff0000",
+                "rx_mcs_mask": "ffff",
+                "width_20_40": true
+              }
+            ],
+            "order": [
+              4,
+              5,
+              18,
+              24,
+              12,
+              7,
+              17,
+              16,
+              21,
+              6,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2
+            ],
+            "subtype": 3,
+            "vht_containers": [
+              {
+                "ie_ids": [
+                  191
+                ],
+                "vht": [
+                  {
+                    "cap_hex": "03800032",
+                    "max_ampdu_exponent": 7,
+                    "max_mpdu": 11454,
+                    "rx_highest_rate_raw": 0,
+                    "rx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "sgi80": true,
+                    "tx_highest_rate_raw": 0,
+                    "tx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "width_set": 0
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "count": 25,
+            "channel_sequence": [
+              "0f030003ffff2c8000002c8000000000000000000000065100002c8000000000000000000000000000"
+            ],
+            "data_path_flags": [
+              "9f23"
+            ],
+            "data_path_lengths": [
+              47
+            ],
+            "ht": [
+              {
+                "ampdu_params": "1f",
+                "cap_hex": "006f",
+                "max_amsdu": 3839,
+                "raw": "00006f001fffff0000",
+                "rx_mcs_mask": "ffff",
+                "width_20_40": true
+              }
+            ],
+            "order": [
+              4,
+              5,
+              18,
+              24,
+              12,
+              7,
+              17,
+              16,
+              21,
+              6,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2
+            ],
+            "subtype": 3,
+            "vht_containers": [
+              {
+                "ie_ids": [
+                  191
+                ],
+                "vht": [
+                  {
+                    "cap_hex": "03800032",
+                    "max_ampdu_exponent": 7,
+                    "max_mpdu": 11454,
+                    "rx_highest_rate_raw": 0,
+                    "rx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "sgi80": true,
+                    "tx_highest_rate_raw": 0,
+                    "tx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "width_set": 0
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "count": 20,
+            "channel_sequence": [
+              "0f030003ffff2c802c802c800000000000000000000006512c802c8000000000000000000000000000"
+            ],
+            "data_path_flags": [
+              "9f23"
+            ],
+            "data_path_lengths": [
+              47
+            ],
+            "ht": [
+              {
+                "ampdu_params": "1f",
+                "cap_hex": "006f",
+                "max_amsdu": 3839,
+                "raw": "00006f001fffff0000",
+                "rx_mcs_mask": "ffff",
+                "width_20_40": true
+              }
+            ],
+            "order": [
+              4,
+              5,
+              18,
+              6,
+              24,
+              12,
+              7,
+              17,
+              21
+            ],
+            "subtype": 0,
+            "vht_containers": [
+              {
+                "ie_ids": [
+                  191
+                ],
+                "vht": [
+                  {
+                    "cap_hex": "03800032",
+                    "max_ampdu_exponent": 7,
+                    "max_mpdu": 11454,
+                    "rx_highest_rate_raw": 0,
+                    "rx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "sgi80": true,
+                    "tx_highest_rate_raw": 0,
+                    "tx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "width_set": 0
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "count": 12,
+            "channel_sequence": [
+              "0f030003ffff2c802c802c800000000000000000000006512c802c8000000000000000000000000000"
+            ],
+            "data_path_flags": [
+              "9f23"
+            ],
+            "data_path_lengths": [
+              47
+            ],
+            "ht": [
+              {
+                "ampdu_params": "1f",
+                "cap_hex": "006f",
+                "max_amsdu": 3839,
+                "raw": "00006f001fffff0000",
+                "rx_mcs_mask": "ffff",
+                "width_20_40": true
+              }
+            ],
+            "order": [
+              4,
+              5,
+              18,
+              24,
+              12,
+              7,
+              17,
+              16,
+              21,
+              6,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2
+            ],
+            "subtype": 3,
+            "vht_containers": [
+              {
+                "ie_ids": [
+                  191
+                ],
+                "vht": [
+                  {
+                    "cap_hex": "03800032",
+                    "max_ampdu_exponent": 7,
+                    "max_mpdu": 11454,
+                    "rx_highest_rate_raw": 0,
+                    "rx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "sgi80": true,
+                    "tx_highest_rate_raw": 0,
+                    "tx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "width_set": 0
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "count": 6,
+            "channel_sequence": [
+              "0f030003ffff2c8000002c8000000000000000000000065100002c8000000000000000000000000000"
+            ],
+            "data_path_flags": [
+              "bf23"
+            ],
+            "data_path_lengths": [
+              47
+            ],
+            "ht": [
+              {
+                "ampdu_params": "1f",
+                "cap_hex": "006f",
+                "max_amsdu": 3839,
+                "raw": "00006f001fffff0000",
+                "rx_mcs_mask": "ffff",
+                "width_20_40": true
+              }
+            ],
+            "order": [
+              4,
+              5,
+              18,
+              24,
+              12,
+              7,
+              17,
+              16,
+              21,
+              6,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2
+            ],
+            "subtype": 3,
+            "vht_containers": [
+              {
+                "ie_ids": [
+                  191
+                ],
+                "vht": [
+                  {
+                    "cap_hex": "03800032",
+                    "max_ampdu_exponent": 7,
+                    "max_mpdu": 11454,
+                    "rx_highest_rate_raw": 0,
+                    "rx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "sgi80": true,
+                    "tx_highest_rate_raw": 0,
+                    "tx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "width_set": 0
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "count": 6,
+            "channel_sequence": [
+              "0f030003ffff2c8000002c8000000000000000000000065100002c8000000000000000000000000000"
+            ],
+            "data_path_flags": [
+              "bf23"
+            ],
+            "data_path_lengths": [
+              47
+            ],
+            "ht": [
+              {
+                "ampdu_params": "1f",
+                "cap_hex": "006f",
+                "max_amsdu": 3839,
+                "raw": "00006f001fffff0000",
+                "rx_mcs_mask": "ffff",
+                "width_20_40": true
+              }
+            ],
+            "order": [
+              4,
+              5,
+              18,
+              24,
+              12,
+              7,
+              17,
+              16,
+              21,
+              6,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2
+            ],
+            "subtype": 3,
+            "vht_containers": [
+              {
+                "ie_ids": [
+                  191
+                ],
+                "vht": [
+                  {
+                    "cap_hex": "03800032",
+                    "max_ampdu_exponent": 7,
+                    "max_mpdu": 11454,
+                    "rx_highest_rate_raw": 0,
+                    "rx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "sgi80": true,
+                    "tx_highest_rate_raw": 0,
+                    "tx_mcs": [
+                      "0-9",
+                      "0-9",
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null
+                    ],
+                    "width_set": 0
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "incomplete": [],
+      "ba_actions": [
+        {
+          "sender": "ios_peer",
+          "receiver": "linux_local",
+          "action": 0,
+          "dialog_token": 90,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 1
+        },
+        {
+          "sender": "ios_peer",
+          "receiver": "linux_local",
+          "action": 0,
+          "dialog_token": 91,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 1
+        },
+        {
+          "sender": "ios_peer",
+          "receiver": "linux_local",
+          "action": 0,
+          "dialog_token": 92,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 1
+        },
+        {
+          "sender": "ios_peer",
+          "receiver": "linux_local",
+          "action": 0,
+          "dialog_token": 93,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 1
+        },
+        {
+          "sender": "ios_peer",
+          "receiver": "linux_local",
+          "action": 0,
+          "dialog_token": 94,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 1
+        },
+        {
+          "sender": "ios_peer",
+          "receiver": "linux_local",
+          "action": 0,
+          "dialog_token": 95,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 1
+        },
+        {
+          "sender": "ios_peer",
+          "receiver": "linux_local",
+          "action": 0,
+          "dialog_token": 96,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 1
+        },
+        {
+          "sender": "ios_peer",
+          "receiver": "linux_local",
+          "action": 0,
+          "dialog_token": 97,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 1
+        },
+        {
+          "sender": "ios_peer",
+          "receiver": "linux_local",
+          "action": 0,
+          "dialog_token": 98,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 1
+        },
+        {
+          "sender": "ios_peer",
+          "receiver": "linux_local",
+          "action": 0,
+          "dialog_token": 99,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 1
+        },
+        {
+          "sender": "ios_peer",
+          "receiver": "linux_local",
+          "action": 0,
+          "dialog_token": 100,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 1
+        },
+        {
+          "sender": "ios_peer",
+          "receiver": "linux_local",
+          "action": 0,
+          "dialog_token": 101,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 1
+        },
+        {
+          "sender": "ios_peer",
+          "receiver": "linux_local",
+          "action": 0,
+          "dialog_token": 102,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 1
+        },
+        {
+          "sender": "ios_peer",
+          "receiver": "linux_local",
+          "action": 0,
+          "dialog_token": 103,
+          "tid": 0,
+          "status_or_reason": null,
+          "window": 64,
+          "amsdu": true,
+          "immediate": true,
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

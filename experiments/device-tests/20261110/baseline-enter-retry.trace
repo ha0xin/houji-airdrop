@@ -1,0 +1,105 @@
++ set -eu
++ D=/data/local/tmp/houji-buildtest-20261110/state 
++ R=/data/local/tmp/houji-buildtest-20261110/baseline 
++ X=/data/local/tmp/xos 
++ BB=/data/adb/ksu/bin/busybox 
++ W=/sys/module/qca_cld3_kiwi_v2 
++ AMSS=/vendor/firmware_mnt/image/kiwi/amss20.bin 
++ STOCK=/vendor_dlkm/lib/modules/qca_cld3_kiwi_v2.ko 
++ PCI=/sys/bus/pci/devices/0000:01:00.0/power/control 
++ ORIG=4db7b0e1aa7e4ec071708359c9d0db8d3d7872390cd8e88ffa0bbb30d560bcc8 
++ CANDIDATE=13f01cb46efbe498c854352bfc253fa3665c14a14c37a0a6ed6a609a48a8709c 
++ NOTE=a3e9bd62646444e1ecbe0f421c95ec46e6caf69a78323efb2f6ebe00e6b2bd8b 
++ readlink /proc/self/ns/mnt
++ readlink /proc/1/ns/mnt
++ test 'mnt:[4026532656]' '=' 'mnt:[4026532656]'
++ enter
++ test -e /sys/module/qca_cld3_kiwi_v2/parameters/pt_exclusive
++ uname -r
++ test 6.1.138-android14-11-g0c3d559bcd85-ab14529422 '=' 6.1.138-android14-11-g0c3d559bcd85-ab14529422
++ test ! -e /sys/module/houji_wonder_bridge
++ check 13f01cb46efbe498c854352bfc253fa3665c14a14c37a0a6ed6a609a48a8709c /data/local/tmp/houji-buildtest-20261110/baseline/amss20.bin
++ echo '13f01cb46efbe498c854352bfc253fa3665c14a14c37a0a6ed6a609a48a8709c  /data/local/tmp/houji-buildtest-20261110/baseline/amss20.bin'
++ sha256sum -c -
+/data/local/tmp/houji-buildtest-20261110/baseline/amss20.bin: OK
++ snapshot
++ test ! -f /data/local/tmp/houji-buildtest-20261110/state/saved.env
++ check 4db7b0e1aa7e4ec071708359c9d0db8d3d7872390cd8e88ffa0bbb30d560bcc8 /vendor/firmware_mnt/image/kiwi/amss20.bin
++ echo '4db7b0e1aa7e4ec071708359c9d0db8d3d7872390cd8e88ffa0bbb30d560bcc8  /vendor/firmware_mnt/image/kiwi/amss20.bin'
++ sha256sum -c -
+/vendor/firmware_mnt/image/kiwi/amss20.bin: OK
++ check a3e9bd62646444e1ecbe0f421c95ec46e6caf69a78323efb2f6ebe00e6b2bd8b /sys/module/qca_cld3_kiwi_v2/notes/.note.gnu.build-id
++ echo 'a3e9bd62646444e1ecbe0f421c95ec46e6caf69a78323efb2f6ebe00e6b2bd8b  /sys/module/qca_cld3_kiwi_v2/notes/.note.gnu.build-id'
++ sha256sum -c -
+/sys/module/qca_cld3_kiwi_v2/notes/.note.gnu.build-id: OK
++ settings get global wifi_on
++ wifi=1 
++ settings get global wifi_scan_always_enabled
++ scan=0 
++ getprop init.svc.vendor.cnd
++ cnd=running 
++ getprop init.svc.vendor.wifi_hal_legacy
++ hal=running 
++ cat /sys/bus/pci/devices/0000:01:00.0/power/control
++ pci=auto 
++ umask 077
++ >/data/local/tmp/houji-buildtest-20261110/state/saved.env 
++ printf 'saved_wifi=%s\nsaved_scan=%s\nsaved_cnd=%s\nsaved_hal=%s\nsaved_pci=%s\n' 1 0 running running auto
++ cat /proc/sys/kernel/random/boot_id
++ >>/data/local/tmp/houji-buildtest-20261110/state/saved.env 
++ printf 'saved_boot=%s\n' 6cb7276f-5b7d-4aa3-a65b-f470b43f5008
+RADIO_STATE=ENTERING
++ setstate ENTERING
++ >/data/local/tmp/houji-buildtest-20261110/state/status 
++ echo ENTERING
++ echo 'RADIO_STATE=ENTERING'
++ setprop sys.xos.exclusive 1
++ trap 'rc=$?; trap - EXIT; if test "$rc" != 0; then echo "ENTER_FAILED=$rc"; restore || setstate RESTORE_FAILED; fi; exit "$rc"' EXIT
++ stop vendor.cnd
++ cmd wifi set-scan-always-available disabled
++ cmd wifi set-wifi-enabled disabled
++ stop vendor.wifi_hal_legacy
++ sleep 3
++ getprop init.svc.vendor.cnd
++ getprop init.svc.vendor.wifi_hal_legacy
++ test stopped:stopped '=' stopped:stopped
++ cat /sys/module/qca_cld3_kiwi_v2/refcnt
++ test 0 '=' 0
++ ls -A /sys/module/qca_cld3_kiwi_v2/holders
++ test -z ''
++ bounded rmmod qca_cld3_kiwi_v2
++ /data/adb/ksu/bin/busybox timeout -s TERM -k 2 25 rmmod qca_cld3_kiwi_v2
++ test ! -e /dev/wlan
++ mount --bind /data/local/tmp/houji-buildtest-20261110/baseline/amss20.bin /vendor/firmware_mnt/image/kiwi/amss20.bin
++ /data/adb/ksu/bin/busybox mount -i -o remount,bind,ro,nosuid,relatime /data/local/tmp/houji-buildtest-20261110/baseline/amss20.bin /vendor/firmware_mnt/image/kiwi/amss20.bin
++ insmod /data/local/tmp/houji-buildtest-20261110/baseline/houji_wonder_bridge.ko
++ bounded insmod /data/local/tmp/houji-buildtest-20261110/baseline/qca_cld3_kiwi_v2.ko 'pt_exclusive=1' 'pt_zero_serial=1' 'pt_rx_metadata=1'
++ /data/adb/ksu/bin/busybox timeout -s TERM -k 2 25 insmod /data/local/tmp/houji-buildtest-20261110/baseline/qca_cld3_kiwi_v2.ko 'pt_exclusive=1' 'pt_zero_serial=1' 'pt_rx_metadata=1'
++ sleep 2
++ >/sys/bus/pci/devices/0000:01:00.0/power/control 
++ echo on
++ >/sys/module/qca_cld3_kiwi_v2/parameters/pt_activate 
++ echo 1
++ insmod /data/local/tmp/houji-buildtest-20261110/baseline/wonder.ko 'synthetic_provider=1'
++ start_xos
++ >/data/local/tmp/houji-buildtest-20261110/state/xos.pid 
++ </dev/null 
++ echo 29656
++ >>/data/local/tmp/houji-buildtest-20261110/state/xos.log 
++ 2>&1 
++ /data/adb/ksu/bin/busybox setsid env 'LD_LIBRARY_PATH=/data/local/tmp/xos' /data/local/tmp/xos/xos_runner 6
++ grep -q fe80:
++ 2>/dev/null 
++ ip -6 -o addr show dev xos0 scope link
++ sleep 1
++ 2>/dev/null 
++ ip -6 -o addr show dev xos0 scope link
++ grep -q fe80:
+RADIO_STATE=XOS_READY
++ setstate XOS_READY
++ >/data/local/tmp/houji-buildtest-20261110/state/status 
++ echo XOS_READY
++ echo 'RADIO_STATE=XOS_READY'
++ setprop sys.xos.exclusive 1
++ return
++ trap - EXIT

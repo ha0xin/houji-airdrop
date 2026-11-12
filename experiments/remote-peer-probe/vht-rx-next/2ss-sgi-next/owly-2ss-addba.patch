@@ -1,0 +1,496 @@
+--- a/crates/owly-awdl/src/driver.rs	2026-11-03 12:19:24.000000000 +0000
++++ b/crates/owly-awdl/src/driver.rs	2026-11-10 17:41:33.163697003 +0000
+@@ -379,7 +379,7 @@
+         let s = self.node.stats();
+         let l = &self.lateness;
+         tracing::info!(
+-            "STATS tx_action {} tx_unicast {} tx_multicast {} tx_amsdu {} | radio full {} gave up {} | rx_action {} rx_data {} rx_malformed {} delivered {} | dropped no_peer {} queue {} expired {} | syn held {} released {} | no_overlap {} | timer late avg {} µs max {} µs",
++            "STATS tx_action {} tx_unicast {} tx_multicast {} tx_amsdu {} | radio full {} gave up {} | rx_action {} rx_data {} rx_malformed {} rx_dup {} delivered {} | addba req {} resp {} | dropped no_peer {} queue {} expired {} | syn held {} released {} | no_overlap {} | timer late avg {} µs max {} µs",
+             s.tx_action,
+             s.tx_unicast,
+             s.tx_multicast,
+@@ -389,7 +389,10 @@
+             s.rx_action,
+             s.rx_data,
+             s.rx_malformed,
++            s.rx_dup_dropped,
+             s.delivered,
++            s.rx_addba_req,
++            s.tx_addba_resp,
+             s.dropped_no_peer,
+             s.dropped_queue_full,
+             s.dropped_expired,
+@@ -415,7 +418,10 @@
+         };
+         tokio::select! {
+             biased;
+-            _ = d.stopped.changed() => return Ok(()),
++            _ = d.stopped.changed() => {
++                d.log_stats();
++                return Ok(());
++            }
+             r = d.air.recv() => match r {
+                 Ok(rx) => {
+                     let now = d.now();
+--- a/crates/owly-awdl/src/frame.rs	2026-11-03 12:19:24.000000000 +0000
++++ b/crates/owly-awdl/src/frame.rs	2026-11-10 17:41:33.167697031 +0000
+@@ -358,11 +358,25 @@
+     requested: u16,
+     timeout: u16,
+ ) -> Vec<u8> {
++    addba_response_with_amsdu(src, dst, seq, token, requested, timeout, false)
++}
++
++/// Like [], optionally preserving the peer's A-MSDU-in-A-MPDU bit (bit 0).
++pub fn addba_response_with_amsdu(
++    src: MacAddr,
++    dst: MacAddr,
++    seq: u16,
++    token: u8,
++    requested: u16,
++    timeout: u16,
++    allow_amsdu: bool,
++) -> Vec<u8> {
+     let mut window = (requested >> 6) & 0x3ff;
+     if window == 0 || window > 64 {
+         window = 64;
+     }
+-    let params = (requested & 0x003c) | 0x0002 | (window << 6);
++    let amsdu_bit = if allow_amsdu { requested & 0x0001 } else { 0 };
++    let params = amsdu_bit | (requested & 0x003c) | 0x0002 | (window << 6);
+     let mut out = Vec::with_capacity(HEADER_LEN + 9);
+     put_header(&mut out, fc::ACTION, dst, src, seq);
+     out.u8(CATEGORY_BLOCK_ACK);
+--- a/crates/owly-awdl/src/lib.rs	2026-11-03 12:19:24.000000000 +0000
++++ b/crates/owly-awdl/src/lib.rs	2026-11-10 17:41:33.163697003 +0000
+@@ -55,6 +55,7 @@
+ };
+ pub use peer::PeerInfo;
+ pub use rate::TxRate;
++pub use tlv::VhtProfile;
+ 
+ /// A monotonic count of microseconds from an epoch the caller picks.
+ #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+--- a/crates/owly-awdl/src/node.rs	2026-11-10 17:41:33.143696859 +0000
++++ b/crates/owly-awdl/src/node.rs	2026-11-10 17:41:33.167697031 +0000
+@@ -19,7 +19,7 @@
+ use crate::peer::{Peer, PeerInfo};
+ use crate::rate::TxRate;
+ use crate::sync::{Clock, MULTICAST_GUARD_US, SLOT_US, UNICAST_GUARD_US};
+-use crate::tlv::{self, Advert, HtCapabilities, Own};
++use crate::tlv::{self, Advert, HtCapabilities, Own, VhtProfile};
+ use crate::{MacAddr, TU, Time};
+ 
+ /// What a node is given.
+@@ -109,8 +109,12 @@
+     pub no_ack: bool,
+     /// Accept a peer's Block Ack session (AWDL-15).
+     pub accept_addba: bool,
++    /// Preserve A-MSDU support (bit 0) in ADDBA responses when  is enabled.
++    pub accept_addba_amsdu: bool,
+     /// Advertise 80 MHz VHT with one spatial stream and the 3895-byte MPDU limit.
+     pub advertise_vht80_1ss: bool,
++    /// Explicit VHT container advertisement profile (overrides `advertise_vht80_1ss` when non-`Off`).
++    pub vht_profile: VhtProfile,
+     /// Send unicast packets to one peer as A-MSDUs, up to the peer's limit.
+     pub amsdu: bool,
+     /// The largest frame the radio takes, MAC header included.
+@@ -135,7 +139,9 @@
+             rate: TxRate::BASIC,
+             no_ack,
+             accept_addba: false,
++            accept_addba_amsdu: false,
+             advertise_vht80_1ss: false,
++            vht_profile: VhtProfile::Off,
+             amsdu: false,
+             max_frame: 2304,
+             rssi_threshold: Some(-65),
+@@ -163,6 +169,9 @@
+     pub syn_released: u64,
+     pub no_overlap: u64,
+     pub peers_evicted: u64,
++    pub rx_addba_req: u64,
++    pub tx_addba_resp: u64,
++    pub rx_dup_dropped: u64,
+ }
+ 
+ /// Announced in the Version TLV: macOS, as legacy announced.
+@@ -375,28 +384,45 @@
+                 token,
+                 params,
+                 timeout,
+-            } if self.cfg.accept_addba
+-                && header.dst == self.cfg.addr
+-                && self.peers.contains_key(&header.src) =>
+-            {
+-                let seq = self.next_seq();
+-                let bytes =
+-                    frame::addba_response(self.cfg.addr, header.src, seq, token, params, timeout);
+-                out.push(Action::Transmit {
+-                    at: now,
+-                    frame: Frame {
+-                        bytes,
+-                        to: header.src,
+-                        rate: TxRate::BASIC,
+-                        no_ack: false,
+-                    },
+-                });
++            } if header.dst == self.cfg.addr && self.peers.contains_key(&header.src) => {
++                self.stats.rx_addba_req += 1;
++                if self.cfg.accept_addba {
++                    let seq = self.next_seq();
++                    let bytes = frame::addba_response_with_amsdu(
++                        self.cfg.addr,
++                        header.src,
++                        seq,
++                        token,
++                        params,
++                        timeout,
++                        self.cfg.accept_addba_amsdu,
++                    );
++                    self.stats.tx_addba_resp += 1;
++                    out.push(Action::Transmit {
++                        at: now,
++                        frame: Frame {
++                            bytes,
++                            to: header.src,
++                            rate: TxRate::BASIC,
++                            no_ack: false,
++                        },
++                    });
++                }
+             }
+             Received::Data {
+                 header,
+                 amsdu,
+                 body,
+-            } if header.src != self.cfg.addr => self.rx_data(now, &header, amsdu, body, out),
++            } if header.src != self.cfg.addr => {
++                let tid_slot = if header.fc & frame::fc::TYPE_SUBTYPE == frame::fc::QOS_DATA
++                    && bytes.len() > frame::HEADER_LEN
++                {
++                    usize::from(bytes[frame::HEADER_LEN] & 0x0f)
++                } else {
++                    16
++                };
++                self.rx_data(now, &header, tid_slot, amsdu, body, out);
++            }
+             _ => {}
+         }
+     }
+@@ -456,6 +482,7 @@
+         &mut self,
+         now: Time,
+         header: &frame::Header,
++        tid_slot: usize,
+         amsdu: bool,
+         body: &[u8],
+         out: &mut Vec<Action>,
+@@ -467,7 +494,6 @@
+                 return;
+             }
+         };
+-        self.stats.rx_data += 1;
+         let src = header.src;
+         let peer = self.peers.get_mut(&src);
+         let (known, valid) = match peer {
+@@ -476,10 +502,21 @@
+                 // transfer can go seconds between the action frames we hear
+                 // (patch `owl-07`).
+                 p.last_seen = now;
++                if header.dst == self.cfg.addr
++                    && p.check_rx_duplicate(
++                        tid_slot,
++                        header.seq,
++                        header.fc & frame::fc::RETRY != 0,
++                    )
++                {
++                    self.stats.rx_dup_dropped += 1;
++                    return;
++                }
+                 (true, p.valid)
+             }
+             None => (false, false),
+         };
++        self.stats.rx_data += 1;
+         for m in msdus {
+             // NET-3: IPv6 only. And never another node's unicast, which a
+             // monitor hears too.
+@@ -704,6 +741,17 @@
+ 
+     fn action_frame(&mut self, now: Time, subtype: u8) -> Frame {
+         let seq = self.next_seq();
++        let vht = if self.cfg.vht_profile != VhtProfile::Off {
++            self.cfg.vht_profile
++        } else if self.cfg.advertise_vht80_1ss {
++            VhtProfile::Mif1ss
++        } else {
++            VhtProfile::Off
++        };
++        let ht = match vht {
++            VhtProfile::PsfAndMif2ssSgi { .. } => HtCapabilities::TWO_STREAM_SGI,
++            _ => HT,
++        };
+         let own = Own {
+             addr: self.cfg.addr,
+             name: &self.cfg.name,
+@@ -715,12 +763,12 @@
+             psf_interval_tu: PSF_INTERVAL_TU,
+             sequence: &self.sequence,
+             election: &self.election,
+-            ht: Some(HT),
+-            advertise_vht80_1ss: self.cfg.advertise_vht80_1ss,
++            ht: Some(ht),
++            advertise_vht80_1ss: vht == VhtProfile::Mif1ss,
+         };
+         let mif = subtype == frame::subtype::MIF;
+         let bytes = frame::action_frame(self.cfg.addr, seq, subtype, now.micros() as u32, |out| {
+-            tlv::put_all(out, &own, mif)
++            tlv::put_all_with_profile(out, &own, mif, vht)
+         });
+         self.stats.tx_action += 1;
+         Frame {
+--- a/crates/owly-awdl/src/peer.rs	2026-11-03 12:19:24.000000000 +0000
++++ b/crates/owly-awdl/src/peer.rs	2026-11-10 17:41:33.163697003 +0000
+@@ -34,6 +34,7 @@
+     /// It has sent a MIF and announced its version and device class: only
+     /// then is it a peer to talk to (AWDL-17).
+     pub valid: bool,
++    rx_seq_win: [Option<(u16, u128)>; 17],
+ }
+ 
+ /// What a host is told about a peer that has turned valid.
+@@ -62,9 +63,38 @@
+             mif: false,
+             v2: false,
+             valid: false,
++            rx_seq_win: [None; 17],
+         }
+     }
+ 
++    /// Sliding 128-sequence retry deduplicator per QoS TID (`0..15`) or non-QoS (`16`).
++    pub(crate) fn check_rx_duplicate(&mut self, slot: usize, seq: u16, is_retry: bool) -> bool {
++        let seq = seq & 0x0fff;
++        let entry = &mut self.rx_seq_win[slot.min(16)];
++        let Some((head, bits)) = entry else {
++            *entry = Some((seq, 1));
++            return false;
++        };
++        let ahead = seq.wrapping_sub(*head) & 0x0fff;
++        if ahead == 0 {
++            return is_retry;
++        }
++        if ahead < 2048 {
++            *bits = if ahead >= 128 { 1 } else { (*bits << ahead) | 1 };
++            *head = seq;
++            return false;
++        }
++        let behind = head.wrapping_sub(seq) & 0x0fff;
++        if behind < 128 {
++            let mask = 1u128 << behind;
++            if is_retry && (*bits & mask) != 0 {
++                return true;
++            }
++            *bits |= mask;
++        }
++        false
++    }
++
+     pub fn info(&self) -> PeerInfo {
+         PeerInfo {
+             mac: self.mac,
+@@ -115,3 +145,25 @@
+         self.valid && !was
+     }
+ }
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn deduplicates_single_and_ampdu_burst_retries() {
++        let mut p = Peer::new(MacAddr([2, 0, 0, 0, 0, 1]), Time(1));
++        for seq in 4090..4098 {
++            assert!(!p.check_rx_duplicate(0, seq, false));
++        }
++        // Full 8-MPDU burst retry across the 12-bit wraparound boundary:
++        for seq in 4090..4098 {
++            assert!(p.check_rx_duplicate(0, seq, true));
++        }
++        // Fresh non-retry frames and unseen retry sequence numbers still pass:
++        assert!(!p.check_rx_duplicate(0, 4098, true));
++        assert!(p.check_rx_duplicate(0, 4098, true));
++        // Independent TID slot is unaffected:
++        assert!(!p.check_rx_duplicate(1, 4090, true));
++    }
++}
+--- a/crates/owly-awdl/src/tlv.rs	2026-11-10 17:41:33.139696830 +0000
++++ b/crates/owly-awdl/src/tlv.rs	2026-11-10 17:41:33.163697003 +0000
+@@ -185,6 +185,14 @@
+         rx_mcs: 0xff,
+     };
+ 
++    /// Two spatial streams (MCS 0–15) with LDPC, 20/40 MHz, SMPS disabled,
++    /// SGI20/SGI40 and 3839-byte A-MSDU (`0x006f`), matching iOS 26 wire layout.
++    pub const TWO_STREAM_SGI: HtCapabilities = HtCapabilities {
++        capabilities: 0x006f,
++        ampdu_params: 0x1f,
++        rx_mcs: 0xffff,
++    };
++
+     /// The mask may be longer than one byte; bits past MCS 31 are
+     /// dropped.
+     pub fn parse(value: &[u8]) -> Result<HtCapabilities, Error> {
+@@ -336,6 +344,18 @@
+     }
+ }
+ 
++/// Which VHT Capabilities container (TLV 17, IE 191) a node announces.
++#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
++pub enum VhtProfile {
++    #[default]
++    Off,
++    /// MIF-only 1SS MCS 0–7, base 80 MHz, Max MPDU 3895 (`cap = 0`).
++    Mif1ss,
++    /// PSF + MIF 2SS MCS 0–9 (`0xfffa`), RX LDPC + SGI80 (`0x30`), Max MPDU 3895,
++    /// and configurable `max_ampdu_exp` (`0..=7`, placed in bits 23..=25).
++    PsfAndMif2ssSgi { max_ampdu_exp: u8 },
++}
++
+ /// What a node announces about itself, for writing its TLVs.
+ pub struct Own<'a> {
+     pub addr: MacAddr,
+@@ -446,7 +466,11 @@
+         v.le16(0);
+         v.le16(ht.capabilities);
+         v.u8(ht.ampdu_params);
+-        v.u8(ht.rx_mcs as u8);
++        if ht.rx_mcs > 0xff {
++            v.le16(ht.rx_mcs as u16);
++        } else {
++            v.u8(ht.rx_mcs as u8);
++        }
+         v.le16(0);
+     });
+ }
+@@ -506,9 +530,37 @@
+     });
+ }
+ 
++fn put_vht80_2ss_sgi_capabilities(out: &mut Vec<u8>, max_ampdu_exp: u8) {
++    const VHT_CAPABILITIES_IE: u8 = 191;
++    const CAPABILITIES_LEN: u8 = 12;
++    const VHT_CAP_RX_LDPC_SGI80_MPDU3895: u32 = 0x0000_0030;
++    const MCS_2SS_0_TO_9: u16 = 0xfffa;
++
++    let cap = VHT_CAP_RX_LDPC_SGI80_MPDU3895 | (((max_ampdu_exp as u32) & 0x7) << 23);
++    tlv(out, kind::IEEE80211_CONTAINER, |v| {
++        v.u8(VHT_CAPABILITIES_IE);
++        v.u8(CAPABILITIES_LEN);
++        v.le32(cap);
++        v.le16(MCS_2SS_0_TO_9); // RX MCS, NSS 1–2 MCS 0–9, NSS 3–8 unsupported
++        v.le16(0); // RX highest data rate unspecified
++        v.le16(MCS_2SS_0_TO_9); // TX MCS, NSS 1–2 MCS 0–9, NSS 3–8 unsupported
++        v.le16(0); // TX highest data rate unspecified
++    });
++}
++
+ /// A PSF's or MIF's TLVs, in legacy's order. Both carry the HT
+ /// capabilities, as an iPhone's do; only MIFs carry the host name.
+ pub fn put_all(out: &mut Vec<u8>, own: &Own, mif: bool) {
++    let profile = if own.advertise_vht80_1ss {
++        VhtProfile::Mif1ss
++    } else {
++        VhtProfile::Off
++    };
++    put_all_with_profile(out, own, mif, profile);
++}
++
++/// Like [`put_all`], with an explicit [`VhtProfile`].
++pub fn put_all_with_profile(out: &mut Vec<u8>, own: &Own, mif: bool, vht: VhtProfile) {
+     put_sync_params(out, own);
+     put_election_v1(out, own);
+     put_channel_sequence(out, own);
+@@ -517,10 +569,16 @@
+     if let Some(ht) = &own.ht {
+         put_ht_capabilities(out, ht);
+     }
+-    if mif {
+-        if own.advertise_vht80_1ss {
++    match vht {
++        VhtProfile::PsfAndMif2ssSgi { max_ampdu_exp } => {
++            put_vht80_2ss_sgi_capabilities(out, max_ampdu_exp);
++        }
++        VhtProfile::Mif1ss if mif => {
+             put_vht80_1ss_capabilities(out);
+         }
++        _ => {}
++    }
++    if mif {
+         put_arpa(out, own.name);
+     }
+     put_data_path_state(out, own);
+@@ -566,6 +624,62 @@
+     }
+ 
+     #[test]
++    fn vht80_2ss_sgi_emits_ios26_ht_and_vht_in_psf_and_mif() {
++        let mac = MacAddr([2, 0, 0, 0, 0, 1]);
++        let seq = Sequence::fixed(Channel(149));
++        let e = Election::own(mac);
++        let own = Own {
++            addr: mac,
++            name: "owly",
++            devclass: devclass::MACOS,
++            channel: 149,
++            master_channel: Channel(149),
++            next_tu: 20,
++            aw_counter: 401,
++            psf_interval_tu: 110,
++            sequence: &seq,
++            election: &e,
++            ht: Some(HtCapabilities::TWO_STREAM_SGI),
++            advertise_vht80_1ss: false,
++        };
++        let ht_wire = [7, 9, 0, 0, 0, 0x6f, 0x00, 0x1f, 0xff, 0xff, 0, 0];
++        let vht_wire_exp0 = [
++            17, 14, 0, 191, 12, 0x30, 0x00, 0x00, 0x00, 0xfa, 0xff, 0, 0, 0xfa, 0xff, 0, 0,
++        ];
++        let vht_wire_exp7 = [
++            17, 14, 0, 191, 12, 0x30, 0x00, 0x80, 0x03, 0xfa, 0xff, 0, 0, 0xfa, 0xff, 0, 0,
++        ];
++
++        for (mif, expected_kinds) in [
++            (false, vec![4, 5, 18, 24, 6, 7, 17, 12, 21]),
++            (true, vec![4, 5, 18, 24, 6, 7, 17, 16, 12, 21]),
++        ] {
++            let mut out0 = Vec::new();
++            put_all_with_profile(
++                &mut out0,
++                &own,
++                mif,
++                VhtProfile::PsfAndMif2ssSgi { max_ampdu_exp: 0 },
++            );
++            assert!(out0.windows(ht_wire.len()).any(|w| w == ht_wire));
++            assert!(out0.windows(vht_wire_exp0.len()).any(|w| w == vht_wire_exp0));
++            let kinds: Vec<u8> = tlvs(&out0).map(|entry| entry.unwrap().kind).collect();
++            assert_eq!(kinds, expected_kinds);
++            let parsed = Advert::parse(&out0).unwrap();
++            assert_eq!(parsed.ht, Some(HtCapabilities::TWO_STREAM_SGI));
++
++            let mut out7 = Vec::new();
++            put_all_with_profile(
++                &mut out7,
++                &own,
++                mif,
++                VhtProfile::PsfAndMif2ssSgi { max_ampdu_exp: 7 },
++            );
++            assert!(out7.windows(vht_wire_exp7.len()).any(|w| w == vht_wire_exp7));
++        }
++    }
++
++    #[test]
+     fn vht80_1ss_only_extends_the_mif() {
+         let psf = own_frame(false);
+         assert_eq!(own_frame_with_vht(false, true), psf);

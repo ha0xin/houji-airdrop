@@ -1,0 +1,42 @@
+--- a/radio-owly.sh
++++ b/radio-owly.sh
+@@ -245,6 +245,11 @@
+ enter() {
+  cd "$ROOT"
+  sha256sum -c SHA256SUMS
++ app_sha=$(cat "$ROOT/outgoing-vht.sha")
++ test "${#app_sha}" = 64
++ case "$app_sha" in *[!0-9a-f]*) return 1;; esac
++ check "$app_sha" "$ROOT/houji-owly-outgoing-vht"
++ echo "OUTGOING_VHT_BUILD_SHA=$app_sha"
+  check "$CANDIDATE" "$RADIO/amss20.bin"
+  check 9a8345d87ec1186a29b413935b4efdbd38566e7e22374e70a7a85510b2970e9a "$RADIO/houji_wonder_bridge.ko"
+  qca="$ROOT/qca_cld3_kiwi_v2-remote-peer.ko"
+@@ -374,7 +379,7 @@
+ }
+ 
+ run_locked() {
+- token=$1 profile=$2 aggregation=$3 ack=$4 peer=$5 count=$6 size=$7 mss=$8 qlen=$9 ba_mode=${10} vht_amsdu=${11:-0}
++ token=$1 profile=$2 aggregation=$3 ack=$4 peer=$5 count=$6 size=$7 mss=$8 qlen=$9 ba_mode=${10} vht_amsdu=${11:-0} outgoing_vht=${12}
+  test ! -e "$STATE/saved.env"
+  no_native_bridge
+  trap finish_locked EXIT
+@@ -391,7 +396,7 @@
+   test "$(cat "$W/parameters/pt_vht80")" = Y
+   test "$(cat /sys/class/net/wonder0/mtu)" = 8192
+  fi
+- HOUJI_OWLY_VHT_AMSDU="$vht_amsdu" ./houji-owly "$peer" "$aggregation" "$ack" > "$STATE/runner.log" 2>&1 &
++ HOUJI_OWLY_OUTGOING_VHT="$outgoing_vht" ./houji-owly-outgoing-vht "$peer" "$aggregation" "$ack" > "$STATE/runner.log" 2>&1 &
+  driver=$!
+  for i in $(seq 1 10); do
+   if grep -q '^OWLY_READY ' "$STATE/runner.log"; then break; fi
+@@ -527,7 +532,8 @@
+ case "${1:-}" in
+  run)
+   shift
+-  test "$#" = 11
++  test "$#" = 12
++  case "${12}" in 0|1) ;; *) exit 2;; esac
+   test "$2:$3:$4:$8:$9:${10}:${11}" = vht80-sgi:amsdu:ack:1160:500:reference:0
+   case "$6:$7" in
+    2:1048576|6:67108864) ;;

@@ -1,0 +1,107 @@
+diff --git a/radio-owly.sh b/radio-owly.sh
+--- a/radio-owly.sh
++++ b/radio-owly.sh
+@@ -258,6 +258,12 @@
+    qca="$ROOT/qca_cld3_kiwi_v2-peer-observer.ko"
+    qca_sha=$BA_PEER_OBSERVER_SHA
+    ;;
++  remote)
++   qca="$ROOT/qca_cld3_kiwi_v2-remote-peer.ko"
++   qca_sha=$(cat "$ROOT/remote-peer.sha")
++   test "${#qca_sha}" = 64
++   case "$qca_sha" in *[!0-9a-f]*) return 1;; esac
++   ;;
+   caps)
+    qca="$ROOT/qca_cld3_kiwi_v2-peer-caps.ko"
+    qca_sha=$PEER_CAPS_SHA
+@@ -298,11 +304,17 @@
+   on) set -- "$@" pt_ba_observe=1 ;;
+   peer) set -- "$@" pt_ba_observe=1 "pt_ba_peer=$peer" ;;
+   caps) set -- "$@" pt_peer_caps_observe=1 ;;
++  remote) set -- "$@" pt_peer_caps_observe=1 "pt_remote_peer_mac=$peer" ;;
+  esac
+  bounded insmod "$qca" "$@"
+  case "$ba_mode" in
+   off) test "$(cat "$W/parameters/pt_ba_observe")" = N ;;
+   on|peer) test "$(cat "$W/parameters/pt_ba_observe")" = Y ;;
++  remote)
++   test "$(cat "$W/parameters/pt_ba_observe")" = N
++   test "$(cat "$W/parameters/pt_ba_peer")" = 0
++   test "$(cat "$W/parameters/pt_remote_peer_mac")" = "$peer"
++   ;;
+   caps)
+    test "$(cat "$W/parameters/pt_ba_observe")" = N
+    test "$(cat "$W/parameters/pt_ba_peer")" = 0
+@@ -370,6 +382,39 @@
+  exit "$rc"
+ }
+ 
++run_remote_peer() {
++ stats=$(cat "$W/parameters/pt_remote_peer_stats")
++ echo "PEER_TRIAL_BEFORE $stats"
++ echo "$stats" | grep -q '^result=0 generation=0 '
++ bounded sh -c 'echo 1 > /sys/module/qca_cld3_kiwi_v2/parameters/pt_remote_peer_run'
++ for i in $(seq 1 12); do
++  stats=$(cat "$W/parameters/pt_remote_peer_stats")
++  case "$stats" in 'result=2 '*|'result=3 '*|'result=4 '*|'result=5 '*) break;; esac
++  sleep 1
++ done
++ printf '%s\n' "$stats" > "$STATE/peer-terminal.txt"
++ echo "PEER_TRIAL_TERMINAL $stats"
++ echo "PEER_TRIAL_PRE_DELETE $(cat "$W/parameters/pt_activate" || true)"
++ # Wonder owns the physical RX handler until its netdev deinitializes.
++ bounded iw dev wonder0 del
++ for i in $(seq 1 20); do
++  live=$(cat "$W/parameters/pt_activate" 2>/dev/null || true)
++  case "$live" in *' phase=5 error=0 '*|*' phase=6 error='*) break;; esac
++  sleep 1
++ done
++ printf '%s\n' "$live" > "$STATE/peer-drain.txt"
++ echo "PEER_TRIAL_DRAIN $live"
++ final=$(cat "$W/parameters/pt_remote_peer_stats")
++ printf '%s\n' "$final" > "$STATE/peer-final.txt"
++ echo "PEER_TRIAL_FINAL $final"
++ echo "$stats" | grep -q '^result=3 '
++ echo "$final" | grep -q '^result=3 '
++ echo "$final" | grep -q 'create_conflict=0 '
++ echo "$final" | grep -q 'dp_conflict=0 compensation=0$'
++ echo "$live" | grep -q 'phase=5 error=0 closing=1 .* peer_requested=1 peer_started=1 peer_result=0$'
++ test ! -e /sys/class/net/wondertap0
++}
++
+ run_locked() {
+  token=$1 profile=$2 aggregation=$3 ack=$4 peer=$5 count=$6 size=$7 mss=$8 qlen=$9 ba_mode=${10} vht_amsdu=${11:-0}
+  test ! -e "$STATE/saved.env"
+@@ -378,6 +423,10 @@
+  trap 'exit 143' TERM HUP
+  trap 'exit 130' INT
+  enter
++ if test "$ba_mode" = remote; then
++  run_remote_peer
++  return
++ fi
+  if test "$ba_mode" = caps; then
+   caps=$(cat "$W/parameters/pt_peer_caps")
+   echo "PEER_CAPS_AFTER $caps"
+@@ -504,7 +553,7 @@
+ run_job() {
+  job_lock
+  token=$1
+- for file in runner.log server.log before.txt after.txt; do rm -f "$STATE/$file"; done
++ for file in runner.log server.log before.txt after.txt peer-terminal.txt peer-drain.txt peer-final.txt; do rm -f "$STATE/$file"; done
+  rm -f "$STATE/stop-$token" "$STATE/result" "$STATE/candidate.sha" "$STATE/purpose"
+  echo "$token" > "$STATE/token"
+  state PREFLIGHT
+@@ -590,6 +639,12 @@
+   case "$2" in ''|*[!a-zA-Z0-9-]*) exit 2;; esac
+   run_job "$2" vht80-sgi single ack - 0 0 0 500 caps
+   ;;
++ remote)
++  test "$#" = 3
++  case "$2" in ''|*[!a-zA-Z0-9-]*) exit 2;; esac
++  echo "$3" | grep -qE '^([0-9a-f]{2}:){5}[0-9a-f]{2}$'
++  run_job "$2" vht80-sgi single ack "$3" 0 0 0 500 remote
++  ;;
+  locked) shift; run_locked "$@" ;;
+  rehearse|rehearse-locked)
+   test "$#" = 2

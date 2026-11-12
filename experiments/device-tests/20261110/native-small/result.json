@@ -1,0 +1,27 @@
+{
+  "task_id": 60707,
+  "file_bytes": 38149367,
+  "upload_started": "2026-11-10 12:07:06.173 +08:00",
+  "body_sent": "2026-11-10 12:07:41.255 +08:00",
+  "http_200": "2026-11-10 12:07:43.975 +08:00",
+  "task_success": "2026-11-10 12:07:44.005 +08:00",
+  "upload_to_success_seconds": 37.832,
+  "average_MB_s": 1.008388850708395,
+  "channel": 149,
+  "frequency_MHz": 5745,
+  "width_MHz": 20,
+  "rate": "HT20 NSS1 MCS3 GI-default",
+  "compressedChunks": 0,
+  "storedChunks": 292,
+  "iphone_playback": "confirmed by user",
+  "wifi_after_file": "off while sharing session remained active",
+  "wifi_recovery": {
+    "verified_at": "2026-11-10 12:08:53 +08:00",
+    "state": "STOCK_RESTORED",
+    "stock_firmware_hash_verified": true,
+    "stock_driver_build_id_hash_verified": true,
+    "pending_snapshot": false,
+    "wifi_connected": true,
+    "wifi_frequency_MHz": 5180
+  }
+}

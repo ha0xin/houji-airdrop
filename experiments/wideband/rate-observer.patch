@@ -1,0 +1,19 @@
+--- /work/houji-build/src/baseline/wlan/qca-wifi-host-cmn/dp/wifi3.0/dp_tx.c	2026-11-10 02:41:35.701927936 +0000
++++ /work/houji-build/src/wideband/wlan/qca-wifi-host-cmn/dp/wifi3.0/dp_tx.c	2026-11-10 04:35:16.840220757 +0000
+@@ -62,6 +62,8 @@
+ #include <dp_sawf.h>
+ #endif
+ 
++#include "dp_pt_rate_observer.h"
++
+ /* Flag to skip CCE classify when mesh or tid override enabled */
+ #define DP_TX_SKIP_CCE_CLASSIFY \
+ 	(DP_TXRX_HLOS_TID_OVERRIDE_ENABLED | DP_TX_MESH_ENABLED)
+@@ -6380,6 +6382,7 @@
+ 
+ 	if (dp_tx_desc_is_passthru(tx_desc)) {
+ 		/* No Ethernet statistics, peer lookup or fabricated ACK callback. */
++		dp_pt_rate_end(ts);
+ 		DP_STATS_INCC(soc, tx.dropped_fw_removed, 1,
+ 			      (ts->status == HAL_TX_TQM_RR_REM_CMD_REM));
+ 		return;

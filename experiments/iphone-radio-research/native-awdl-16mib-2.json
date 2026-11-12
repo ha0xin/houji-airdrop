@@ -1,0 +1,80 @@
+{
+  "interface": "awdl0",
+  "size_mib": 16,
+  "mss": "system-default",
+  "samples": [
+    {
+      "sample": 1,
+      "mode": 0,
+      "bytes": 16777216,
+      "port": 59057,
+      "awdl_counter_deltas": {
+        "mac": {
+          "Ibytes": 53630,
+          "Obytes": 17790888,
+          "Ierrs": 0,
+          "Oerrs": 0
+        },
+        "iphone": {
+          "Ibytes": 17633232,
+          "Obytes": 54747,
+          "Ierrs": 0,
+          "Oerrs": 0
+        }
+      },
+      "status": "verified",
+      "iphone_exit": 0,
+      "listener_cancelled": true,
+      "iphone": {
+        "seconds": 1.028247,
+        "MBps": 16.316329,
+        "sha256": "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1",
+        "path": "awdl0"
+      },
+      "mac": {
+        "seconds": 1.037661,
+        "MBps": 16.168302,
+        "sha256": "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1",
+        "path": "awdl0"
+      }
+    },
+    {
+      "sample": 2,
+      "mode": 1,
+      "bytes": 16777216,
+      "port": 51701,
+      "awdl_counter_deltas": {
+        "mac": {
+          "Ibytes": 17794987,
+          "Obytes": 27741,
+          "Ierrs": 0,
+          "Oerrs": 0
+        },
+        "iphone": {
+          "Ibytes": 23208,
+          "Obytes": 17793062,
+          "Ierrs": 0,
+          "Oerrs": 0
+        }
+      },
+      "status": "verified",
+      "iphone_exit": 0,
+      "listener_cancelled": true,
+      "iphone": {
+        "seconds": 1.226218,
+        "MBps": 13.682083,
+        "sha256": "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1",
+        "path": "awdl0"
+      },
+      "mac": {
+        "seconds": 1.227823,
+        "MBps": 13.664198,
+        "sha256": "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1",
+        "path": "awdl0"
+      }
+    }
+  ],
+  "probe_sha256": "daf5ff4aadfe8ac4ee96e3fcda512c910c15c41fb094047abe1cb8f20faa4ff2",
+  "post_execution_probe_sha256_verified": true,
+  "temporary_device_directory_removed": true
+}

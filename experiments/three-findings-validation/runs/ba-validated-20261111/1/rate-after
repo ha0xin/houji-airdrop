@@ -1,0 +1,8 @@
+schema=1 enabled=1 completed=460 valid=343 invalid=117 tries=518 amsdu=0 ldpc=340 ppdus=343 agg_ppdus=0 agg_mpdus=0 ast_overrides=346 remote_peer_compl=460
+bw=3,0,340,0,0,0,0,0
+mcs=0,0,0,3,0,0,0,0,0,340,0,0,0,0,0,0
+pkt=3,0,0,340,0,0,0,0,0,0,0,0,0,0,0,0
+gi=3,340,0,0
+status=343,0,117,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+tx_ring=460,0,0,0,0,0,0,0
+ppdu_bin=342,0,0,0,0,0

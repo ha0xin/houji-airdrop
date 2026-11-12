@@ -1,0 +1,31 @@
+# 审阅导航
+
+下表路径均以 `../experiments/` 为基础。
+
+| 目录 | 用途 |
+|---|---|
+| [owly-app](../clients/owly-app/README.zh-CN.md) | `app/` 是 Java 界面；`native/houji-runner` 是 Android 后端；`native/owly` 是协议栈；`runtime/` 管理 root 无线会话；`evidence/` 记录安装和收发检查 |
+| [three-findings-validation](../experiments/three-findings-validation) | 当前改动覆盖层已移至 `driver/wlan/`，非完整 WLAN 树；`src/userspace` 为实验后端；根目录存补丁、ABI 审计、构建和实机脚本；`runs/` 为每轮结果 |
+| [sta-coexist](../experiments/sta-coexist/README.zh-CN.md) | 普通 WLAN 与 PASSTHRU 共存，按时间记录失败、修复、成功与恢复问题；`artifacts/` 按产物哈希隔离 |
+| [owly-evaluation](../experiments/owly-evaluation) | Owly 源码和 `houji-runner/bench.py` 等公共测试、无线生命周期工具 |
+| [remote-peer-probe](../experiments/remote-peer-probe) | 远端 peer 建立、REO、接收 PHY、VHT/2SS/SGI 与 BA 验证；部分脚本是当前测试工具依赖 |
+| [tx-ampdu-investigation](../experiments/tx-ampdu-investigation) | TX A-MPDU、三星版本差异和固件来源核对；`firmware-acquisition` 保留获取配方及来源记录 |
+| [peer-tx-investigation](../experiments/peer-tx-investigation) | AST 覆写、远端 peer 与速率对照实验 |
+| [build-host](../archive/legacy-build/README.md) | 远端工具链、源码准备、ABI 与环境审计 |
+| [upstream](../third_party/upstream/README.md) | 上游移植工程快照、内核/WLAN 配方、wonder/bridge 等基础组件 |
+| duplex-optimization | 双向同时传输的实验分支，已暂停，不是当前 App 默认后端 |
+| amsdu、wideband | 软件 A-MSDU、带宽及 ring 容量早期实验 |
+| ba-observer、ba-peer-observer、tx-observer | BA/peer/TX 统计观测补丁 |
+| iphone-radio-research | iPhone 空口特征、Mac TCP 时间线与测量工具 |
+| implementation-comparison | 三星/社区实现对照记录 |
+| device-tests、artifacts | 早期实机证据和构建来源记录 |
+| xos-fifo | 早期 XOS 桥接研究；独立 Owly App 不走该分享框架 |
+
+## 优先查看的实测证据
+
+- [双 5 GHz 两轮 16 MiB](../experiments/three-findings-validation/runs/coexist-5g40-16m-20261111)：`1/result.json`、`2/result.json`、`rx-stats-final.txt`、`manual-recovery.log`、`stock-after.txt`。
+- [2.4 GHz + 5 GHz 两轮 16 MiB](../experiments/three-findings-validation/runs/coexist-marked-16m-20261111)。
+- [App 安装产物身份](../clients/owly-app/evidence/installed-artifacts.json)。
+- [驱动实测交接](airdrop/28-three-findings-handover.md)、[EZIF TX 聚合验证](airdrop/32-ezif-tx-ampdu-validation.md)。
+
+部分历史文档链接指向原仓库的其他下载目录；未复制内容可通过来源清单回到原路径查找。历史失败记录保留，不能单独将其当成最新状态。

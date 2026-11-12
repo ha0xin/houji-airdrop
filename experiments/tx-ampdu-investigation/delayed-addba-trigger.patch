@@ -1,0 +1,50 @@
+--- a/qcacld-3.0/core/wma/src/wma_dev_if.c
++++ b/qcacld-3.0/core/wma/src/wma_dev_if.c
+@@ -3138,6 +3138,47 @@
+ 	.get = wma_pt_remote_peer_stats_get,
+ };
+ module_param_cb(pt_remote_peer_stats, &wma_pt_remote_peer_stats_ops, NULL, 0400);
++
++/* Diagnostic only: invoke the existing, target-validated ADDBA SEND API
++ * after userspace discovery. A generation token rejects stale sessions.
++ * Serialise this control with session stop; it does not install a BA state.
++ */
++static int wma_pt_addba_trigger_set(const char *val,
++				  const struct kernel_param *kp)
++{
++	struct wma_pt_peer_state s;
++	struct addba_send_params params = {0};
++	tp_wma_handle wma = cds_get_context(QDF_MODULE_ID_WMA);
++	u64 generation;
++	QDF_STATUS status;
++	int rc;
++
++	(void)kp;
++	rc = kstrtoull(val, 0, &generation);
++	if (rc)
++		return rc;
++	wma_pt_peer_snapshot(&s);
++	if (!generation || generation != s.generation || !s.active ||
++	    !s.tx_ready || !s.assoc_confirmed || s.assoc_status ||
++	    s.delete_issued || s.dp_conflict || !wma || s.wma != wma ||
++	    !wma->wmi_handle)
++		return -ESTALE;
++	params.vdev_id = s.vdev_id;
++	params.tidno = 0;
++	params.buffersize = 64;
++	status = wmi_unified_addba_send_cmd_send(wma->wmi_handle,
++					       s.mac, &params);
++	pt_fw_addba_rc = qdf_status_to_os_return(status);
++	pt_fw_addba_sent = QDF_IS_STATUS_SUCCESS(status);
++	pr_info("PT_ADDBA_TRIGGER generation=%llu vdev=%u tid=0 win=64 rc=%d\n",
++		generation, s.vdev_id, pt_fw_addba_rc);
++	return pt_fw_addba_rc;
++}
++
++static const struct kernel_param_ops wma_pt_addba_trigger_ops = {
++	.set = wma_pt_addba_trigger_set,
++};
++module_param_cb(pt_addba_trigger, &wma_pt_addba_trigger_ops, NULL, 0200);
+ #endif
+ 
+ #ifdef WLAN_FEATURE_11BE_MLO

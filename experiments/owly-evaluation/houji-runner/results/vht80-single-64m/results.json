@@ -1,0 +1,62 @@
+{
+  "channel": 149,
+  "profile": "vht80",
+  "aggregation": "single",
+  "ack": "ack",
+  "rx_block_ack": false,
+  "mac_awdl": "02:00:00:00:00:01",
+  "samples": [
+    {
+      "direction": "Mac\u2192\u5c0f\u7c73",
+      "sample": 1,
+      "mode": 0,
+      "bytes": 67108864,
+      "status": "verified",
+      "seconds": 27.363771375,
+      "MBps": 2.4524713015732833,
+      "sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "pair": 1,
+      "phone_seconds": 27.355541
+    },
+    {
+      "direction": "\u5c0f\u7c73\u2192Mac",
+      "sample": 2,
+      "mode": 1,
+      "bytes": 67108864,
+      "status": "verified",
+      "seconds": 22.579006459,
+      "MBps": 2.9721796714952613,
+      "sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "pair": 1,
+      "phone_seconds": 22.580049
+    },
+    {
+      "direction": "Mac\u2192\u5c0f\u7c73",
+      "sample": 3,
+      "mode": 0,
+      "bytes": 67108864,
+      "status": "verified",
+      "seconds": 30.820851249999997,
+      "MBps": 2.1773851557717765,
+      "sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "pair": 2,
+      "phone_seconds": 30.808078
+    },
+    {
+      "direction": "\u5c0f\u7c73\u2192Mac",
+      "sample": 4,
+      "mode": 1,
+      "bytes": 67108864,
+      "status": "verified",
+      "seconds": 22.131324750000005,
+      "MBps": 3.03230216709011,
+      "sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "pair": 2,
+      "phone_seconds": 22.130367
+    }
+  ],
+  "phone_owly0": "2001:db8::46",
+  "radio_exit": 0,
+  "restored": true,
+  "server_sha_receipts": 4
+}

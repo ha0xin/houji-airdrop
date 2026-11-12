@@ -1,0 +1,640 @@
+{
+  "channel": 149,
+  "bytes_per_sample": 67108864,
+  "directions": "Mac→小米 receives at Xiaomi, 小米→Mac transmits from Xiaomi",
+  "rates": "Decimal MB/s, weighted by total bytes divided by total elapsed seconds",
+  "cases": [
+    {
+      "case": "off1",
+      "result_path": "device-64m-off1/result.json",
+      "result_sha256": "4c76cbc5c2e2b68beccc25a7ecf60b27748f26a6edc33d5aa407585cac084c36",
+      "token": "[REDACTED]",
+      "module_sha256": "bbb6d59c67942ec57da12fb6f367c82d4430ebda1abfca88ffac24c977f49ba7",
+      "outgoing_vht": {
+        "app_sha256": "ab84ddba4c05ee2a5f9bc0f5f304a1c053e1074cc7a268265c2026956bebcbf8",
+        "matching_app_load": true,
+        "requested": false,
+        "reported_switch": [
+          "OWLY_OUTGOING_VHT=false"
+        ],
+        "first_host_submitted_mif_container": [
+          "absent"
+        ],
+        "verified": true
+      },
+      "samples": [
+        {
+          "direction": "Mac→小米",
+          "sample": 1,
+          "status": "verified",
+          "bytes": 67108864,
+          "seconds": 30.3866925,
+          "MBps": 2.208495182554008,
+          "mac_schedule_counts": [
+            {
+              "state": "Data",
+              "149_slots": 11,
+              "snapshots": 6
+            },
+            {
+              "state": "Idle",
+              "149_slots": 5,
+              "snapshots": 1
+            }
+          ],
+          "phy_or_ba_labels": 0
+        },
+        {
+          "direction": "小米→Mac",
+          "sample": 2,
+          "status": "verified",
+          "bytes": 67108864,
+          "seconds": 11.09099425,
+          "MBps": 6.050752753748836,
+          "mac_schedule_counts": [
+            {
+              "state": "Data",
+              "149_slots": 11,
+              "snapshots": 2
+            }
+          ],
+          "phy_or_ba_labels": 0
+        },
+        {
+          "direction": "Mac→小米",
+          "sample": 3,
+          "status": "verified",
+          "bytes": 67108864,
+          "seconds": 30.007565375,
+          "MBps": 2.236398160308932,
+          "mac_schedule_counts": [
+            {
+              "state": "Data",
+              "149_slots": 11,
+              "snapshots": 5
+            }
+          ],
+          "phy_or_ba_labels": 0
+        },
+        {
+          "direction": "小米→Mac",
+          "sample": 4,
+          "status": "verified",
+          "bytes": 67108864,
+          "seconds": 15.734275666,
+          "MBps": 4.265138441994804,
+          "mac_schedule_counts": [
+            {
+              "state": "Data",
+              "149_slots": 11,
+              "snapshots": 3
+            }
+          ],
+          "phy_or_ba_labels": 0
+        },
+        {
+          "direction": "Mac→小米",
+          "sample": 5,
+          "status": "verified",
+          "bytes": 67108864,
+          "seconds": 53.937973916,
+          "MBps": 1.2441858514098365,
+          "mac_schedule_counts": [
+            {
+              "state": "Data",
+              "149_slots": 7,
+              "snapshots": 9
+            },
+            {
+              "state": "Data",
+              "149_slots": 11,
+              "snapshots": 1
+            }
+          ],
+          "phy_or_ba_labels": 0
+        },
+        {
+          "direction": "小米→Mac",
+          "sample": 6,
+          "status": "verified",
+          "bytes": 67108864,
+          "seconds": 19.796121333,
+          "MBps": 3.3900006405865972,
+          "mac_schedule_counts": [
+            {
+              "state": "Data",
+              "149_slots": 7,
+              "snapshots": 3
+            }
+          ],
+          "phy_or_ba_labels": 0
+        }
+      ],
+      "throughput_by_direction": {
+        "Mac→小米": {
+          "verified": 3,
+          "failed_or_missing": 0,
+          "bytes": 201326592,
+          "seconds": 114.332231791,
+          "weighted_MBps": 1.7608909477777552,
+          "peak_sample_MBps": 2.236398160308932
+        },
+        "小米→Mac": {
+          "verified": 3,
+          "failed_or_missing": 0,
+          "bytes": 201326592,
+          "seconds": 46.621391249,
+          "weighted_MBps": 4.318330847844837,
+          "peak_sample_MBps": 6.050752753748836
+        }
+      },
+      "radio_exit": 0,
+      "flow_hash_verified": true,
+      "restored": true,
+      "full_verified": true,
+      "rx_capacity": {
+        "same_boot": true,
+        "kernel_log_coverage": true,
+        "verified": true,
+        "boot_before": "428f3996-861d-4bf7-af96-a31d3a5a35a4",
+        "boot_after": "428f3996-861d-4bf7-af96-a31d3a5a35a4",
+        "dmesg_time_before": [
+          10.702753,
+          2508.439225
+        ],
+        "dmesg_time_after": [
+          597.134071,
+          2695.449195
+        ]
+      },
+      "stock_receipts_identical": true
+    },
+    {
+      "case": "on1",
+      "result_path": "device-64m-on1/result.json",
+      "result_sha256": "e2fa945db4ccb6802d30e9c60664ae106b1c77814093a16a6ed6bb362fdc688a",
+      "token": "[REDACTED]",
+      "module_sha256": "bbb6d59c67942ec57da12fb6f367c82d4430ebda1abfca88ffac24c977f49ba7",
+      "outgoing_vht": {
+        "app_sha256": "ab84ddba4c05ee2a5f9bc0f5f304a1c053e1074cc7a268265c2026956bebcbf8",
+        "matching_app_load": true,
+        "requested": true,
+        "reported_switch": [
+          "OWLY_OUTGOING_VHT=true"
+        ],
+        "first_host_submitted_mif_container": [
+          "bf0c00000000fcff0000fcff0000"
+        ],
+        "verified": true
+      },
+      "samples": [
+        {
+          "direction": "Mac→小米",
+          "sample": 1,
+          "status": "verified",
+          "bytes": 67108864,
+          "seconds": 23.173332625,
+          "MBps": 2.895952217403603,
+          "mac_schedule_counts": [
+            {
+              "state": "Data",
+              "149_slots": 11,
+              "snapshots": 5
+            }
+          ],
+          "phy_or_ba_labels": 0
+        },
+        {
+          "direction": "小米→Mac",
+          "sample": 2,
+          "status": "verified",
+          "bytes": 67108864,
+          "seconds": 13.128363375,
+          "MBps": 5.111746383238726,
+          "mac_schedule_counts": [
+            {
+              "state": "Data",
+              "149_slots": 11,
+              "snapshots": 2
+            }
+          ],
+          "phy_or_ba_labels": 0
+        },
+        {
+          "direction": "Mac→小米",
+          "sample": 3,
+          "status": "verified",
+          "bytes": 67108864,
+          "seconds": 22.592519417,
+          "MBps": 2.9704019618769553,
+          "mac_schedule_counts": [
+            {
+              "state": "Data",
+              "149_slots": 11,
+              "snapshots": 4
+            }
+          ],
+          "phy_or_ba_labels": 0
+        },
+        {
+          "direction": "小米→Mac",
+          "sample": 4,
+          "status": "verified",
+          "bytes": 67108864,
+          "seconds": 10.81291675,
+          "MBps": 6.20636092477083,
+          "mac_schedule_counts": [
+            {
+              "state": "Data",
+              "149_slots": 11,
+              "snapshots": 2
+            }
+          ],
+          "phy_or_ba_labels": 0
+        },
+        {
+          "direction": "Mac→小米",
+          "sample": 5,
+          "status": "verified",
+          "bytes": 67108864,
+          "seconds": 22.546475709,
+          "MBps": 2.976468023923215,
+          "mac_schedule_counts": [
+            {
+              "state": "Data",
+              "149_slots": 11,
+              "snapshots": 4
+            }
+          ],
+          "phy_or_ba_labels": 0
+        },
+        {
+          "direction": "小米→Mac",
+          "sample": 6,
+          "status": "verified",
+          "bytes": 67108864,
+          "seconds": 10.996249,
+          "MBps": 6.10288690261561,
+          "mac_schedule_counts": [
+            {
+              "state": "Data",
+              "149_slots": 11,
+              "snapshots": 2
+            }
+          ],
+          "phy_or_ba_labels": 0
+        }
+      ],
+      "throughput_by_direction": {
+        "Mac→小米": {
+          "verified": 3,
+          "failed_or_missing": 0,
+          "bytes": 201326592,
+          "seconds": 68.312327751,
+          "weighted_MBps": 2.9471487596476003,
+          "peak_sample_MBps": 2.976468023923215
+        },
+        "小米→Mac": {
+          "verified": 3,
+          "failed_or_missing": 0,
+          "bytes": 201326592,
+          "seconds": 34.937529125,
+          "weighted_MBps": 5.762473679225878,
+          "peak_sample_MBps": 6.20636092477083
+        }
+      },
+      "radio_exit": 0,
+      "flow_hash_verified": true,
+      "restored": true,
+      "full_verified": false,
+      "rx_capacity": {
+        "same_boot": true,
+        "kernel_log_coverage": false,
+        "verified": false,
+        "boot_before": "428f3996-861d-4bf7-af96-a31d3a5a35a4",
+        "boot_after": "428f3996-861d-4bf7-af96-a31d3a5a35a4",
+        "dmesg_time_before": [
+          613.42879,
+          2698.664278
+        ],
+        "dmesg_time_after": [
+          1437.783613,
+          2829.872807
+        ]
+      },
+      "stock_receipts_identical": true
+    },
+    {
+      "case": "off2",
+      "result_path": "device-64m-off2/result.json",
+      "result_sha256": "0b560cc4b70b4223fa3444f5248b5fdfb2cfc88362e0b7c9785e05cb19b27f49",
+      "token": "[REDACTED]",
+      "module_sha256": "bbb6d59c67942ec57da12fb6f367c82d4430ebda1abfca88ffac24c977f49ba7",
+      "outgoing_vht": {
+        "app_sha256": "ab84ddba4c05ee2a5f9bc0f5f304a1c053e1074cc7a268265c2026956bebcbf8",
+        "matching_app_load": true,
+        "requested": false,
+        "reported_switch": [
+          "OWLY_OUTGOING_VHT=false"
+        ],
+        "first_host_submitted_mif_container": [
+          "absent"
+        ],
+        "verified": true
+      },
+      "samples": [
+        {
+          "direction": "Mac→小米",
+          "sample": 1,
+          "status": "verified",
+          "bytes": 67108864,
+          "seconds": 29.396020959,
+          "MBps": 2.2829233961154083,
+          "mac_schedule_counts": [
+            {
+              "state": "Data",
+              "149_slots": 11,
+              "snapshots": 6
+            }
+          ],
+          "phy_or_ba_labels": 0
+        },
+        {
+          "direction": "小米→Mac",
+          "sample": 2,
+          "status": "verified",
+          "bytes": 67108864,
+          "seconds": 11.670004542,
+          "MBps": 5.750543091776631,
+          "mac_schedule_counts": [
+            {
+              "state": "Data",
+              "149_slots": 11,
+              "snapshots": 2
+            }
+          ],
+          "phy_or_ba_labels": 0
+        },
+        {
+          "direction": "Mac→小米",
+          "sample": 3,
+          "status": "verified",
+          "bytes": 67108864,
+          "seconds": 30.34580575,
+          "MBps": 2.2114708224545994,
+          "mac_schedule_counts": [
+            {
+              "state": "Data",
+              "149_slots": 11,
+              "snapshots": 5
+            }
+          ],
+          "phy_or_ba_labels": 0
+        },
+        {
+          "direction": "小米→Mac",
+          "sample": 4,
+          "status": "verified",
+          "bytes": 67108864,
+          "seconds": 15.76916775,
+          "MBps": 4.255701065771211,
+          "mac_schedule_counts": [
+            {
+              "state": "Data",
+              "149_slots": 11,
+              "snapshots": 2
+            }
+          ],
+          "phy_or_ba_labels": 0
+        },
+        {
+          "direction": "Mac→小米",
+          "sample": 5,
+          "status": "verified",
+          "bytes": 67108864,
+          "seconds": 27.179289,
+          "MBps": 2.469117716802673,
+          "mac_schedule_counts": [
+            {
+              "state": "Data",
+              "149_slots": 11,
+              "snapshots": 5
+            }
+          ],
+          "phy_or_ba_labels": 0
+        },
+        {
+          "direction": "小米→Mac",
+          "sample": 6,
+          "status": "verified",
+          "bytes": 67108864,
+          "seconds": 11.931317417,
+          "MBps": 5.624597993209185,
+          "mac_schedule_counts": [
+            {
+              "state": "Data",
+              "149_slots": 11,
+              "snapshots": 2
+            }
+          ],
+          "phy_or_ba_labels": 0
+        }
+      ],
+      "throughput_by_direction": {
+        "Mac→小米": {
+          "verified": 3,
+          "failed_or_missing": 0,
+          "bytes": 201326592,
+          "seconds": 86.921115709,
+          "weighted_MBps": 2.316198893189704,
+          "peak_sample_MBps": 2.469117716802673
+        },
+        "小米→Mac": {
+          "verified": 3,
+          "failed_or_missing": 0,
+          "bytes": 201326592,
+          "seconds": 39.370489709,
+          "weighted_MBps": 5.113642057492042,
+          "peak_sample_MBps": 5.750543091776631
+        }
+      },
+      "radio_exit": 0,
+      "flow_hash_verified": true,
+      "restored": true,
+      "full_verified": true,
+      "rx_capacity": {
+        "same_boot": true,
+        "kernel_log_coverage": true,
+        "verified": true,
+        "boot_before": "428f3996-861d-4bf7-af96-a31d3a5a35a4",
+        "boot_after": "428f3996-861d-4bf7-af96-a31d3a5a35a4",
+        "dmesg_time_before": [
+          1529.463303,
+          3019.891841
+        ],
+        "dmesg_time_after": [
+          1754.960572,
+          3170.657592
+        ]
+      },
+      "stock_receipts_identical": true
+    },
+    {
+      "case": "on2",
+      "result_path": "device-64m-on2/result.json",
+      "result_sha256": "3c4e7399f2fbf561e810f68912cca6449757ef201cbd9a4bd0ad7c6df2e930c3",
+      "token": "[REDACTED]",
+      "module_sha256": "bbb6d59c67942ec57da12fb6f367c82d4430ebda1abfca88ffac24c977f49ba7",
+      "outgoing_vht": {
+        "app_sha256": "ab84ddba4c05ee2a5f9bc0f5f304a1c053e1074cc7a268265c2026956bebcbf8",
+        "matching_app_load": true,
+        "requested": true,
+        "reported_switch": [
+          "OWLY_OUTGOING_VHT=true"
+        ],
+        "first_host_submitted_mif_container": [
+          "bf0c00000000fcff0000fcff0000"
+        ],
+        "verified": true
+      },
+      "samples": [
+        {
+          "direction": "Mac→小米",
+          "sample": 1,
+          "status": "verified",
+          "bytes": 67108864,
+          "seconds": 23.388728166,
+          "MBps": 2.8692823108507284,
+          "mac_schedule_counts": [
+            {
+              "state": "Data",
+              "149_slots": 11,
+              "snapshots": 5
+            }
+          ],
+          "phy_or_ba_labels": 0
+        },
+        {
+          "direction": "小米→Mac",
+          "sample": 2,
+          "status": "verified",
+          "bytes": 67108864,
+          "seconds": 10.872256,
+          "MBps": 6.172487476380247,
+          "mac_schedule_counts": [
+            {
+              "state": "Data",
+              "149_slots": 11,
+              "snapshots": 1
+            }
+          ],
+          "phy_or_ba_labels": 0
+        },
+        {
+          "direction": "Mac→小米",
+          "sample": 3,
+          "status": "verified",
+          "bytes": 67108864,
+          "seconds": 23.116331917,
+          "MBps": 2.9030931136028295,
+          "mac_schedule_counts": [
+            {
+              "state": "Data",
+              "149_slots": 11,
+              "snapshots": 5
+            }
+          ],
+          "phy_or_ba_labels": 0
+        },
+        {
+          "direction": "小米→Mac",
+          "sample": 4,
+          "status": "verified",
+          "bytes": 67108864,
+          "seconds": 12.684084834,
+          "MBps": 5.290792743684041,
+          "mac_schedule_counts": [
+            {
+              "state": "Data",
+              "149_slots": 11,
+              "snapshots": 3
+            }
+          ],
+          "phy_or_ba_labels": 0
+        },
+        {
+          "direction": "Mac→小米",
+          "sample": 5,
+          "status": "verified",
+          "bytes": 67108864,
+          "seconds": 23.070189333,
+          "MBps": 2.908899577343577,
+          "mac_schedule_counts": [
+            {
+              "state": "Data",
+              "149_slots": 11,
+              "snapshots": 3
+            }
+          ],
+          "phy_or_ba_labels": 0
+        },
+        {
+          "direction": "小米→Mac",
+          "sample": 6,
+          "status": "verified",
+          "bytes": 67108864,
+          "seconds": 10.318299125,
+          "MBps": 6.503868824407628,
+          "mac_schedule_counts": [
+            {
+              "state": "Data",
+              "149_slots": 11,
+              "snapshots": 2
+            }
+          ],
+          "phy_or_ba_labels": 0
+        }
+      ],
+      "throughput_by_direction": {
+        "Mac→小米": {
+          "verified": 3,
+          "failed_or_missing": 0,
+          "bytes": 201326592,
+          "seconds": 69.575249416,
+          "weighted_MBps": 2.893652465350725,
+          "peak_sample_MBps": 2.908899577343577
+        },
+        "小米→Mac": {
+          "verified": 3,
+          "failed_or_missing": 0,
+          "bytes": 201326592,
+          "seconds": 33.874639959,
+          "weighted_MBps": 5.943283596332673,
+          "peak_sample_MBps": 6.503868824407628
+        }
+      },
+      "radio_exit": 0,
+      "flow_hash_verified": true,
+      "restored": true,
+      "full_verified": true,
+      "rx_capacity": {
+        "same_boot": true,
+        "kernel_log_coverage": true,
+        "verified": true,
+        "boot_before": "428f3996-861d-4bf7-af96-a31d3a5a35a4",
+        "boot_after": "428f3996-861d-4bf7-af96-a31d3a5a35a4",
+        "dmesg_time_before": [
+          1761.987047,
+          3227.803265
+        ],
+        "dmesg_time_after": [
+          2406.172939,
+          3355.580348
+        ]
+      },
+      "stock_receipts_identical": true
+    }
+  ],
+  "on1_limit": "Original acceptance remains failed on the old ring retention rule. Both endpoints verified all six payloads, but the original full filtered snapshots were not persisted.",
+  "schedule_limit": "Mac sparse schedule snapshots, not per-frame airtime or PHY evidence. Local advertisement off after on cannot establish expiration of Mac peer-capability cache."
+}

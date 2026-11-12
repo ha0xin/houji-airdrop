@@ -1,0 +1,93 @@
+{
+  "checks": {
+    "all_567_imports": true,
+    "plt_got_matches_references": true,
+    "debug_stripped": true,
+    "aarch64": true,
+    "read_only_params": true,
+    "defaults_off": true,
+    "candidate_code_changed": true,
+    "abi_matches_both_references": true,
+    "new_imports_exported_with_target_crc": true
+  },
+  "abi_by_reference": {
+    "tested_wideband_ring": {
+      "machine": true,
+      "vermagic": true,
+      "depends": true,
+      "module_name": true,
+      "exports": true,
+      "module_size": true,
+      "module_relocations": true,
+      "common_import_crc": true
+    },
+    "capacity_source_tree_module": {
+      "machine": true,
+      "vermagic": true,
+      "depends": true,
+      "module_name": true,
+      "exports": true,
+      "module_size": true,
+      "module_relocations": true,
+      "common_import_crc": true
+    }
+  },
+  "reference_sha256": {
+    "tested_wideband_ring": "481e3474ea6b42acab5bb5a35b5be7b5e291aa975d7422034ca4e750e857d71c",
+    "capacity_source_tree_module": "f31d2cb27de391d74df4d5541bbecdcc917e2f51decfe7535118ca6b09dd7b2c"
+  },
+  "candidate_sha256": "dc6b21e494bda8df9f920e4b2d74f74aa077ae1c6fba41c13e1dd361151e8ec2",
+  "candidate_vermagic": [
+    "6.1.68 SMP preempt mod_unload modversions aarch64"
+  ],
+  "candidate_depends": [
+    "cfg80211,cnss_utils,hwid,cnss_nl,ipam,houji_wonder_bridge,cnss_prealloc,qcom_iommu_util,sched-walt,qcom_va_minidump,cnss2"
+  ],
+  "candidate_import_count": 567,
+  "added_imports_crc_verified": {},
+  "added_undefined": [],
+  "candidate_param_permissions": {
+    "pt_rx_msdu_buf": "0o400",
+    "pt_rx_ezif_marked": "0o400",
+    "pt_coex_5g_override": "0o400",
+    "pt_rx_msdu_stats": "0o444",
+    "pt_rx_capacity_4224": "0o400",
+    "pt_rx_phy_peer": "0o400",
+    "pt_rx_phy_stats": "0o400",
+    "pt_vht80_2ss": "0o400",
+    "pt_remote_assoc": "0o400",
+    "pt_remote_ast_override": "0o400",
+    "pt_remote_hash_override": "0o400",
+    "pt_ast_selection": "0o400",
+    "pt_remote_reo": "0o400",
+    "pt_remote_rx_window": "0o400",
+    "pt_fw_addba": "0o400",
+    "pt_fw_addba_rc": "0o400",
+    "pt_fw_addba_sent": "0o400",
+    "pt_remote_mac": "0o400",
+    "pt_tx_ampdu": "0o400",
+    "pt_dynamic_rate": "0o400",
+    "pt_sta_coexist": "0o400",
+    "pt_fw_caps": "0o400",
+    "pt_remote_peer_stats": "0o400",
+    "pt_ampdu_peak": "0o400"
+  },
+  "candidate_initial_flags": {
+    "pt_rx_msdu_buf": "00",
+    "pt_rx_ezif_marked": "00",
+    "pt_coex_5g_override": "00",
+    "pt_rx_capacity_4224": "00",
+    "pt_rx_phy_mac": "000000000000",
+    "pt_vht80_2ss": "00",
+    "pt_remote_assoc": "00",
+    "pt_remote_reo": "00000000",
+    "pt_remote_rx_window": "40000000",
+    "pt_fw_addba": "00",
+    "pt_remote_mac": "000000000000",
+    "pt_tx_ampdu": "00",
+    "pt_dynamic_rate": "00",
+    "pt_sta_coexist": "00",
+    "pt_remote_ast_override": "01",
+    "pt_remote_hash_override": "01"
+  }
+}

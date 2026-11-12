@@ -1,0 +1,64 @@
+{
+  "capture": "device-tests/20261110/awdl-actions.pcap",
+  "scope": "Historical complete capability elements; packet tails may be truncated; no identity output",
+  "records": {
+    "records": 80,
+    "truncated_records": 24
+  },
+  "capabilities": [
+    {
+      "ht": {
+        "ampdu_params": "1f",
+        "cap_hex": "006f",
+        "max_amsdu": 3839,
+        "raw": "00006f001fffff0000",
+        "rx_mcs_mask": "ffff",
+        "width_20_40": true
+      },
+      "count": 34
+    },
+    {
+      "ht": {
+        "ampdu_params": "1f",
+        "cap_hex": "006f",
+        "max_amsdu": 3839,
+        "raw": "00006f001fffff0000",
+        "rx_mcs_mask": "ffff",
+        "width_20_40": true
+      },
+      "vht": [
+        {
+          "cap_hex": "03800036",
+          "max_ampdu_exponent": 7,
+          "max_mpdu": 11454,
+          "raw": "36008003faff0000faff0000",
+          "rx_highest_rate_raw": 0,
+          "rx_mcs": [
+            "0-9",
+            "0-9",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "sgi80": true,
+          "tx_highest_rate_raw": 0,
+          "tx_mcs": [
+            "0-9",
+            "0-9",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "width_set": 1
+        }
+      ],
+      "count": 24
+    }
+  ]
+}

@@ -1,0 +1,190 @@
+[
+  {
+    "phase": 1,
+    "verified": true,
+    "samples": [
+      {
+        "direction": "Mac→小米",
+        "sample": 1,
+        "mode": 0,
+        "bytes": 16777216,
+        "status": "verified",
+        "seconds": 7.172996166,
+        "MBps": 2.3389411637390802,
+        "sha256": "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1",
+        "mac_wall_start_ns": 1794391344413583000,
+        "mac_wall_end_ns": 1794391351835221000,
+        "phone_seconds": 7.165186
+      },
+      {
+        "direction": "小米→Mac",
+        "sample": 2,
+        "mode": 1,
+        "bytes": 16777216,
+        "status": "verified",
+        "seconds": 1.046130375,
+        "MBps": 16.03740451566565,
+        "sha256": "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1",
+        "mac_wall_start_ns": 1794391351835879000,
+        "mac_wall_end_ns": 1794391352890641000,
+        "phone_seconds": 1.044988
+      }
+    ],
+    "wlan0_coexist": {
+      "connected_before": true,
+      "connected_after": true,
+      "link_before": "Connected to 02:00:00:00:00:02 (on wlan0)\n\tSSID: TEST_WIFI\n\tfreq: 5200\n\tRX: 54549 bytes (144 packets)\n\tTX: 27108 bytes (108 packets)\n\tsignal: -66 dBm\n\trx bitrate: 1297.1 MBit/s 160MHz HE-MCS 6 HE-NSS 2 HE-GI 0 HE-DCM 0\n\ttx bitrate: 864.6 MBit/s 160MHz HE-MCS 4 HE-NSS 2 HE-GI 0 HE-DCM 0",
+      "link_after": "Connected to 02:00:00:00:00:02 (on wlan0)\n\tSSID: TEST_WIFI\n\tfreq: 5200\n\tRX: 77277 bytes (258 packets)\n\tTX: 44442 bytes (207 packets)\n\tsignal: -67 dBm\n\trx bitrate: 864.6 MBit/s 160MHz HE-MCS 4 HE-NSS 2 HE-GI 0 HE-DCM 0\n\ttx bitrate: 864.6 MBit/s 160MHz HE-MCS 4 HE-NSS 2 HE-GI 0 HE-DCM 0",
+      "ping_target": "WLAN0_PING_TARGET=192.0.2.1",
+      "ping": {
+        "raw_tail": [
+          "64 bytes from 192.0.2.1: icmp_seq=47 ttl=64 time=24.8 ms",
+          "64 bytes from 192.0.2.1: icmp_seq=48 ttl=64 time=28.4 ms",
+          "64 bytes from 192.0.2.1: icmp_seq=49 ttl=64 time=34.6 ms",
+          "64 bytes from 192.0.2.1: icmp_seq=50 ttl=64 time=36.2 ms",
+          "64 bytes from 192.0.2.1: icmp_seq=51 ttl=64 time=49.4 ms",
+          "64 bytes from 192.0.2.1: icmp_seq=52 ttl=64 time=47.9 ms",
+          "",
+          "--- 192.0.2.1 ping statistics ---",
+          "52 packets transmitted, 52 received, 0% packet loss, time 10249ms",
+          "rtt min/avg/max/mdev = 2.755/26.557/68.540/21.815 ms"
+        ],
+        "tx_packets": 52,
+        "rx_packets": 52,
+        "loss_pct": 0.0,
+        "rtt_ms": {
+          "min": 2.755,
+          "avg": 26.557,
+          "max": 68.54,
+          "mdev": 21.815
+        }
+      }
+    },
+    "remote_peer": {
+      "active": "1",
+      "generation": "1",
+      "vdev": "2",
+      "peer_id": "23",
+      "ast_valid": "1",
+      "ast_idx": "2",
+      "ast_hash": "2",
+      "reo_enabled": "1",
+      "is_2ss": "1",
+      "obj_created": "1",
+      "dp_created": "1",
+      "create_confirm": "1",
+      "create_status": "0",
+      "htt_map": "1",
+      "slot": "1",
+      "reo_setup": "1",
+      "reo_status": "0",
+      "assoc_issued": "1",
+      "assoc_confirm": "1",
+      "assoc_status": "0",
+      "tx_ready": "1",
+      "delete_issued": "0",
+      "delete_confirm": "0",
+      "htt_unmap": "0",
+      "slot_removed": "0",
+      "dp_released": "0",
+      "obj_released": "0",
+      "dp_conflict": "0",
+      "setup_rc": "0",
+      "teardown_rc": "0"
+    }
+  },
+  {
+    "phase": 2,
+    "verified": true,
+    "samples": [
+      {
+        "direction": "Mac→小米",
+        "sample": 1,
+        "mode": 0,
+        "bytes": 16777216,
+        "status": "verified",
+        "seconds": 4.024466167,
+        "MBps": 4.16880532816267,
+        "sha256": "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1",
+        "mac_wall_start_ns": 1794391361043226000,
+        "mac_wall_end_ns": 1794391366003056000,
+        "phone_seconds": 4.01808
+      },
+      {
+        "direction": "小米→Mac",
+        "sample": 2,
+        "mode": 1,
+        "bytes": 16777216,
+        "status": "verified",
+        "seconds": 1.011040167,
+        "MBps": 16.594015299888675,
+        "sha256": "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1",
+        "mac_wall_start_ns": 1794391366003405000,
+        "mac_wall_end_ns": 1794391367026856000,
+        "phone_seconds": 0.939088
+      }
+    ],
+    "wlan0_coexist": {
+      "connected_before": true,
+      "connected_after": true,
+      "link_before": "Connected to 02:00:00:00:00:02 (on wlan0)\n\tSSID: TEST_WIFI\n\tfreq: 5200\n\tRX: 86468 bytes (277 packets)\n\tTX: 52259 bytes (220 packets)\n\tsignal: -67 dBm\n\trx bitrate: 864.6 MBit/s 160MHz HE-MCS 4 HE-NSS 2 HE-GI 0 HE-DCM 0\n\ttx bitrate: 864.6 MBit/s 160MHz HE-MCS 4 HE-NSS 2 HE-GI 0 HE-DCM 0",
+      "link_after": "Connected to 02:00:00:00:00:02 (on wlan0)\n\tSSID: TEST_WIFI\n\tfreq: 5200\n\tRX: 108148 bytes (354 packets)\n\tTX: 65354 bytes (291 packets)\n\tsignal: -67 dBm\n\trx bitrate: 864.6 MBit/s 160MHz HE-MCS 4 HE-NSS 2 HE-GI 0 HE-DCM 0\n\ttx bitrate: 864.6 MBit/s 160MHz HE-MCS 4 HE-NSS 2 HE-GI 0 HE-DCM 0",
+      "ping_target": "WLAN0_PING_TARGET=192.0.2.1",
+      "ping": {
+        "raw_tail": [
+          "64 bytes from 192.0.2.1: icmp_seq=31 ttl=64 time=55.1 ms",
+          "64 bytes from 192.0.2.1: icmp_seq=32 ttl=64 time=62.4 ms",
+          "64 bytes from 192.0.2.1: icmp_seq=33 ttl=64 time=65.5 ms",
+          "64 bytes from 192.0.2.1: icmp_seq=34 ttl=64 time=3.78 ms",
+          "64 bytes from 192.0.2.1: icmp_seq=35 ttl=64 time=6.37 ms",
+          "64 bytes from 192.0.2.1: icmp_seq=36 ttl=64 time=3.66 ms",
+          "",
+          "--- 192.0.2.1 ping statistics ---",
+          "36 packets transmitted, 36 received, 0% packet loss, time 7032ms",
+          "rtt min/avg/max/mdev = 2.687/30.179/71.720/23.955 ms"
+        ],
+        "tx_packets": 36,
+        "rx_packets": 36,
+        "loss_pct": 0.0,
+        "rtt_ms": {
+          "min": 2.687,
+          "avg": 30.179,
+          "max": 71.72,
+          "mdev": 23.955
+        }
+      }
+    },
+    "remote_peer": {
+      "active": "1",
+      "generation": "1",
+      "vdev": "2",
+      "peer_id": "23",
+      "ast_valid": "1",
+      "ast_idx": "2",
+      "ast_hash": "2",
+      "reo_enabled": "1",
+      "is_2ss": "1",
+      "obj_created": "1",
+      "dp_created": "1",
+      "create_confirm": "1",
+      "create_status": "0",
+      "htt_map": "1",
+      "slot": "1",
+      "reo_setup": "1",
+      "reo_status": "0",
+      "assoc_issued": "1",
+      "assoc_confirm": "1",
+      "assoc_status": "0",
+      "tx_ready": "1",
+      "delete_issued": "0",
+      "delete_confirm": "0",
+      "htt_unmap": "0",
+      "slot_removed": "0",
+      "dp_released": "0",
+      "obj_released": "0",
+      "dp_conflict": "0",
+      "setup_rc": "0",
+      "teardown_rc": "0"
+    }
+  }
+]

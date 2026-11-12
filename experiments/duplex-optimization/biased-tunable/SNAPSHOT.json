@@ -1,0 +1,8 @@
+{
+  "qca_cld3_kiwi_v2-three-findings.ko": "6914d32ece387172706e740cf63284daf9e9cd72b2f6f91dc2a3f678fc5dc6bb",
+  "audit-three-findings.json": "11a140bcc0be7090f7060babd05e9c03cbcc8c763494ec836d04862bf8e0a049",
+  "dist/houji-owly": "878086f5cb883e6067f817f62121bb7ec55fc3451abda64e13dc9c60c26ad508",
+  "dist/wonder-init": "051263b0e329d5da75e07c77381c1d575e79883ec4c790cbd414d080de2ddeb4",
+  "dist/owly-hashprobe": "dba1dc74656f11b9b41c3fd3df41f299a3c8b673a80785580afb5a8a5128f40c",
+  "dist/SHA256SUMS": "c2173d8a16b143ebf043d0fdb52e7d572db075405816ac05082f8392f5b78053"
+}

@@ -1,0 +1,186 @@
+--- a/crates/owly-awdl/src/node.rs
++++ b/crates/owly-awdl/src/node.rs
+@@ -109,8 +109,8 @@
+     pub no_ack: bool,
+     /// Accept a peer's Block Ack session (AWDL-15).
+     pub accept_addba: bool,
+-    /// Advertise 80 MHz VHT with one spatial stream and the 3895-byte MPDU limit.
+-    pub advertise_vht80_1ss: bool,
++    /// Action frame subtypes that advertise 80 MHz VHT with one spatial stream.
++    pub outgoing_vht: OutgoingVht,
+     /// Send unicast packets to one peer as A-MSDUs, up to the peer's limit.
+     pub amsdu: bool,
+     /// The largest frame the radio takes, MAC header included.
+@@ -124,6 +124,37 @@
+     pub max_peers: usize,
+ }
+ 
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++pub enum OutgoingVht {
++    Off,
++    Mif,
++    PsfAndMif,
++}
++
++impl OutgoingVht {
++    fn advertises(self, subtype: u8) -> bool {
++        matches!(
++            (self, subtype),
++            (Self::Mif | Self::PsfAndMif, frame::subtype::MIF)
++                | (Self::PsfAndMif, frame::subtype::PSF)
++        )
++    }
++}
++
++#[cfg(test)]
++#[test]
++fn outgoing_vht_scope() {
++    use frame::subtype::{MIF, PSF};
++
++    assert!(!OutgoingVht::Off.advertises(PSF));
++    assert!(!OutgoingVht::Off.advertises(MIF));
++    assert!(!OutgoingVht::Mif.advertises(PSF));
++    assert!(OutgoingVht::Mif.advertises(MIF));
++    assert!(OutgoingVht::PsfAndMif.advertises(PSF));
++    assert!(OutgoingVht::PsfAndMif.advertises(MIF));
++    assert!(!OutgoingVht::PsfAndMif.advertises(0xff));
++}
++
+ impl Config {
+     /// Legacy's defaults.
+     pub fn new(addr: MacAddr, name: &str, radio: RadioConstraints) -> Config {
+@@ -135,7 +166,7 @@
+             rate: TxRate::BASIC,
+             no_ack,
+             accept_addba: false,
+-            advertise_vht80_1ss: false,
++            outgoing_vht: OutgoingVht::Off,
+             amsdu: false,
+             max_frame: 2304,
+             rssi_threshold: Some(-65),
+@@ -697,7 +728,7 @@
+             sequence: &self.sequence,
+             election: &self.election,
+             ht: Some(HT),
+-            advertise_vht80_1ss: self.cfg.advertise_vht80_1ss,
++            advertise_vht80_1ss: self.cfg.outgoing_vht.advertises(subtype),
+         };
+         let mif = subtype == frame::subtype::MIF;
+         let bytes = frame::action_frame(self.cfg.addr, seq, subtype, now.micros() as u32, |out| {
+--- a/crates/owly-awdl/src/tlv.rs
++++ b/crates/owly-awdl/src/tlv.rs
+@@ -517,10 +517,10 @@
+     if let Some(ht) = &own.ht {
+         put_ht_capabilities(out, ht);
+     }
++    if own.advertise_vht80_1ss {
++        put_vht80_1ss_capabilities(out);
++    }
+     if mif {
+-        if own.advertise_vht80_1ss {
+-            put_vht80_1ss_capabilities(out);
+-        }
+         put_arpa(out, own.name);
+     }
+     put_data_path_state(out, own);
+@@ -566,20 +566,21 @@
+     }
+ 
+     #[test]
+-    fn vht80_1ss_only_extends_the_mif() {
+-        let psf = own_frame(false);
+-        assert_eq!(own_frame_with_vht(false, true), psf);
+-
+-        let mif = own_frame(true);
+-        let mut advertised = own_frame_with_vht(true, true);
++    fn vht80_1ss_adds_the_same_container_to_psf_and_mif() {
+         let wire = [
+             17, 14, 0, 191, 12, 0, 0, 0, 0, 0xfc, 0xff, 0, 0, 0xfc, 0xff, 0, 0,
+         ];
+-        let offset = advertised.windows(wire.len()).position(|bytes| bytes == wire).unwrap();
+-        let kinds: Vec<u8> = tlvs(&advertised).map(|entry| entry.unwrap().kind).collect();
+-        assert_eq!(kinds, vec![4, 5, 18, 24, 6, 7, 17, 16, 12, 21]);
+-        advertised.drain(offset..offset + wire.len());
+-        assert_eq!(advertised, mif);
++        for (mif, expected) in [
++            (false, vec![4, 5, 18, 24, 6, 7, 17, 12, 21]),
++            (true, vec![4, 5, 18, 24, 6, 7, 17, 16, 12, 21]),
++        ] {
++            let mut advertised = own_frame_with_vht(mif, true);
++            let offset = advertised.windows(wire.len()).position(|bytes| bytes == wire).unwrap();
++            let kinds: Vec<u8> = tlvs(&advertised).map(|entry| entry.unwrap().kind).collect();
++            assert_eq!(kinds, expected);
++            advertised.drain(offset..offset + wire.len());
++            assert_eq!(advertised, own_frame(mif));
++        }
+     }
+ 
+     // spec: AWDL-4
+--- a/crates/owly-awdl/src/lib.rs
++++ b/crates/owly-awdl/src/lib.rs
+@@ -51,7 +51,7 @@
+ pub use frame::Frame;
+ pub use ip::Ipv6Packet;
+ pub use node::{
+-    Action, Config, Input, MAX_PEERS, Node, Presence, RadioConstraints, Stats, UNICAST_QUEUE,
++    Action, Config, Input, MAX_PEERS, Node, OutgoingVht, Presence, RadioConstraints, Stats, UNICAST_QUEUE,
+ };
+ pub use peer::PeerInfo;
+ pub use rate::TxRate;
+--- a/crates/owly-awdl/tests/node.rs
++++ b/crates/owly-awdl/tests/node.rs
+@@ -9,7 +9,7 @@
+ use owly_awdl::tlv::{self, HtCapabilities, Own};
+ use owly_awdl::{
+     Action, Channel, Config, Input, Ipv6Packet, MacAddr, Node, Presence, RadioConstraints,
+-    Sequence, TU, Time,
++    OutgoingVht, Sequence, TU, Time,
+ };
+ 
+ const US: MacAddr = MacAddr([0x02, 0, 0, 0, 0, 0x01]);
+@@ -128,6 +128,45 @@
+         .collect()
+ }
+ 
++#[test]
++fn node_adds_vht_only_to_the_selected_action_subtypes() {
++    fn own_actions(scope: OutgoingVht) -> [Vec<u8>; 2] {
++        let radio = RadioConstraints {
++            channel: Channel(149),
++            presence: Presence::Fixed,
++        };
++        let mut cfg = Config::new(US, "owly", radio);
++        cfg.outgoing_vht = scope;
++        let mut n = Node::new(cfg, START);
++        let actions = tick(&mut n, START.plus(200 * TU));
++        let mut frames = [None, None];
++        for sent in transmits(&actions) {
++            let Ok(frame::Received::Action { subtype, .. }) = frame::parse(&sent.bytes) else {
++                continue;
++            };
++            match subtype {
++                subtype::PSF => frames[0] = Some(sent.bytes.clone()),
++                subtype::MIF => frames[1] = Some(sent.bytes.clone()),
++                _ => {}
++            }
++        }
++        frames.map(|frame| frame.expect("timer sent its own action"))
++    }
++
++    let [off_psf, off_mif] = own_actions(OutgoingVht::Off);
++    let [mif_psf, mif_mif] = own_actions(OutgoingVht::Mif);
++    let [both_psf, both_mif] = own_actions(OutgoingVht::PsfAndMif);
++    assert_eq!(off_psf, mif_psf);
++    assert_eq!(mif_mif, both_mif);
++
++    let wire = [17, 14, 0, 191, 12, 0, 0, 0, 0, 0xfc, 0xff, 0, 0, 0xfc, 0xff, 0, 0];
++    for (off, mut on) in [(off_psf, both_psf), (off_mif, mif_mif)] {
++        let start = on.windows(wire.len()).position(|bytes| bytes == wire).unwrap();
++        on.drain(start..start + wire.len());
++        assert_eq!(off, on);
++    }
++}
++
+ const PHONE_SEQ: [u8; SLOTS] = [149, 149, 149, 0, 0, 0, 0, 0, 6, 149, 149, 0, 0, 0, 0, 0];
+ 
+ // spec: AWDL-12

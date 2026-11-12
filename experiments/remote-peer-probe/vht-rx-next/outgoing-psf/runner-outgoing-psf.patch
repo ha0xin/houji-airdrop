@@ -1,0 +1,131 @@
+--- a/src/android.rs
++++ b/src/android.rs
+@@ -8,6 +8,7 @@
+ 
+ use owly_awdl::driver::{self, Air, Netif, Received};
+ use owly_awdl::frame::Frame;
++use owly_awdl::OutgoingVht;
+ use owly_awdl::{Channel, Config, Ipv6Packet, MacAddr, Presence, RadioConstraints};
+ use tokio::io::unix::AsyncFd;
+ use tokio::signal::unix::{SignalKind, signal};
+@@ -74,7 +75,7 @@
+     tx_fatal: DropCount,
+     tx_backpressure: u64,
+     tx_submitted: u64,
+-    mif_reported: bool,
++    action_reported: [bool; 2],
+     tx_amsdu_mpdu: u64,
+     tx_amsdu_msdu: u64,
+ }
+@@ -140,23 +141,29 @@
+             tx_fatal: DropCount::default(),
+             tx_backpressure: 0,
+             tx_submitted: 0,
+-            mif_reported: false,
++            action_reported: [false; 2],
+             tx_amsdu_mpdu: 0,
+             tx_amsdu_msdu: 0,
+         })
+     }
+ 
+-    fn report_first_submitted_mif(&mut self, bytes: &[u8]) {
++    fn report_first_submitted_action(&mut self, bytes: &[u8]) {
+         use owly_awdl::{frame, tlv};
+ 
+-        if self.mif_reported || bytes.first() != Some(&0xd0) {
++        if self.action_reported == [true; 2] || bytes.first() != Some(&0xd0) {
+             return;
+         }
+-        let Ok(frame::Received::Action { subtype: frame::subtype::MIF, tlvs, .. }) =
+-            frame::parse(bytes)
+-        else {
++        let Ok(frame::Received::Action { subtype, tlvs, .. }) = frame::parse(bytes) else {
+             return;
+         };
++        let (slot, name) = match subtype {
++            frame::subtype::PSF => (0, "PSF"),
++            frame::subtype::MIF => (1, "MIF"),
++            _ => return,
++        };
++        if self.action_reported[slot] {
++            return;
++        }
+         let mut container = None;
+         for entry in tlv::tlvs(tlvs) {
+             let Ok(entry) = entry else { return };
+@@ -170,8 +177,8 @@
+             || "absent".to_owned(),
+             |value| value.iter().map(|byte| format!("{byte:02x}")).collect::<String>(),
+         );
+-        println!("OWLY_MIF_SUBMITTED_VHT_CONTAINER={wire}");
+-        self.mif_reported = true;
++        println!("OWLY_{name}_SUBMITTED_VHT_CONTAINER={wire}");
++        self.action_reported[slot] = true;
+     }
+ }
+ 
+@@ -232,7 +239,7 @@
+         match write_packet(self.fd.get_ref(), &self.tx) {
+             Ok(()) => {
+                 self.tx_submitted += 1;
+-                self.report_first_submitted_mif(&frame.bytes);
++                self.report_first_submitted_action(&frame.bytes);
+                 if frame.bytes.first() == Some(&0x88)
+                     && frame.bytes.get(24).is_some_and(|flags| flags & 0x80 != 0)
+                 {
+@@ -368,11 +375,11 @@
+     Ok(mac)
+ }
+ 
+-fn outgoing_vht_enabled() -> io::Result<bool> {
++fn outgoing_vht() -> io::Result<OutgoingVht> {
+     match std::env::var("HOUJI_OWLY_OUTGOING_VHT") {
+-        Err(std::env::VarError::NotPresent) => Ok(false),
+-        Ok(value) if value == "0" => Ok(false),
+-        Ok(value) if value == "1" => {
++        Err(std::env::VarError::NotPresent) => Ok(OutgoingVht::Off),
++        Ok(value) if value == "0" => Ok(OutgoingVht::Off),
++        Ok(value) if value == "1" || value == "2" => {
+             let capacity = fs::read_to_string(
+                 "/sys/module/qca_cld3_kiwi_v2/parameters/pt_rx_capacity_4224",
+             )?;
+@@ -382,9 +389,9 @@
+                     "outgoing VHT requires the tested RX capacity and VHT80 radio mode",
+                 ));
+             }
+-            Ok(true)
+-        }
+-        _ => Err(io::Error::other("expected HOUJI_OWLY_OUTGOING_VHT=0 or 1")),
++            Ok(if value == "1" { OutgoingVht::Mif } else { OutgoingVht::PsfAndMif })
++        }
++        _ => Err(io::Error::other("expected HOUJI_OWLY_OUTGOING_VHT=0, 1 or 2")),
+     }
+ }
+ 
+@@ -397,7 +404,7 @@
+         ));
+     };
+     let peer = parse_mac(peer)?;
+-    let outgoing_vht = outgoing_vht_enabled()?;
++    let outgoing_vht = outgoing_vht()?;
+     let amsdu = match aggregation.as_str() {
+         "single" => false,
+         "amsdu" => true,
+@@ -427,7 +434,7 @@
+     );
+     cfg.no_ack = no_ack;
+     cfg.accept_addba = false;
+-    cfg.advertise_vht80_1ss = outgoing_vht;
++    cfg.outgoing_vht = outgoing_vht;
+     cfg.amsdu = amsdu;
+     cfg.max_frame = if amsdu { 7935 } else { 2304 };
+     cfg.rssi_threshold = None;
+@@ -442,7 +449,7 @@
+     )?;
+     let mut failed = running.failed();
+     println!("OWLY_COALESCE_US={}", option_env!("HOUJI_OWLY_COALESCE_US").unwrap_or("0"));
+-    println!("OWLY_OUTGOING_VHT={outgoing_vht}");
++    println!("OWLY_OUTGOING_VHT_SCOPE={outgoing_vht:?}");
+     println!(
+         "OWLY_READY iface={TUN} addr={} peer={peer} channel=149 amsdu={amsdu} noack={no_ack} ba=false",
+         addr.link_local()

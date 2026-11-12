@@ -1,0 +1,415 @@
+{
+  "token": "[REDACTED]",
+  "profile": "vht80-2ss-mcs9-sgi",
+  "phase": 2,
+  "mode": "2ss",
+  "addba": "amsdu",
+  "accept_addba": true,
+  "bytes_per_sample": 67108864,
+  "pairs": 3,
+  "samples": [
+    {
+      "direction": "Mac→小米",
+      "sample": 1,
+      "mode": 0,
+      "bytes": 67108864,
+      "status": "verified",
+      "seconds": 6.405147959,
+      "MBps": 10.477332362901002,
+      "sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "mac_wall_start_ns": 1794333307858005000,
+      "mac_wall_end_ns": 1794333314504668000,
+      "phone_seconds": 6.396241
+    },
+    {
+      "direction": "小米→Mac",
+      "sample": 2,
+      "mode": 1,
+      "bytes": 67108864,
+      "status": "verified",
+      "seconds": 10.536914292,
+      "MBps": 6.368929474063525,
+      "sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "mac_wall_start_ns": 1794333314504892000,
+      "mac_wall_end_ns": 1794333325048764000,
+      "phone_seconds": 10.537304
+    },
+    {
+      "direction": "Mac→小米",
+      "sample": 3,
+      "mode": 0,
+      "bytes": 67108864,
+      "status": "verified",
+      "seconds": 3.654710666,
+      "MBps": 18.362291883819402,
+      "sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "mac_wall_start_ns": 1794333325048908000,
+      "mac_wall_end_ns": 1794333328712025000,
+      "phone_seconds": 3.644007
+    },
+    {
+      "direction": "小米→Mac",
+      "sample": 4,
+      "mode": 1,
+      "bytes": 67108864,
+      "status": "verified",
+      "seconds": 11.573013459,
+      "MBps": 5.798737229309222,
+      "sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "mac_wall_start_ns": 1794333328712193000,
+      "mac_wall_end_ns": 1794333340292475000,
+      "phone_seconds": 11.573496
+    },
+    {
+      "direction": "Mac→小米",
+      "sample": 5,
+      "mode": 0,
+      "bytes": 67108864,
+      "status": "verified",
+      "seconds": 3.630793208,
+      "MBps": 18.483251497808794,
+      "sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "mac_wall_start_ns": 1794333340292640000,
+      "mac_wall_end_ns": 1794333343932377000,
+      "phone_seconds": 3.623188
+    },
+    {
+      "direction": "小米→Mac",
+      "sample": 6,
+      "mode": 1,
+      "bytes": 67108864,
+      "status": "verified",
+      "seconds": 12.02861125,
+      "MBps": 5.579103240201564,
+      "sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "mac_wall_start_ns": 1794333343932594000,
+      "mac_wall_end_ns": 1794333355968028000,
+      "phone_seconds": 12.028282
+    }
+  ],
+  "phone_mac_sha256": "739775f256040dff2d47a254c2b09604073feea399d586426219fd657bc2f5bf",
+  "advertisement": {
+    "mode": "2ss",
+    "addba": "amsdu",
+    "accept_addba": true,
+    "matching_app_load": true,
+    "switch_ok": true,
+    "psf_ht": [
+      "00006f001fffff0000"
+    ],
+    "psf_vht": [
+      "bf0c30008003faff0000faff0000"
+    ],
+    "mif_ht": [
+      "00006f001fffff0000"
+    ],
+    "mif_vht": [
+      "bf0c30008003faff0000faff0000"
+    ],
+    "verified": true
+  },
+  "runner_summary": {
+    "OWLY_AF_PACKET_BUF": [
+      "OWLY_AF_PACKET_BUF rcvbuf=16777216 sndbuf=8388608"
+    ],
+    "OWLY_COALESCE_US": [
+      "OWLY_COALESCE_US=1000"
+    ],
+    "OWLY_OUTGOING_VHT": [
+      "OWLY_OUTGOING_VHT=2"
+    ],
+    "OWLY_ACCEPT_ADDBA": [
+      "OWLY_ACCEPT_ADDBA=2"
+    ],
+    "OWLY_READY": [
+      "OWLY_READY iface=owly0 addr=2001:db8::34 peer=02:00:00:00:00:01 channel=149 amsdu=true noack=false ba=true"
+    ],
+    "OWLY_PSF_SUBMITTED_HT_CAPABILITIES": [
+      "OWLY_PSF_SUBMITTED_HT_CAPABILITIES=00006f001fffff0000"
+    ],
+    "OWLY_PSF_SUBMITTED_VHT_CONTAINER": [
+      "OWLY_PSF_SUBMITTED_VHT_CONTAINER=bf0c30008003faff0000faff0000"
+    ],
+    "OWLY_MIF_SUBMITTED_HT_CAPABILITIES": [
+      "OWLY_MIF_SUBMITTED_HT_CAPABILITIES=00006f001fffff0000"
+    ],
+    "OWLY_MIF_SUBMITTED_VHT_CONTAINER": [
+      "OWLY_MIF_SUBMITTED_VHT_CONTAINER=bf0c30008003faff0000faff0000"
+    ],
+    "last_stats": " INFO owly_awdl::driver: STATS tx_action 1204 tx_unicast 177512 tx_multicast 3 tx_amsdu 58814 | radio full 0 gave up 0 | rx_action 499 rx_data 67326 rx_malformed 0 rx_dup 0 delivered 185041 | addba req 1 resp 1 | dropped no_peer 0 queue 0 expired 0 | syn held 0 released 0 | no_overlap 0 | timer late avg 857 µs max 3355 µs",
+    "monitor_totals": " INFO houji_owly::android: monitor totals air_rx_invalid=0 air_rx_kernel_packets=67826 air_rx_kernel_drops=0 air_tx_fatal=0 air_tx_backpressure=0 air_tx_submitted=62139 air_tx_amsdu_mpdu=58814 air_tx_amsdu_msdu=175395",
+    "rx_gaps": "OWLY_RX_GAPS schema=1 matched=57742 missing=0 equal=56110 backwards=0 host_delayed=0 equal_host_delayed=0 host_caught_up=0 bounds_us=[250, 1000, 4000, 16000, 32000, 64000, 128000, 256000] radio_count=[7, 470, 647, 347, 121, 11, 0, 23, 5] radio_us=[1381, 393437, 1426339, 3637721, 2549488, 439314, 0, 4357374, 23020294] host_count=[52885, 4160, 221, 447, 0, 0, 0, 22, 6] host_us=[3007386, 1684487, 393189, 3430321, 0, 0, 0, 4006614, 23274676]"
+  },
+  "flow_hash_verified": true,
+  "rx_phy_delta": {
+    "matched": 67326,
+    "fcs": 0,
+    "layout": 0,
+    "not_done": 0,
+    "ppdu_mismatch": 0,
+    "range": 0,
+    "outside_scope": 0,
+    "valid": 67326,
+    "retry": 247,
+    "amsdu": 59163,
+    "rx_ampdu": 67326,
+    "packet_type": [
+      0,
+      0,
+      0,
+      67326,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "ofdm_bw": [
+      0,
+      0,
+      0
+    ],
+    "cck_bw": [
+      0,
+      0,
+      0
+    ],
+    "ht_bw": [
+      0,
+      0,
+      0
+    ],
+    "vht_bw": [
+      0,
+      0,
+      67326
+    ],
+    "ht_mcs": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "vht_mcs": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      67326
+    ],
+    "ht_nss": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "vht_nss": [
+      0,
+      0,
+      67326,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "ht_gi": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "vht_gi": [
+      191,
+      67135,
+      0,
+      0
+    ],
+    "reception": [
+      67326,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "qos_ack_policy": [
+      67326,
+      0,
+      0,
+      0
+    ],
+    "raw_len": [
+      6954,
+      2630,
+      331,
+      57411
+    ]
+  },
+  "tx_rate_delta": {
+    "completed": 62112,
+    "valid": 60732,
+    "invalid": 1380,
+    "tries": 65822,
+    "amsdu": 0,
+    "ldpc": 60731,
+    "bw": [
+      1,
+      0,
+      60731,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "mcs": [
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      60731,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "pkt": [
+      1,
+      0,
+      0,
+      60731,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "gi": [
+      1,
+      60731,
+      0,
+      0
+    ],
+    "status": [
+      60732,
+      0,
+      1380,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "tx_ring": [
+      62112,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "throughput_by_direction": {
+    "Mac→小米": {
+      "verified": 3,
+      "failed_or_missing": 0,
+      "bytes": 201326592,
+      "seconds": 13.690651833,
+      "weighted_MBps": 14.705405882481184,
+      "peak_sample_MBps": 18.483251497808794
+    },
+    "小米→Mac": {
+      "verified": 3,
+      "failed_or_missing": 0,
+      "bytes": 201326592,
+      "seconds": 34.138539001,
+      "weighted_MBps": 5.897340597794846,
+      "peak_sample_MBps": 6.368929474063525
+    }
+  },
+  "mac_lqm_tail": [
+    "2026-11-11 01:55:54.959 Df kernel[0:235f74] () LQM-WiFi: BK : Count: 0 avgLatencyMs:0 maxLatencyMs:0",
+    "2026-11-11 01:55:54.959 Df kernel[0:235f74] () LQM-WiFi: VI : Count: 0 avgLatencyMs:0 maxLatencyMs:0",
+    "2026-11-11 01:55:54.959 Df kernel[0:235f74] () LQM-WiFi: VO : Count: 3 avgLatencyMs:188 maxLatencyMs:302",
+    "2026-11-11 01:55:54.960 Df kernel[0:235f74] () wlan0:com.apple.wifi.awdl0: LQM-WiFi:AWDL State #16 Data(5)  DutyCycle 76  StateDuration 46lu.461s[112060.547 - 0.000]   StateComplete  0",
+    "2026-11-11 01:55:54.960 Df kernel[0:235f74] () wlan0:com.apple.wifi.awdl0: LQM-WiFi:AWDL Active Time 3800ms(76%) 5.000s[112102.008s - 112107.008s]",
+    "2026-11-11 01:55:55.878 Df kernel[0:23682a] () 194064.784718 wlan0.E[468933] [wcl] computeAdvisoryScores@1024:LQM-WiFi: lqa=2 thput=854 lat=28 rssi=-59",
+    "2026-11-11 01:55:57.781 Df kernel[0:235f74] () wlan0:com.apple.p2p.awdl0: updateHTandVHTCapsForRSDB[5413]: Num of Chains to use: 2 (original 2) number of core 2 dynSdbState 0",
+    "2026-11-11 01:55:58.560 Df airportd[674:2366e8] [com.apple.WiFiManager:] [corewifi] LQM-WiFi: WeightAvgLQM rssi=-59 snr=20 txRate=626995 rxRate=960730",
+    "2026-11-11 01:55:58.560 Df airportd[674:2366e8] [com.apple.WiFiManager:] [corewifi] LQM-WiFi:  (HighBand) rxCrsGlitch=503 rxBphyCrsGlitch=0 rxStart=9247 rxBadPLCP=0 rxBphyBadPLCP=0 rxBadFCS=11 rxFifo0Ovfl=0 rxFifo1Ovfl=0 rx_nobuf=0 rxAnyErr=43 rxResponseTimeout=6 rxNoDelim=43 rxFrmTooLong=0 rxFrmTooShort=3",
+    "2026-11-11 01:55:58.560 Df airportd[674:2366e8] [com.apple.WiFiManager:] [corewifi] LQM-WiFi: (HighBand) txRTSFrm=924 txRTSFail=0 rxCTSUcast=918 rxRTSUcast=0 txCTSFrm=0 txAMPDU=935 rxBACK=935 txPhyError=0 txAllFrm=9111 txMPDU=3 txUcast=955 rxACKUcast=20 OfdmDesense=0 dB",
+    "2026-11-11 01:55:58.560 Df airportd[674:2366e8] [com.apple.WiFiManager:] [corewifi] LQM-WiFi: (HighBand) rxBeaconMbss=14 rxBeaconObss=0 rxDataUcastMbss=7150 rxMgmtUcastMbss=0 rxCNTRLUcast=1886 txACKFrm=7125 txBACK=22 ctxFifoFull=0 ctxFifo2Full=0 rxDataMcast=1 rxMgmtMcast=100 rxDrop20s=0",
+    "2026-11-11 01:55:58.560 Df airportd[674:2366e8] [com.apple.WiFiManager:] [corewifi] LQM-WiFi: RX AMPDU (HighBand) rxAmpdu=23 txBACK(Ucode)=22 rxMpduInAmpdu=26 rxholes=0 rxdup=0 rxstuck=0 rxoow=0 rxoos=0 rxaddbareq=0 txaddbaresp=0 rxbar=0 txdelba=0 rxdelba=0 rxQueued=0 rxRetryNoBA=0",
+    "2026-11-11 01:55:58.560 Df airportd[674:2366e8] [com.apple.WiFiManager:] [corewifi] LQM-WiFi: WME RX MPDUs (rxPER 0 %) in tids 0:24127, 1:0, 2:1, 3:0, 4:0, 5:0, 6:1, 7:0",
+    "2026-11-11 01:55:58.560 Df airportd[674:2366e8] [com.apple.WiFiManager:] [corewifi] LQM-WiFi: Stats12(5G): bt5g_status=0x3 bt5g_defer_cnt=0 bt5g_no_defer_cnt=0 bt5g_defer_max_switch_dur=0 bt5g_no_defer_max_switch_dur=0 bt5g_switch_succ_cnt=0 bt5g_switch_fail_cnt=0 bt5g_switch_reason_bm=0",
+    "2026-11-11 01:55:58.560 Df airportd[674:2366e8] [com.apple.WiFiManager:] [corewifi] LQM-WiFi: Stats12(2G): btDur=20ms(0%) status=0xc0000003 reqTypeMap=0x300040 req=23 gnt=17 abort=1 rx1ovfl=0 latency=0 pmAttempt=0 sucPM=0 sucCTS2S=4 wlanTXPreempt=1 wlanRXPreempt=0 apTXafterPM=0 gntAudio=0 denyAudio=0 gntA2DP=0 denyA2DP=0",
+    "2026-11-11 01:55:58.560 Df airportd[674:2366e8] [com.apple.WiFiManager:] [corewifi] LQM-WiFi:  (HighBand) rxToss=0 rxLastTossRsn=39 rxNoFrag=0 rxNoCmplId=0 rxNoHaddr=0 rxMulti=1 rxUndec=0",
+    "2026-11-11 01:55:58.560 Df airportd[674:2366e8] [com.apple.WiFiManager:] [corewifi] LQM-WiFi: Stats12(2G): CrtPriCnt=70 PriCnt=14 gntSniff=0 denySniff=0 antGrant0~10ms=186 antGrant10~30ms=0 antGrant30~60ms=0 antGrant>60ms=0 APLeakiness=0 rr_cnt=0 rr_succ_cnt=0",
+    "2026-11-11 01:55:58.560 Df airportd[674:2366e8] [com.apple.WiFiManager:] [corewifi] LQM-WiFi: Stats12(2G): btDurAir=205ms(3%) desenseMode=0 wlrssi=0 btrssi=0 profile2gActive=0 profile5gActive=6 inactiveDur=5198 btPmAttemptNoackCnt=0 status2=0x0 [5757ms]",
+    "2026-11-11 01:55:58.560 Df airportd[674:2366e8] [com.apple.WiFiManager:] [corewifi] LQM-WiFi: 15.4 Coex Stats V3: Mode=0 Request=0 Grant=0 Duration=0us AckedPM=0 TXedCTS2A=0 GrantDelay=0 CritPhyCal=0 CritRateRecovery=0 CritBcnLoss=0 CritHpp=0 CritBT=0 CritAwdlNan=0 CritMaxDur=2028 CirtAggregate=0 CritBitMapMax=4",
+    "2026-11-11 01:55:58.560 Df airportd[674:2366e8] [com.apple.WiFiManager:] [corewifi] LQM-WiFi: 15.4 Coex Stats V3: 154_tx_req_cnt=0 154_rx_req_cnt=0 154_tx_deny_cnt=0 154_rx_deny_cnt=0 [5755ms]",
+    "2026-11-11 01:55:58.560 Df airportd[674:2366e8] [com.apple.WiFiManager:] [corewifi] LQM-WiFi: TX(00:00:00:00:00:00) AC<SU MS NB NRS NA CM EX TF FFP MRET FLE> BE<40 0 0 0 0 0 0 0 0 0 0> (4999ms)",
+    "2026-11-11 01:55:58.560 Df airportd[674:2366e8] [com.apple.WiFiManager:] [corewifi] LQM-WiFi: TX(00:00:00:00:00:00) AC<SU MS NB NRS NA CM EX TF FFP MRET FLE> BK<0 0 0 0 0 0 0 0 0 0 0> (4999ms)",
+    "2026-11-11 01:55:58.560 Df airportd[674:2366e8] [com.apple.WiFiManager:] [corewifi] LQM-WiFi: TX(00:00:00:00:00:00) AC<SU MS NB NRS NA CM EX TF FFP MRET FLE> VI<0 0 0 0 0 0 0 0 0 0 0> (4999ms)",
+    "2026-11-11 01:55:58.560 Df airportd[674:2366e8] [com.apple.WiFiManager:] [corewifi] LQM-WiFi: TX(00:00:00:00:00:00) AC<SU MS NB NRS NA CM EX TF FFP MRET FLE> VO<3 0 0 0 0 0 0 0 0 0 0> (4999ms)",
+    "2026-11-11 01:55:58.560 Df airportd[674:2366e8] [com.apple.WiFiManager:] [corewifi] LQM-WiFi: L3 Control VO TX(00:00:00:00:00:00) Success=3 NoACK=0 Expired=0 OtherErr=0"
+  ],
+  "verified": true,
+  "radio_idle": true
+}

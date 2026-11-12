@@ -1,0 +1,65 @@
+--- a/qca-wifi-host-cmn/dp/wifi3.0/dp_rx_tid.c
++++ b/qca-wifi-host-cmn/dp/wifi3.0/dp_rx_tid.c
+@@ -20,6 +20,8 @@
+ #include <qdf_types.h>
+ #ifdef DRIVER_PASSTHRU_OWNER
+ #include <qdf_pt_remote_peer.h>
++#include <linux/moduleparam.h>
++#include <linux/kernel.h>
+ #endif
+ #include <qdf_lock.h>
+ #include <hal_hw_headers.h>
+@@ -45,6 +47,43 @@
+ #endif
+ #ifdef BYPASS_OL_OPS
+ #include <target_if_dp.h>
++#endif
++
++#ifdef DRIVER_PASSTHRU_OWNER
++/* Immutable after module load; consumed only by existing peer RX setup. */
++static unsigned int pt_remote_rx_window = 64;
++
++static int dp_pt_rx_window_set(const char *val, const struct kernel_param *kp)
++{
++	unsigned int window;
++	int ret = kstrtouint(val, 0, &window);
++
++	if (ret)
++		return ret;
++	if (window != 1 && window != 64 && window != 256)
++		return -EINVAL;
++	*(unsigned int *)kp->arg = window;
++	return 0;
++}
++
++static const struct kernel_param_ops dp_pt_rx_window_ops = {
++	.set = dp_pt_rx_window_set,
++	.get = param_get_uint,
++};
++module_param_cb(pt_remote_rx_window, &dp_pt_rx_window_ops,
++		&pt_remote_rx_window, 0400);
++MODULE_PARM_DESC(pt_remote_rx_window,
++	"PASSTHRU reo2 TID0 initial RX queue window: 1, 64 (default), or 256; not air BA negotiation");
++
++static unsigned int dp_pt_initial_rx_window(struct dp_soc *soc)
++{
++	unsigned int maximum = hal_get_rx_max_ba_window(soc->hal_soc, 0);
++	unsigned int effective = qdf_min(pt_remote_rx_window, maximum);
++
++	dp_info("PT_RX_WINDOW requested=%u effective=%u max=%u tid=0 route_mode=2",
++		pt_remote_rx_window, effective, maximum);
++	return effective;
++}
+ #endif
+ 
+ #ifdef REO_QDESC_HISTORY
+@@ -1277,7 +1316,8 @@
+ #ifdef DRIVER_PASSTHRU_OWNER
+ 	if (vdev->opmode == wlan_op_mode_passthru &&
+ 	    pt_remote_peer_reo_mode() == 2)
+-		dp_rx_tid_setup_wifi3(peer, BIT(0), 64, 0);
++		dp_rx_tid_setup_wifi3(peer, BIT(0),
++				     dp_pt_initial_rx_window(soc), 0);
+ 	else
+ #endif
+ 		dp_rx_tid_setup_wifi3(peer, BIT(0), 1, 0);

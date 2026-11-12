@@ -1,0 +1,61 @@
+diff -ruN a/crates/owly-awdl/src/node.rs b/crates/owly-awdl/src/node.rs
+--- a/crates/owly-awdl/src/node.rs	2026-11-10 22:42:58
++++ b/crates/owly-awdl/src/node.rs	2026-11-10 22:42:58
+@@ -715,7 +715,11 @@
+             psf_interval_tu: PSF_INTERVAL_TU,
+             sequence: &self.sequence,
+             election: &self.election,
+-            ht: Some(HT),
++            ht: Some(if self.cfg.advertise_vht80_1ss {
++                HtCapabilities::ONE_STREAM_7935
++            } else {
++                HT
++            }),
+             advertise_vht80_1ss: self.cfg.advertise_vht80_1ss,
+         };
+         let mif = subtype == frame::subtype::MIF;
+diff -ruN a/crates/owly-awdl/src/tlv.rs b/crates/owly-awdl/src/tlv.rs
+--- a/crates/owly-awdl/src/tlv.rs	2026-11-10 22:42:58
++++ b/crates/owly-awdl/src/tlv.rs	2026-11-10 22:42:58
+@@ -185,6 +185,13 @@
+         rx_mcs: 0xff,
+     };
+ 
++    /// One spatial stream with the 7935-byte Max A-MSDU length bit (bit 11 = 0x0800) set.
++    pub const ONE_STREAM_7935: HtCapabilities = HtCapabilities {
++        capabilities: 0x19ce,
++        ampdu_params: 0x1b,
++        rx_mcs: 0xff,
++    };
++
+     /// The mask may be longer than one byte; bits past MCS 31 are
+     /// dropped.
+     pub fn parse(value: &[u8]) -> Result<HtCapabilities, Error> {
+@@ -497,8 +504,8 @@
+     tlv(out, kind::IEEE80211_CONTAINER, |v| {
+         v.u8(VHT_CAPABILITIES_IE);
+         v.u8(CAPABILITIES_LEN);
+-        // Max MPDU 3895, base 80 MHz support, optional VHT feature bits clear.
+-        v.le32(0);
++        // Max MPDU 7991 (bits 0..=1 = 1), base 80 MHz support, optional VHT feature bits clear.
++        v.le32(1);
+         v.le16(MCS_1SS_0_TO_7); // RX MCS, NSS 2–8 unsupported
+         v.le16(0); // RX highest data rate unspecified
+         v.le16(MCS_1SS_0_TO_7); // TX MCS, NSS 2–8 unsupported
+@@ -573,7 +580,7 @@
+         let mif = own_frame(true);
+         let mut advertised = own_frame_with_vht(true, true);
+         let wire = [
+-            17, 14, 0, 191, 12, 0, 0, 0, 0, 0xfc, 0xff, 0, 0, 0xfc, 0xff, 0, 0,
++            17, 14, 0, 191, 12, 1, 0, 0, 0, 0xfc, 0xff, 0, 0, 0xfc, 0xff, 0, 0,
+         ];
+         let offset = advertised.windows(wire.len()).position(|bytes| bytes == wire).unwrap();
+         let kinds: Vec<u8> = tlvs(&advertised).map(|entry| entry.unwrap().kind).collect();
+@@ -682,6 +689,7 @@
+         v.truncate(6);
+         assert_eq!(HtCapabilities::parse(&v).unwrap().rx_mcs, 0xff);
+         assert_eq!(HtCapabilities::ONE_STREAM.max_amsdu(), 3839);
++        assert_eq!(HtCapabilities::ONE_STREAM_7935.max_amsdu(), 7935);
+         v.truncate(5);
+         assert!(HtCapabilities::parse(&v).is_err());
+     }

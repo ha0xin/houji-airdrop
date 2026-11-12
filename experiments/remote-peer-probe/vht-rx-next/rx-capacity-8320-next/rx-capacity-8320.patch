@@ -1,0 +1,65 @@
+--- a/qca-wifi-host-cmn/wlan_cfg/wlan_cfg.h
++++ b/qca-wifi-host-cmn/wlan_cfg/wlan_cfg.h
+@@ -1631,7 +1631,7 @@ int wlan_cfg_rx_buffer_size(struct wlan_cfg_dp_soc_ctxt *cfg);
+ 
+ #ifdef DRIVER_PASSTHRU_DP
+-/* Fixed, opt-in DMA budget for 3895-byte MPDUs plus Kiwi TLVs and pad. */
+-#define WLAN_CFG_PT_RX_CAPACITY 4224
++/* Fixed, opt-in DMA budget for 7991-byte MPDUs plus Kiwi TLVs and pad. */
++#define WLAN_CFG_PT_RX_CAPACITY 8320
+ #endif
+ 
+ /**
+--- a/qca-wifi-host-cmn/dp/wifi3.0/dp_rx.c
++++ b/qca-wifi-host-cmn/dp/wifi3.0/dp_rx.c
+@@ -1187,8 +1187,12 @@ dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
+ 		goto out;
+ 
+-	if (raw_len)
++	if (raw_len) {
+ 		pr_info_once("PT_RX_CAPACITY raw_osif_bytes=%u tlv=%u pad=%u linear_span=%u\n",
+ 			     raw_len, tlv_len, prefix - tlv_len, raw_capacity);
++		if (raw_len > 3895)
++			pr_info_once("PT_RX_CAPACITY large_mpdu_bytes=%u tlv=%u pad=%u linear_span=%u\n",
++				     raw_len, tlv_len, prefix - tlv_len, raw_capacity);
++	}
+ 
+ 	/* Do not inspect nbuf or interpret the status as retained ownership. */
+ 	vdev->osif_rx(vdev->osif_vdev, nbuf);
+--- a/qca-wifi-host-cmn/dp/wifi3.0/dp_pt_rx_phy.h
++++ b/qca-wifi-host-cmn/dp/wifi3.0/dp_pt_rx_phy.h
+@@ -40,6 +40,7 @@ enum pt_rx_phy_count {
+ 	PT_PHY_VALID,
+ 	PT_PHY_RETRY,
+ 	PT_PHY_AMSDU,
++	PT_PHY_GT3895,
+ 	PT_PHY_COUNTS,
+ };
+ 
+@@ -69,7 +70,7 @@ static int pt_rx_phy_stats_get(char *buf, const struct kernel_param *kp)
+ 	used = scnprintf(buf, PAGE_SIZE,
+ 			"schema=1 enabled=%u matched=%lld fcs=%lld layout=%lld not_done=%lld"
+ 			" ppdu_mismatch=%lld range=%lld outside_scope=%lld valid=%lld"
+-			" retry=%lld amsdu=%lld ampdu=unknown",
++			" retry=%lld amsdu=%lld gt3895=%lld ampdu=unknown",
+ 			is_valid_ether_addr(pt_rx_phy_mac),
+ 			atomic64_read(&pt_phy_counts[PT_PHY_MATCHED]),
+ 			atomic64_read(&pt_phy_counts[PT_PHY_FCS]),
+@@ -80,7 +81,8 @@ static int pt_rx_phy_stats_get(char *buf, const struct kernel_param *kp)
+ 			atomic64_read(&pt_phy_counts[PT_PHY_OUTSIDE_SCOPE]),
+ 			atomic64_read(&pt_phy_counts[PT_PHY_VALID]),
+ 			atomic64_read(&pt_phy_counts[PT_PHY_RETRY]),
+-			atomic64_read(&pt_phy_counts[PT_PHY_AMSDU]));
++			atomic64_read(&pt_phy_counts[PT_PHY_AMSDU]),
++			atomic64_read(&pt_phy_counts[PT_PHY_GT3895]));
+ 	used = pt_rx_phy_hist(buf, used, "packet_type", pt_phy_packet_type, 16);
+ 	used = pt_rx_phy_hist(buf, used, "ofdm_bw", pt_phy_type_bw[0], 3);
+ 	used = pt_rx_phy_hist(buf, used, "cck_bw", pt_phy_type_bw[1], 3);
+@@ -127,6 +129,7 @@ static void pt_rx_phy_record(struct dp_soc *soc, struct dp_vdev *vdev,
+ 
+ 	atomic64_add(!!(raw[1] & 0x08), &pt_phy_counts[PT_PHY_RETRY]);
+ 	atomic64_add(!!(raw[24] & 0x80), &pt_phy_counts[PT_PHY_AMSDU]);
++	atomic64_add(len > 3895, &pt_phy_counts[PT_PHY_GT3895]);
+ 	atomic64_inc(&pt_phy_qos_ack[(raw[24] >> 5) & 3]);
+ 	atomic64_inc(&pt_phy_length[len < 512 ? 0 : len < 1536 ? 1 : len < 3072 ? 2 : 3]);
+ 

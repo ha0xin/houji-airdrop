@@ -1,0 +1,22 @@
+--- a/crates/owly-awdl/src/tlv.rs
++++ b/crates/owly-awdl/src/tlv.rs
+@@ -497,8 +497,8 @@ fn put_vht80_1ss_capabilities(out: &mut Vec<u8>) {
+     tlv(out, kind::IEEE80211_CONTAINER, |v| {
+         v.u8(VHT_CAPABILITIES_IE);
+         v.u8(CAPABILITIES_LEN);
+-        // Max MPDU 3895, base 80 MHz support, optional VHT feature bits clear.
+-        v.le32(0);
++        // Max MPDU 7991 (bits 0..=1 = 1), base 80 MHz support, optional VHT feature bits clear.
++        v.le32(1);
+         v.le16(MCS_1SS_0_TO_7); // RX MCS, NSS 2–8 unsupported
+         v.le16(0); // RX highest data rate unspecified
+         v.le16(MCS_1SS_0_TO_7); // TX MCS, NSS 2–8 unsupported
+@@ -573,7 +573,7 @@ mod tests {
+         let mif = own_frame(true);
+         let mut advertised = own_frame_with_vht(true, true);
+         let wire = [
+-            17, 14, 0, 191, 12, 0, 0, 0, 0, 0xfc, 0xff, 0, 0, 0xfc, 0xff, 0, 0,
++            17, 14, 0, 191, 12, 1, 0, 0, 0, 0xfc, 0xff, 0, 0, 0xfc, 0xff, 0, 0,
+         ];
+         let offset = advertised.windows(wire.len()).position(|bytes| bytes == wire).unwrap();
+         let kinds: Vec<u8> = tlvs(&advertised).map(|entry| entry.unwrap().kind).collect();

@@ -1,0 +1,22 @@
+{
+  "token": "[REDACTED]",
+  "radio_session": 83911,
+  "radio_exit": 1,
+  "recovery_session": 84141,
+  "normal_reboot_requests": 1,
+  "recovery_exit": 0,
+  "boot_before": "9f1f8471-09ec-4818-af05-bc97e5552751",
+  "boot_after": "428f3996-861d-4bf7-af96-a31d3a5a35a4",
+  "same_serial": true,
+  "readback": {
+    "wifi": 1,
+    "scan": 0,
+    "cnd": "running",
+    "hal": "running",
+    "pci": "auto"
+  },
+  "original_runner_sha256": "49a68b9112c696f815327539f47a61abf39e676c11efc01256ceaaa5eb40adb8",
+  "stock_wlan_sha256": "d3fbe4f1b62f8c3533609945b617508e8a585660f5640aeeda08f8508416137b",
+  "stock_native_restored": true,
+  "owned_stage_removed": true
+}

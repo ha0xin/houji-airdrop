@@ -1,0 +1,38 @@
+[
+  {
+    "trial": "off1",
+    "token": "[REDACTED]",
+    "app_sha256": "ab84ddba4c05ee2a5f9bc0f5f304a1c053e1074cc7a268265c2026956bebcbf8",
+    "container": [
+      "absent"
+    ],
+    "pair": [
+      0.585,
+      2.385
+    ]
+  },
+  {
+    "trial": "on1",
+    "token": "[REDACTED]",
+    "app_sha256": "ab84ddba4c05ee2a5f9bc0f5f304a1c053e1074cc7a268265c2026956bebcbf8",
+    "container": [
+      "bf0c00000000fcff0000fcff0000"
+    ],
+    "pair": [
+      0.992,
+      2.667
+    ]
+  },
+  {
+    "trial": "off2",
+    "token": "[REDACTED]",
+    "app_sha256": "ab84ddba4c05ee2a5f9bc0f5f304a1c053e1074cc7a268265c2026956bebcbf8",
+    "container": [
+      "absent"
+    ],
+    "pair": [
+      0.674,
+      8.679
+    ]
+  }
+]

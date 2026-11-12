@@ -1,0 +1,3949 @@
+{
+  "wall_start_ns": 1794306006620742000,
+  "wall_end_ns": 1794306021890740000,
+  "mono_start_ns": 291431666,
+  "mono_end_ns": 15561399291,
+  "measurement_exit": 0,
+  "exact_address_unchanged": {
+    "mac": true,
+    "iphone": true
+  },
+  "providers": [
+    {
+      "host": "mac",
+      "wall_ns": 1794306006621078000,
+      "mono_ns": 291765166,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "IOUserService",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANProximityInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "iphone",
+      "wall_ns": 1794306006672146000,
+      "mono_ns": 342832666,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "AppleBCMWLANCore",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "AppleBCMWLANSkywalkInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211Channel": 36,
+          "IO80211ChannelFrequency": 5180
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "AppleBCMWLANProximityInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "awdl0"
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "AppleBCMWLANLowLatencyInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "llw0",
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "mac",
+      "wall_ns": 1794306007435424000,
+      "mono_ns": 1106111666,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "IOUserService",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANProximityInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "iphone",
+      "wall_ns": 1794306007499138000,
+      "mono_ns": 1169823541,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "AppleBCMWLANCore",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "AppleBCMWLANSkywalkInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211Channel": 36,
+          "IO80211ChannelFrequency": 5180
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "AppleBCMWLANProximityInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "awdl0"
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "AppleBCMWLANLowLatencyInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "llw0",
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "mac",
+      "wall_ns": 1794306008280539000,
+      "mono_ns": 1951226166,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "IOUserService",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANProximityInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "iphone",
+      "wall_ns": 1794306008341744000,
+      "mono_ns": 2012427666,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "AppleBCMWLANCore",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "AppleBCMWLANSkywalkInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211Channel": 36,
+          "IO80211ChannelFrequency": 5180
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "AppleBCMWLANProximityInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "awdl0"
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "AppleBCMWLANLowLatencyInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "llw0",
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "mac",
+      "wall_ns": 1794306009133790000,
+      "mono_ns": 2804472625,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "IOUserService",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANProximityInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "iphone",
+      "wall_ns": 1794306009168051000,
+      "mono_ns": 2838732625,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "AppleBCMWLANCore",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "AppleBCMWLANSkywalkInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211Channel": 36,
+          "IO80211ChannelFrequency": 5180
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "AppleBCMWLANProximityInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "awdl0"
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "AppleBCMWLANLowLatencyInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "llw0",
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "mac",
+      "wall_ns": 1794306009956600000,
+      "mono_ns": 3627283083,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "IOUserService",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANProximityInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "iphone",
+      "wall_ns": 1794306010017720000,
+      "mono_ns": 3688400000,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "AppleBCMWLANCore",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "AppleBCMWLANSkywalkInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211Channel": 36,
+          "IO80211ChannelFrequency": 5180
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "AppleBCMWLANProximityInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "awdl0"
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "AppleBCMWLANLowLatencyInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "llw0",
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "mac",
+      "wall_ns": 1794306010805897000,
+      "mono_ns": 4476576666,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "IOUserService",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANProximityInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "iphone",
+      "wall_ns": 1794306010839451000,
+      "mono_ns": 4510129458,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "AppleBCMWLANCore",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "AppleBCMWLANSkywalkInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211Channel": 36,
+          "IO80211ChannelFrequency": 5180
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "AppleBCMWLANProximityInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "awdl0"
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "AppleBCMWLANLowLatencyInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "llw0",
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "mac",
+      "wall_ns": 1794306011632259000,
+      "mono_ns": 5302938083,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "IOUserService",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANProximityInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "iphone",
+      "wall_ns": 1794306011694293000,
+      "mono_ns": 5364970416,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "AppleBCMWLANCore",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "AppleBCMWLANSkywalkInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211Channel": 36,
+          "IO80211ChannelFrequency": 5180
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "AppleBCMWLANProximityInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "awdl0"
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "AppleBCMWLANLowLatencyInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "llw0",
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "mac",
+      "wall_ns": 1794306012500398000,
+      "mono_ns": 6171074958,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "IOUserService",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANProximityInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "iphone",
+      "wall_ns": 1794306012550271000,
+      "mono_ns": 6220945791,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "AppleBCMWLANCore",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "AppleBCMWLANSkywalkInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211Channel": 36,
+          "IO80211ChannelFrequency": 5180
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "AppleBCMWLANProximityInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "awdl0"
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "AppleBCMWLANLowLatencyInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "llw0",
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "mac",
+      "wall_ns": 1794306013361989000,
+      "mono_ns": 7032663208,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "IOUserService",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANProximityInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "iphone",
+      "wall_ns": 1794306013409364000,
+      "mono_ns": 7080037541,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "AppleBCMWLANCore",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "AppleBCMWLANSkywalkInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211Channel": 36,
+          "IO80211ChannelFrequency": 5180
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "AppleBCMWLANProximityInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "awdl0"
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "AppleBCMWLANLowLatencyInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "llw0",
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "mac",
+      "wall_ns": 1794306014206153000,
+      "mono_ns": 7876830541,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "IOUserService",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANProximityInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "iphone",
+      "wall_ns": 1794306014270100000,
+      "mono_ns": 7940772250,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "AppleBCMWLANCore",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "AppleBCMWLANSkywalkInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211Channel": 36,
+          "IO80211ChannelFrequency": 5180
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "AppleBCMWLANProximityInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "awdl0"
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "AppleBCMWLANLowLatencyInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "llw0",
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "mac",
+      "wall_ns": 1794306015053621000,
+      "mono_ns": 8724293166,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "IOUserService",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANProximityInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "iphone",
+      "wall_ns": 1794306015117678000,
+      "mono_ns": 8788348375,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "AppleBCMWLANCore",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "AppleBCMWLANSkywalkInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211Channel": 36,
+          "IO80211ChannelFrequency": 5180
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "AppleBCMWLANProximityInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "awdl0"
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "AppleBCMWLANLowLatencyInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "llw0",
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "mac",
+      "wall_ns": 1794306015916441000,
+      "mono_ns": 9587110541,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "IOUserService",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANProximityInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "iphone",
+      "wall_ns": 1794306015994025000,
+      "mono_ns": 9664693208,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "AppleBCMWLANCore",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "AppleBCMWLANSkywalkInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211Channel": 36,
+          "IO80211ChannelFrequency": 5180
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "AppleBCMWLANProximityInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "awdl0"
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "AppleBCMWLANLowLatencyInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "llw0",
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "mac",
+      "wall_ns": 1794306016787553000,
+      "mono_ns": 10458222083,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "IOUserService",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANProximityInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "iphone",
+      "wall_ns": 1794306016848812000,
+      "mono_ns": 10519479000,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "AppleBCMWLANCore",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "AppleBCMWLANSkywalkInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211Channel": 36,
+          "IO80211ChannelFrequency": 5180
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "AppleBCMWLANProximityInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "awdl0"
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "AppleBCMWLANLowLatencyInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "llw0",
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "mac",
+      "wall_ns": 1794306017646100000,
+      "mono_ns": 11316767458,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "IOUserService",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANProximityInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "iphone",
+      "wall_ns": 1794306017708601000,
+      "mono_ns": 11379265708,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "AppleBCMWLANCore",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "AppleBCMWLANSkywalkInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211Channel": 36,
+          "IO80211ChannelFrequency": 5180
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "AppleBCMWLANProximityInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "awdl0"
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "AppleBCMWLANLowLatencyInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "llw0",
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "mac",
+      "wall_ns": 1794306018514330000,
+      "mono_ns": 12184996666,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "IOUserService",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANProximityInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "iphone",
+      "wall_ns": 1794306018577119000,
+      "mono_ns": 12247782083,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "AppleBCMWLANCore",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "AppleBCMWLANSkywalkInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211Channel": 36,
+          "IO80211ChannelFrequency": 5180
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "AppleBCMWLANProximityInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "awdl0"
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "AppleBCMWLANLowLatencyInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "llw0",
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "mac",
+      "wall_ns": 1794306019386343000,
+      "mono_ns": 13057008500,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "IOUserService",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANProximityInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "iphone",
+      "wall_ns": 1794306019450745000,
+      "mono_ns": 13121406458,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "AppleBCMWLANCore",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "AppleBCMWLANSkywalkInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211Channel": 36,
+          "IO80211ChannelFrequency": 5180
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "AppleBCMWLANProximityInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "awdl0"
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "AppleBCMWLANLowLatencyInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "llw0",
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "mac",
+      "wall_ns": 1794306020226269000,
+      "mono_ns": 13896931041,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "IOUserService",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANProximityInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "iphone",
+      "wall_ns": 1794306020291226000,
+      "mono_ns": 13961885625,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "AppleBCMWLANCore",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "AppleBCMWLANSkywalkInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211Channel": 36,
+          "IO80211ChannelFrequency": 5180
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "AppleBCMWLANProximityInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "awdl0"
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "AppleBCMWLANLowLatencyInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "llw0",
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "mac",
+      "wall_ns": 1794306021079762000,
+      "mono_ns": 14750422750,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "IOUserService",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANProximityInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "IOUserNetworkWLAN",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ]
+        }
+      ]
+    },
+    {
+      "host": "iphone",
+      "wall_ns": 1794306021142283000,
+      "mono_ns": 14812941000,
+      "providers": [
+        {
+          "provider": "AppleBCMWLANCore",
+          "class": "AppleBCMWLANCore",
+          "ancestors": []
+        },
+        {
+          "provider": "AppleBCMWLANSkywalkInterface",
+          "class": "AppleBCMWLANSkywalkInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "IO80211ChannelBandwidth": 80,
+          "IO80211Channel": 36,
+          "IO80211ChannelFrequency": 5180
+        },
+        {
+          "provider": "IOSkywalkLegacyEthernet",
+          "class": "IOSkywalkLegacyEthernet",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "en0",
+          "class": "IOSkywalkLegacyEthernetInterface",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface",
+            "IOSkywalkLegacyEthernet"
+          ],
+          "interface": "en0"
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANSkywalkInterface"
+          ]
+        },
+        {
+          "provider": "AppleBCMWLANProximityInterface",
+          "class": "AppleBCMWLANProximityInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "awdl0"
+        },
+        {
+          "provider": "AppleBCMWLANLowLatencyInterface",
+          "class": "AppleBCMWLANLowLatencyInterface",
+          "ancestors": [
+            "AppleBCMWLANCore"
+          ],
+          "interface": "llw0",
+          "IO80211ChannelBandwidth": 80,
+          "IO80211ChannelFrequency": 5180,
+          "IO80211Channel": 36
+        },
+        {
+          "provider": "IOSkywalkNetworkBSDClient",
+          "class": "IOSkywalkNetworkBSDClient",
+          "ancestors": [
+            "AppleBCMWLANCore",
+            "AppleBCMWLANLowLatencyInterface"
+          ]
+        }
+      ]
+    }
+  ],
+  "mac_kernel_log": {
+    "schedule": [
+      {
+        "wall_ns": 1794306011989000192,
+        "infra_channel": 36,
+        "infra_percent_raw": 78,
+        "sdb_raw": 0,
+        "channel_triplet": [
+          6,
+          149,
+          149
+        ],
+        "slots": [
+          36,
+          0,
+          149,
+          0,
+          0,
+          0,
+          0,
+          0,
+          6,
+          0,
+          149,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "state": "Infra Priority"
+      },
+      {
+        "wall_ns": 1794306012440999936,
+        "infra_channel": 36,
+        "infra_percent_raw": 66,
+        "sdb_raw": 0,
+        "channel_triplet": [
+          6,
+          149,
+          149
+        ],
+        "slots": [
+          36,
+          0,
+          149,
+          0,
+          0,
+          149,
+          36,
+          36,
+          6,
+          0,
+          149,
+          0,
+          0,
+          149,
+          36,
+          36
+        ],
+        "state": "Infra Priority"
+      },
+      {
+        "wall_ns": 1794306013502000128,
+        "infra_channel": 36,
+        "infra_percent_raw": 24,
+        "sdb_raw": 0,
+        "channel_triplet": [
+          6,
+          149,
+          149
+        ],
+        "slots": [
+          149,
+          149,
+          149,
+          149,
+          149,
+          149,
+          36,
+          36,
+          6,
+          149,
+          149,
+          149,
+          149,
+          149,
+          36,
+          36
+        ],
+        "state": null
+      },
+      {
+        "wall_ns": 1794306015078000128,
+        "infra_channel": 36,
+        "infra_percent_raw": 60,
+        "sdb_raw": 0,
+        "channel_triplet": [
+          6,
+          149,
+          149
+        ],
+        "slots": [
+          149,
+          149,
+          149,
+          0,
+          0,
+          0,
+          0,
+          0,
+          6,
+          149,
+          149,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "state": null
+      },
+      {
+        "wall_ns": 1794306015601000192,
+        "infra_channel": 36,
+        "infra_percent_raw": 78,
+        "sdb_raw": 0,
+        "channel_triplet": [
+          6,
+          149,
+          149
+        ],
+        "slots": [
+          36,
+          36,
+          149,
+          0,
+          0,
+          0,
+          0,
+          36,
+          6,
+          36,
+          149,
+          36,
+          0,
+          0,
+          0,
+          36
+        ],
+        "state": "Infra Priority"
+      },
+      {
+        "wall_ns": 1794306016650000128,
+        "infra_channel": 36,
+        "infra_percent_raw": 48,
+        "sdb_raw": 0,
+        "channel_triplet": [
+          6,
+          149,
+          149
+        ],
+        "slots": [
+          149,
+          149,
+          149,
+          149,
+          36,
+          36,
+          36,
+          36,
+          6,
+          149,
+          149,
+          149,
+          36,
+          36,
+          36,
+          36
+        ],
+        "state": null
+      },
+      {
+        "wall_ns": 1794306017988000000,
+        "infra_channel": 36,
+        "infra_percent_raw": 48,
+        "sdb_raw": 0,
+        "channel_triplet": [
+          6,
+          149,
+          149
+        ],
+        "slots": [
+          149,
+          149,
+          149,
+          149,
+          36,
+          36,
+          36,
+          36,
+          6,
+          149,
+          149,
+          149,
+          36,
+          36,
+          36,
+          36
+        ],
+        "state": null
+      },
+      {
+        "wall_ns": 1794306020318000128,
+        "infra_channel": 36,
+        "infra_percent_raw": 60,
+        "sdb_raw": 0,
+        "channel_triplet": [
+          6,
+          149,
+          149
+        ],
+        "slots": [
+          149,
+          149,
+          149,
+          0,
+          0,
+          0,
+          0,
+          0,
+          6,
+          149,
+          149,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "state": null
+      }
+    ],
+    "rrm": [
+      {
+        "wall_ns": 1794306012440999936,
+        "channels": [
+          {
+            "channel": 6,
+            "bitmap": [
+              "00",
+              "00",
+              "00",
+              "00",
+              "0f",
+              "00",
+              "00",
+              "00"
+            ]
+          },
+          {
+            "channel": 36,
+            "bitmap": [
+              "0f",
+              "00",
+              "00",
+              "ff",
+              "00",
+              "00",
+              "00",
+              "ff"
+            ]
+          },
+          {
+            "channel": 149,
+            "bitmap": [
+              "00",
+              "0f",
+              "f0",
+              "00",
+              "00",
+              "0f",
+              "f0",
+              "00"
+            ]
+          }
+        ]
+      },
+      {
+        "wall_ns": 1794306013500999936,
+        "channels": [
+          {
+            "channel": 6,
+            "bitmap": [
+              "00",
+              "00",
+              "00",
+              "00",
+              "0f",
+              "00",
+              "00",
+              "00"
+            ]
+          },
+          {
+            "channel": 149,
+            "bitmap": [
+              "ff",
+              "ff",
+              "ff",
+              "00",
+              "f0",
+              "ff",
+              "ff",
+              "00"
+            ]
+          },
+          {
+            "channel": 36,
+            "bitmap": [
+              "00",
+              "00",
+              "00",
+              "ff",
+              "00",
+              "00",
+              "00",
+              "ff"
+            ]
+          }
+        ]
+      },
+      {
+        "wall_ns": 1794306014552000000,
+        "channels": [
+          {
+            "channel": 6,
+            "bitmap": [
+              "00",
+              "00",
+              "00",
+              "00",
+              "0f",
+              "00",
+              "00",
+              "00"
+            ]
+          },
+          {
+            "channel": 149,
+            "bitmap": [
+              "ff",
+              "ff",
+              "ff",
+              "00",
+              "f0",
+              "ff",
+              "ff",
+              "00"
+            ]
+          },
+          {
+            "channel": 36,
+            "bitmap": [
+              "00",
+              "00",
+              "00",
+              "ff",
+              "00",
+              "00",
+              "00",
+              "ff"
+            ]
+          }
+        ]
+      },
+      {
+        "wall_ns": 1794306014579000064,
+        "channels": [
+          {
+            "channel": 6,
+            "bitmap": [
+              "00",
+              "00",
+              "00",
+              "00",
+              "0f",
+              "00",
+              "00",
+              "00"
+            ]
+          },
+          {
+            "channel": 149,
+            "bitmap": [
+              "ff",
+              "ff",
+              "ff",
+              "00",
+              "f0",
+              "ff",
+              "ff",
+              "00"
+            ]
+          },
+          {
+            "channel": 36,
+            "bitmap": [
+              "00",
+              "00",
+              "00",
+              "ff",
+              "00",
+              "00",
+              "00",
+              "ff"
+            ]
+          }
+        ]
+      },
+      {
+        "wall_ns": 1794306015078000128,
+        "channels": [
+          {
+            "channel": 6,
+            "bitmap": [
+              "00",
+              "00",
+              "00",
+              "00",
+              "0f",
+              "00",
+              "00",
+              "00"
+            ]
+          },
+          {
+            "channel": 149,
+            "bitmap": [
+              "ff",
+              "0f",
+              "00",
+              "00",
+              "f0",
+              "0f",
+              "00",
+              "00"
+            ]
+          }
+        ]
+      },
+      {
+        "wall_ns": 1794306015601000192,
+        "channels": [
+          {
+            "channel": 6,
+            "bitmap": [
+              "00",
+              "00",
+              "00",
+              "00",
+              "0f",
+              "00",
+              "00",
+              "00"
+            ]
+          },
+          {
+            "channel": 36,
+            "bitmap": [
+              "ff",
+              "00",
+              "00",
+              "f0",
+              "f0",
+              "f0",
+              "00",
+              "f0"
+            ]
+          },
+          {
+            "channel": 149,
+            "bitmap": [
+              "00",
+              "0f",
+              "00",
+              "00",
+              "00",
+              "0f",
+              "00",
+              "00"
+            ]
+          }
+        ]
+      },
+      {
+        "wall_ns": 1794306015700000000,
+        "channels": [
+          {
+            "channel": 6,
+            "bitmap": [
+              "00",
+              "00",
+              "00",
+              "00",
+              "0f",
+              "00",
+              "00",
+              "00"
+            ]
+          },
+          {
+            "channel": 36,
+            "bitmap": [
+              "ff",
+              "00",
+              "00",
+              "f0",
+              "f0",
+              "f0",
+              "00",
+              "f0"
+            ]
+          },
+          {
+            "channel": 149,
+            "bitmap": [
+              "00",
+              "0f",
+              "00",
+              "00",
+              "00",
+              "0f",
+              "00",
+              "00"
+            ]
+          }
+        ]
+      },
+      {
+        "wall_ns": 1794306016650000128,
+        "channels": [
+          {
+            "channel": 6,
+            "bitmap": [
+              "00",
+              "00",
+              "00",
+              "00",
+              "0f",
+              "00",
+              "00",
+              "00"
+            ]
+          },
+          {
+            "channel": 149,
+            "bitmap": [
+              "ff",
+              "ff",
+              "00",
+              "00",
+              "f0",
+              "ff",
+              "00",
+              "00"
+            ]
+          },
+          {
+            "channel": 36,
+            "bitmap": [
+              "00",
+              "00",
+              "ff",
+              "ff",
+              "00",
+              "00",
+              "ff",
+              "ff"
+            ]
+          }
+        ]
+      },
+      {
+        "wall_ns": 1794306017580000000,
+        "channels": [
+          {
+            "channel": 6,
+            "bitmap": [
+              "00",
+              "00",
+              "00",
+              "00",
+              "0f",
+              "00",
+              "00",
+              "00"
+            ]
+          },
+          {
+            "channel": 149,
+            "bitmap": [
+              "ff",
+              "ff",
+              "00",
+              "00",
+              "f0",
+              "ff",
+              "00",
+              "00"
+            ]
+          },
+          {
+            "channel": 36,
+            "bitmap": [
+              "00",
+              "00",
+              "ff",
+              "ff",
+              "00",
+              "00",
+              "ff",
+              "ff"
+            ]
+          }
+        ]
+      },
+      {
+        "wall_ns": 1794306017696000000,
+        "channels": [
+          {
+            "channel": 6,
+            "bitmap": [
+              "00",
+              "00",
+              "00",
+              "00",
+              "0f",
+              "00",
+              "00",
+              "00"
+            ]
+          },
+          {
+            "channel": 149,
+            "bitmap": [
+              "ff",
+              "ff",
+              "00",
+              "00",
+              "f0",
+              "ff",
+              "00",
+              "00"
+            ]
+          },
+          {
+            "channel": 36,
+            "bitmap": [
+              "00",
+              "00",
+              "ff",
+              "ff",
+              "00",
+              "00",
+              "ff",
+              "ff"
+            ]
+          }
+        ]
+      },
+      {
+        "wall_ns": 1794306017729000192,
+        "channels": [
+          {
+            "channel": 6,
+            "bitmap": [
+              "00",
+              "00",
+              "00",
+              "00",
+              "0f",
+              "00",
+              "00",
+              "00"
+            ]
+          },
+          {
+            "channel": 149,
+            "bitmap": [
+              "ff",
+              "ff",
+              "00",
+              "00",
+              "f0",
+              "ff",
+              "00",
+              "00"
+            ]
+          },
+          {
+            "channel": 36,
+            "bitmap": [
+              "00",
+              "00",
+              "ff",
+              "ff",
+              "00",
+              "00",
+              "ff",
+              "ff"
+            ]
+          }
+        ]
+      },
+      {
+        "wall_ns": 1794306019581000192,
+        "channels": [
+          {
+            "channel": 6,
+            "bitmap": [
+              "00",
+              "00",
+              "00",
+              "00",
+              "0f",
+              "00",
+              "00",
+              "00"
+            ]
+          },
+          {
+            "channel": 149,
+            "bitmap": [
+              "ff",
+              "ff",
+              "00",
+              "00",
+              "f0",
+              "ff",
+              "00",
+              "00"
+            ]
+          },
+          {
+            "channel": 36,
+            "bitmap": [
+              "00",
+              "00",
+              "ff",
+              "ff",
+              "00",
+              "00",
+              "ff",
+              "ff"
+            ]
+          }
+        ]
+      },
+      {
+        "wall_ns": 1794306020316999936,
+        "channels": [
+          {
+            "channel": 6,
+            "bitmap": [
+              "00",
+              "00",
+              "00",
+              "00",
+              "0f",
+              "00",
+              "00",
+              "00"
+            ]
+          },
+          {
+            "channel": 149,
+            "bitmap": [
+              "ff",
+              "0f",
+              "00",
+              "00",
+              "f0",
+              "0f",
+              "00",
+              "00"
+            ]
+          }
+        ]
+      }
+    ],
+    "steering": [
+      {
+        "wall_ns": 1794306007211000064,
+        "matched_roles": []
+      },
+      {
+        "wall_ns": 1794306007211000064,
+        "matched_roles": []
+      },
+      {
+        "wall_ns": 1794306008260000000,
+        "matched_roles": []
+      },
+      {
+        "wall_ns": 1794306008260000000,
+        "matched_roles": []
+      },
+      {
+        "wall_ns": 1794306009308000000,
+        "matched_roles": []
+      },
+      {
+        "wall_ns": 1794306009308000000,
+        "matched_roles": []
+      },
+      {
+        "wall_ns": 1794306010357000192,
+        "matched_roles": []
+      },
+      {
+        "wall_ns": 1794306010357000192,
+        "matched_roles": []
+      },
+      {
+        "wall_ns": 1794306011404999936,
+        "matched_roles": []
+      },
+      {
+        "wall_ns": 1794306011404999936,
+        "matched_roles": []
+      },
+      {
+        "wall_ns": 1794306012452000000,
+        "matched_roles": []
+      },
+      {
+        "wall_ns": 1794306012452000000,
+        "matched_roles": []
+      },
+      {
+        "wall_ns": 1794306013500999936,
+        "matched_roles": []
+      },
+      {
+        "wall_ns": 1794306013500999936,
+        "matched_roles": []
+      },
+      {
+        "wall_ns": 1794306014552999936,
+        "matched_roles": []
+      },
+      {
+        "wall_ns": 1794306014552999936,
+        "matched_roles": []
+      },
+      {
+        "wall_ns": 1794306015601000192,
+        "matched_roles": []
+      },
+      {
+        "wall_ns": 1794306015601000192,
+        "matched_roles": []
+      },
+      {
+        "wall_ns": 1794306016650000128,
+        "matched_roles": []
+      },
+      {
+        "wall_ns": 1794306016650000128,
+        "matched_roles": []
+      },
+      {
+        "wall_ns": 1794306017696000000,
+        "matched_roles": []
+      },
+      {
+        "wall_ns": 1794306017696000000,
+        "matched_roles": []
+      },
+      {
+        "wall_ns": 1794306018744000000,
+        "matched_roles": []
+      },
+      {
+        "wall_ns": 1794306018744000000,
+        "matched_roles": []
+      },
+      {
+        "wall_ns": 1794306019792999936,
+        "matched_roles": []
+      },
+      {
+        "wall_ns": 1794306019792999936,
+        "matched_roles": []
+      },
+      {
+        "wall_ns": 1794306020842000128,
+        "matched_roles": []
+      },
+      {
+        "wall_ns": 1794306020842000128,
+        "matched_roles": []
+      }
+    ],
+    "peer_dumps": [
+      {
+        "wall_ns": 1794306011989000192,
+        "matched_roles": [
+          "mac"
+        ],
+        "peers": 0,
+        "cached": 0,
+        "Tx": 14317,
+        "Rx": 37489
+      },
+      {
+        "wall_ns": 1794306017988000000,
+        "matched_roles": [
+          "mac"
+        ],
+        "peers": 1,
+        "cached": 1,
+        "Tx": 14319,
+        "Rx": 37508
+      }
+    ],
+    "rows_seen": 424,
+    "phy_or_ba_labels": 0
+  }
+}

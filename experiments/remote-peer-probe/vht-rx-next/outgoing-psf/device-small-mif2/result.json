@@ -1,0 +1,461 @@
+{
+  "token": "[REDACTED]",
+  "module_sha256": "bbb6d59c67942ec57da12fb6f367c82d4430ebda1abfca88ffac24c977f49ba7",
+  "harness_sha256": "cae9dac0250998065abfc5723c6976ebed892cd78b3bc007020aead637fccf73",
+  "channel": 149,
+  "rx_ba": false,
+  "throughput_test": false,
+  "bounded_hash_flow": true,
+  "preserve_self_ast": false,
+  "self_only_flow": false,
+  "remote_map_only_flow": false,
+  "mac_awdl_ifindex": 13,
+  "mac_awdl_sha256": "88b2ae0c111a148731c60a6b2b82de55a31b4a6239931feb2c943a08b3e4564f",
+  "capacity_configuration": {
+    "rx_dma_bytes": 4224,
+    "tx_phy_request": "vht80-sgi",
+    "aggregation": "amsdu",
+    "ack": true,
+    "mss": 1160,
+    "tun_queue": 500,
+    "tx_vht_amsdu": false,
+    "outgoing_vht_advertisement": true,
+    "owly_variant": "outgoing-psf",
+    "tx_vht_extension_present": false,
+    "payload_bytes": 1048576,
+    "pairs": 1,
+    "outgoing_vht_scope": "mif"
+  },
+  "samples": [
+    {
+      "direction": "Mac→小米",
+      "sample": 1,
+      "mode": 0,
+      "bytes": 1048576,
+      "status": "verified",
+      "seconds": 1.007820542,
+      "MBps": 1.0404392015260193,
+      "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83",
+      "mac_wall_start_ns": 1794313465005448000,
+      "mac_wall_end_ns": 1794313466030774000,
+      "phone_seconds": 0.680227
+    },
+    {
+      "direction": "小米→Mac",
+      "sample": 2,
+      "mode": 1,
+      "bytes": 1048576,
+      "status": "verified",
+      "seconds": 0.118468167,
+      "MBps": 8.851120318253933,
+      "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83",
+      "mac_wall_start_ns": 1794313466031173000,
+      "mac_wall_end_ns": 1794313466154957000,
+      "phone_seconds": 0.115728
+    }
+  ],
+  "radio_exit": 0,
+  "initial": null,
+  "ready": null,
+  "terminal": null,
+  "final": null,
+  "drain": null,
+  "flow_hash_verified": true,
+  "outgoing_vht": {
+    "app_sha256": "93bb62c50f7ca36ab760a73c2cac529fad30b92692d47cb09087f0b163613c55",
+    "matching_app_load": true,
+    "requested": "mif",
+    "reported_scope": [
+      "Mif"
+    ],
+    "first_host_submitted_psf_container": [
+      "absent"
+    ],
+    "first_host_submitted_mif_container": [
+      "bf0c00000000fcff0000fcff0000"
+    ],
+    "verified": true
+  },
+  "mac_awdl_schedule": [
+    {
+      "sample": 1,
+      "mac_wall_start_ns": 1794313465005448000,
+      "mac_wall_end_ns": 1794313466030774000,
+      "schedule": [
+        {
+          "wall_ns": 1794313465388999936,
+          "infra_channel": 36,
+          "infra_percent_raw": 78,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            36,
+            36,
+            149,
+            0,
+            0,
+            0,
+            0,
+            36,
+            6,
+            36,
+            149,
+            36,
+            0,
+            0,
+            0,
+            36
+          ],
+          "state": "Infra Priority"
+        },
+        {
+          "wall_ns": 1794313465388999936,
+          "infra_channel": 36,
+          "infra_percent_raw": 24,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36,
+            6,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36
+          ],
+          "state": "Data"
+        },
+        {
+          "wall_ns": 1794313465991000064,
+          "infra_channel": 36,
+          "infra_percent_raw": 24,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36,
+            6,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36
+          ],
+          "state": "Data"
+        }
+      ],
+      "rrm": [
+        {
+          "wall_ns": 1794313465388999936,
+          "channels": [
+            {
+              "channel": 6,
+              "bitmap": [
+                "00",
+                "00",
+                "00",
+                "00",
+                "0f",
+                "00",
+                "00",
+                "00"
+              ]
+            },
+            {
+              "channel": 36,
+              "bitmap": [
+                "ff",
+                "00",
+                "00",
+                "f0",
+                "f0",
+                "f0",
+                "00",
+                "f0"
+              ]
+            },
+            {
+              "channel": 149,
+              "bitmap": [
+                "00",
+                "0f",
+                "00",
+                "00",
+                "00",
+                "0f",
+                "00",
+                "00"
+              ]
+            }
+          ]
+        },
+        {
+          "wall_ns": 1794313465388999936,
+          "channels": [
+            {
+              "channel": 6,
+              "bitmap": [
+                "00",
+                "00",
+                "00",
+                "00",
+                "0f",
+                "00",
+                "00",
+                "00"
+              ]
+            },
+            {
+              "channel": 149,
+              "bitmap": [
+                "ff",
+                "ff",
+                "ff",
+                "00",
+                "f0",
+                "ff",
+                "ff",
+                "00"
+              ]
+            },
+            {
+              "channel": 36,
+              "bitmap": [
+                "00",
+                "00",
+                "00",
+                "ff",
+                "00",
+                "00",
+                "00",
+                "ff"
+              ]
+            }
+          ]
+        }
+      ],
+      "steering": [
+        {
+          "wall_ns": 1794313465388999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794313465388999936,
+          "matched_roles": []
+        }
+      ],
+      "peer_dumps": [
+        {
+          "wall_ns": 1794313465991000064,
+          "matched_roles": [],
+          "peers": 6,
+          "cached": 1,
+          "Tx": 14487,
+          "Rx": 39088
+        }
+      ],
+      "rows_seen": 44,
+      "phy_or_ba_labels": 0
+    },
+    {
+      "sample": 2,
+      "mac_wall_start_ns": 1794313466031173000,
+      "mac_wall_end_ns": 1794313466154957000,
+      "schedule": [],
+      "rrm": [],
+      "steering": [],
+      "peer_dumps": [],
+      "rows_seen": 0,
+      "phy_or_ba_labels": 0
+    }
+  ],
+  "restored": true,
+  "rx_capacity": {
+    "same_boot": true,
+    "kernel_log_coverage": true,
+    "matching_load": true,
+    "boot_before": "428f3996-861d-4bf7-af96-a31d3a5a35a4",
+    "boot_after": "428f3996-861d-4bf7-af96-a31d3a5a35a4",
+    "dmesg_time_before": [
+      2514.519012,
+      3778.279506
+    ],
+    "dmesg_time_after": [
+      2590.715747,
+      3802.815461
+    ],
+    "dmesg_matching_rows_before": [
+      "[ 2515.944304] PT_RX_CAPACITY cfg_bytes=4224",
+      "[ 2515.960792] PT_RX_CAPACITY pool_bytes=4224 align=128 entries=16384",
+      "[ 2515.960808] PT_RX_CAPACITY map_bytes=4224 linear=7808",
+      "[ 2515.963574] PT_RX_CAPACITY map_bytes=4224 linear=7680",
+      "[ 2516.128966] PT_RX_CAPACITY htt_bytes=4224 mac_id=0 host_submit_status=0",
+      "[ 2516.129008] PT_RX_CAPACITY htt_bytes=4224 mac_id=1 host_submit_status=0",
+      "[ 2520.841317] PT_RX_CAPACITY raw_osif_bytes=130 tlv=272 pad=0 linear_span=7680",
+      "[ 2707.173930] PT_RX_CAPACITY cfg_bytes=4224",
+      "[ 2707.184125] PT_RX_CAPACITY pool_bytes=4224 align=128 entries=16384",
+      "[ 2707.184137] PT_RX_CAPACITY map_bytes=4224 linear=7808",
+      "[ 2707.185427] PT_RX_CAPACITY map_bytes=4224 linear=7680",
+      "[ 2707.346660] PT_RX_CAPACITY htt_bytes=4224 mac_id=0 host_submit_status=0",
+      "[ 2707.346684] PT_RX_CAPACITY htt_bytes=4224 mac_id=1 host_submit_status=0",
+      "[ 2712.281283] PT_RX_CAPACITY raw_osif_bytes=130 tlv=272 pad=0 linear_span=7680",
+      "[ 3026.056408] PT_RX_CAPACITY cfg_bytes=4224",
+      "[ 3026.076800] PT_RX_CAPACITY pool_bytes=4224 align=128 entries=16384",
+      "[ 3026.076816] PT_RX_CAPACITY map_bytes=4224 linear=7808",
+      "[ 3026.079105] PT_RX_CAPACITY map_bytes=4224 linear=7680",
+      "[ 3026.252733] PT_RX_CAPACITY htt_bytes=4224 mac_id=0 host_submit_status=0",
+      "[ 3026.252759] PT_RX_CAPACITY htt_bytes=4224 mac_id=1 host_submit_status=0",
+      "[ 3029.904682] PT_RX_CAPACITY raw_osif_bytes=130 tlv=272 pad=0 linear_span=7680",
+      "[ 3234.106077] PT_RX_CAPACITY cfg_bytes=4224",
+      "[ 3234.124750] PT_RX_CAPACITY pool_bytes=4224 align=128 entries=16384",
+      "[ 3234.124764] PT_RX_CAPACITY map_bytes=4224 linear=7808",
+      "[ 3234.126830] PT_RX_CAPACITY map_bytes=4224 linear=7680",
+      "[ 3234.301050] PT_RX_CAPACITY htt_bytes=4224 mac_id=0 host_submit_status=0",
+      "[ 3234.301082] PT_RX_CAPACITY htt_bytes=4224 mac_id=1 host_submit_status=0",
+      "[ 3237.950055] PT_RX_CAPACITY raw_osif_bytes=130 tlv=272 pad=0 linear_span=7680",
+      "[ 3734.471483] PT_RX_CAPACITY cfg_bytes=4224",
+      "[ 3734.485152] PT_RX_CAPACITY pool_bytes=4224 align=128 entries=16384",
+      "[ 3734.485166] PT_RX_CAPACITY map_bytes=4224 linear=7808",
+      "[ 3734.487458] PT_RX_CAPACITY map_bytes=4224 linear=7680",
+      "[ 3734.652612] PT_RX_CAPACITY htt_bytes=4224 mac_id=0 host_submit_status=0",
+      "[ 3734.652620] PT_RX_CAPACITY htt_bytes=4224 mac_id=1 host_submit_status=0",
+      "[ 3738.220954] PT_RX_CAPACITY raw_osif_bytes=130 tlv=272 pad=0 linear_span=7680",
+      "[ 3759.702315] PT_RX_CAPACITY cfg_bytes=4224",
+      "[ 3759.717182] PT_RX_CAPACITY pool_bytes=4224 align=128 entries=16384",
+      "[ 3759.717198] PT_RX_CAPACITY map_bytes=4224 linear=7808",
+      "[ 3759.719971] PT_RX_CAPACITY map_bytes=4224 linear=7680",
+      "[ 3759.877132] PT_RX_CAPACITY htt_bytes=4224 mac_id=0 host_submit_status=0",
+      "[ 3759.877156] PT_RX_CAPACITY htt_bytes=4224 mac_id=1 host_submit_status=0",
+      "[ 3763.921670] PT_RX_CAPACITY raw_osif_bytes=130 tlv=272 pad=0 linear_span=7680"
+    ],
+    "dmesg_matching_rows_after": [
+      "[ 2707.173930] PT_RX_CAPACITY cfg_bytes=4224",
+      "[ 2707.184125] PT_RX_CAPACITY pool_bytes=4224 align=128 entries=16384",
+      "[ 2707.184137] PT_RX_CAPACITY map_bytes=4224 linear=7808",
+      "[ 2707.185427] PT_RX_CAPACITY map_bytes=4224 linear=7680",
+      "[ 2707.346660] PT_RX_CAPACITY htt_bytes=4224 mac_id=0 host_submit_status=0",
+      "[ 2707.346684] PT_RX_CAPACITY htt_bytes=4224 mac_id=1 host_submit_status=0",
+      "[ 2712.281283] PT_RX_CAPACITY raw_osif_bytes=130 tlv=272 pad=0 linear_span=7680",
+      "[ 3026.056408] PT_RX_CAPACITY cfg_bytes=4224",
+      "[ 3026.076800] PT_RX_CAPACITY pool_bytes=4224 align=128 entries=16384",
+      "[ 3026.076816] PT_RX_CAPACITY map_bytes=4224 linear=7808",
+      "[ 3026.079105] PT_RX_CAPACITY map_bytes=4224 linear=7680",
+      "[ 3026.252733] PT_RX_CAPACITY htt_bytes=4224 mac_id=0 host_submit_status=0",
+      "[ 3026.252759] PT_RX_CAPACITY htt_bytes=4224 mac_id=1 host_submit_status=0",
+      "[ 3029.904682] PT_RX_CAPACITY raw_osif_bytes=130 tlv=272 pad=0 linear_span=7680",
+      "[ 3234.106077] PT_RX_CAPACITY cfg_bytes=4224",
+      "[ 3234.124750] PT_RX_CAPACITY pool_bytes=4224 align=128 entries=16384",
+      "[ 3234.124764] PT_RX_CAPACITY map_bytes=4224 linear=7808",
+      "[ 3234.126830] PT_RX_CAPACITY map_bytes=4224 linear=7680",
+      "[ 3234.301050] PT_RX_CAPACITY htt_bytes=4224 mac_id=0 host_submit_status=0",
+      "[ 3234.301082] PT_RX_CAPACITY htt_bytes=4224 mac_id=1 host_submit_status=0",
+      "[ 3237.950055] PT_RX_CAPACITY raw_osif_bytes=130 tlv=272 pad=0 linear_span=7680",
+      "[ 3734.471483] PT_RX_CAPACITY cfg_bytes=4224",
+      "[ 3734.485152] PT_RX_CAPACITY pool_bytes=4224 align=128 entries=16384",
+      "[ 3734.485166] PT_RX_CAPACITY map_bytes=4224 linear=7808",
+      "[ 3734.487458] PT_RX_CAPACITY map_bytes=4224 linear=7680",
+      "[ 3734.652612] PT_RX_CAPACITY htt_bytes=4224 mac_id=0 host_submit_status=0",
+      "[ 3734.652620] PT_RX_CAPACITY htt_bytes=4224 mac_id=1 host_submit_status=0",
+      "[ 3738.220954] PT_RX_CAPACITY raw_osif_bytes=130 tlv=272 pad=0 linear_span=7680",
+      "[ 3759.702315] PT_RX_CAPACITY cfg_bytes=4224",
+      "[ 3759.717182] PT_RX_CAPACITY pool_bytes=4224 align=128 entries=16384",
+      "[ 3759.717198] PT_RX_CAPACITY map_bytes=4224 linear=7808",
+      "[ 3759.719971] PT_RX_CAPACITY map_bytes=4224 linear=7680",
+      "[ 3759.877132] PT_RX_CAPACITY htt_bytes=4224 mac_id=0 host_submit_status=0",
+      "[ 3759.877156] PT_RX_CAPACITY htt_bytes=4224 mac_id=1 host_submit_status=0",
+      "[ 3763.921670] PT_RX_CAPACITY raw_osif_bytes=130 tlv=272 pad=0 linear_span=7680",
+      "[ 3785.773543] PT_RX_CAPACITY cfg_bytes=4224",
+      "[ 3785.788200] PT_RX_CAPACITY pool_bytes=4224 align=128 entries=16384",
+      "[ 3785.788216] PT_RX_CAPACITY map_bytes=4224 linear=7808",
+      "[ 3785.790488] PT_RX_CAPACITY map_bytes=4224 linear=7680",
+      "[ 3785.960167] PT_RX_CAPACITY htt_bytes=4224 mac_id=0 host_submit_status=0",
+      "[ 3785.960205] PT_RX_CAPACITY htt_bytes=4224 mac_id=1 host_submit_status=0",
+      "[ 3790.663787] PT_RX_CAPACITY raw_osif_bytes=130 tlv=272 pad=0 linear_span=7680"
+    ],
+    "observed": {
+      "cfg": [
+        [
+          4224
+        ]
+      ],
+      "pool": [
+        [
+          4224,
+          128,
+          16384
+        ]
+      ],
+      "map": [
+        [
+          4224,
+          7808
+        ],
+        [
+          4224,
+          7680
+        ]
+      ],
+      "htt": [
+        [
+          4224,
+          0,
+          0
+        ],
+        [
+          4224,
+          1,
+          0
+        ]
+      ],
+      "raw": [
+        [
+          130,
+          272,
+          0,
+          7680
+        ]
+      ]
+    },
+    "unexpected": [],
+    "new_lines": [
+      "[ 3785.773543] PT_RX_CAPACITY cfg_bytes=4224",
+      "[ 3785.788200] PT_RX_CAPACITY pool_bytes=4224 align=128 entries=16384",
+      "[ 3785.788216] PT_RX_CAPACITY map_bytes=4224 linear=7808",
+      "[ 3785.790488] PT_RX_CAPACITY map_bytes=4224 linear=7680",
+      "[ 3785.960167] PT_RX_CAPACITY htt_bytes=4224 mac_id=0 host_submit_status=0",
+      "[ 3785.960205] PT_RX_CAPACITY htt_bytes=4224 mac_id=1 host_submit_status=0",
+      "[ 3790.663787] PT_RX_CAPACITY raw_osif_bytes=130 tlv=272 pad=0 linear_span=7680"
+    ],
+    "verified": true
+  },
+  "verified": true
+}

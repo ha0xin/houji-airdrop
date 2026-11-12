@@ -1,0 +1,156 @@
+--- a/bench.py
++++ b/bench.py
+@@ -3,6 +3,7 @@
+ import argparse
+ import ctypes
+ import hashlib
++import importlib.util
+ import json
+ import os
+ import re
+@@ -13,6 +14,7 @@
+ import subprocess
+ import time
+ import uuid
++from contextlib import nullcontext
+ from pathlib import Path
+ 
+ DEVICE = "DEVICE_SERIAL"
+@@ -27,7 +29,9 @@
+ TCP_INFO_FIELDS = ("mss", "rtt_current_ms", "rtt_smoothed_ms", "tx_packets",
+                    "tx_bytes", "tx_retransmit_packets", "tx_retransmit_bytes",
+                    "rx_packets", "rx_bytes", "rx_out_of_order_bytes")
+-TCP_INFO_SOURCE = HERE.parents[1] / "iphone-radio-research" / "mac-tcp-info.c"
++TCP_INFO_SOURCE = HERE / "results" / "mac-tcp-info-v1.c"
++TIMELINE_DIR = HERE.parents[1] / "iphone-radio-research"
++TIMELINE_SOURCE = TIMELINE_DIR / "mac_tcp_timeline.py"
+ 
+ 
+ def adb(*args, timeout=20):
+@@ -162,7 +166,19 @@
+     return interval
+ 
+ 
+-def transfer(ip, index, mode, size, payload, expected, sample, tcp_info=None):
++def load_tcp_timeline(path):
++    spec = importlib.util.spec_from_file_location("houji_mac_tcp_timeline", TIMELINE_SOURCE)
++    module = importlib.util.module_from_spec(spec)
++    spec.loader.exec_module(module)
++    snapshot = module.load_v2(path.resolve())
++
++    def timeline(sock, origin_ns):
++        return module.TcpTimeline(sock, snapshot, origin_ns)
++
++    return timeline
++
++
++def transfer(ip, index, mode, size, payload, expected, sample, tcp_info=None, tcp_timeline=None):
+     receiver = hashlib.sha256()
+     deadline = 100
+     row = {"direction": "Mac→小米" if mode == 0 else "小米→Mac",
+@@ -175,27 +191,31 @@
+             sock.connect((ip, 18870, 0, index))
+             sock.settimeout(deadline)
+             before = tcp_info(sock) if tcp_info else None
+-            start = time.monotonic()
++            start_ns = time.monotonic_ns()
++            timeline = tcp_timeline(sock, start_ns) if tcp_timeline else None
+             try:
+-                sock.sendall(struct.pack(">III", mode, size, sample))
+-                if mode == 0:
+-                    sock.sendall(payload)
+-                    got = sock.makefile("rb").read(32)
+-                else:
+-                    left = size
+-                    while left:
+-                        data = sock.recv(min(65536, left))
+-                        if not data:
+-                            raise EOFError(f"probe closed with {left} bytes left")
+-                        receiver.update(data)
+-                        left -= len(data)
+-                    got = receiver.digest()
+-                if got != expected:
+-                    raise ValueError(f"SHA256 mismatch ({got.hex()})")
+-                if mode == 1:
+-                    sock.sendall(got)
++                with timeline if timeline else nullcontext():
++                    sock.sendall(struct.pack(">III", mode, size, sample))
++                    if mode == 0:
++                        sock.sendall(payload)
++                        got = sock.makefile("rb").read(32)
++                    else:
++                        left = size
++                        while left:
++                            data = sock.recv(min(65536, left))
++                            if not data:
++                                raise EOFError(f"probe closed with {left} bytes left")
++                            receiver.update(data)
++                            left -= len(data)
++                        got = receiver.digest()
++                    if got != expected:
++                        raise ValueError(f"SHA256 mismatch ({got.hex()})")
++                    if mode == 1:
++                        sock.sendall(got)
++                    elapsed = (time.monotonic_ns() - start_ns) / 1e9
+             finally:
+-                elapsed = time.monotonic() - start
++                if timeline:
++                    row["mac_tcp_timeline"] = timeline.result()
+                 if tcp_info:
+                     row["mac_tcp_info"] = tcp_info_interval(before, tcp_info(sock))
+             row.update(status="verified_mac", seconds=elapsed, MBps=size / elapsed / 1e6,
+@@ -207,6 +227,7 @@
+ 
+ def measure(args):
+     tcp_info = load_tcp_info(args.tcp_info_dylib) if args.tcp_info_dylib else None
++    tcp_timeline = load_tcp_timeline(args.tcp_timeline) if args.tcp_timeline else None
+     directory = HERE / "results" / args.name
+     directory.mkdir(exist_ok=False, parents=True)
+     peer, index = current_awdl()
+@@ -226,6 +247,16 @@
+             "field_source": "Darwin SDK netinet/tcp.h, tcp_connection_info",
+             "units": {"mss": "bytes", "rtt": "ms", "packet_counters": "packets", "byte_counters": "bytes"},
+         }
++    if tcp_timeline:
++        summary["mac_tcp_timeline"] = {
++            "abi": "awdl_tcp_info_sample_v2/14",
++            "helper_sha256": hashlib.sha256(args.tcp_timeline.read_bytes()).hexdigest(),
++            "reference_source_sha256": hashlib.sha256((TIMELINE_DIR / "mac-tcp-info.c").read_bytes()).hexdigest(),
++            "sampler_source_sha256": hashlib.sha256(TIMELINE_SOURCE.read_bytes()).hexdigest(),
++            "field_source": "Darwin SDK netinet/tcp.h, tcp_connection_info",
++            "units": {"mss": "bytes", "rtt": "ms", "offset": "ns", "windows": "bytes",
++                      "packet_counters": "packets", "byte_counters": "bytes"},
++        }
+     log = f"{STATE}/job-{token}.log"
+     command = shlex.join(["sh", RADIO, "run", token, args.profile, args.aggregation, args.ack,
+                           peer, str(args.pairs * 2), str(size), str(args.mss), str(args.queue_len),
+@@ -258,11 +289,16 @@
+         for pair in range(1, args.pairs + 1):
+             for mode in (0, 1):
+                 row = transfer(phone, index, mode, size, payload, expected,
+-                               (pair - 1) * 2 + mode + 1, tcp_info)
++                               (pair - 1) * 2 + mode + 1, tcp_info, tcp_timeline)
+                 row["pair"] = pair
+                 summary["samples"].append(row)
+                 save(directory / "results.json", summary)
+-                print(json.dumps(row, ensure_ascii=False), flush=True)
++                report = row
++                if timeline := row.get("mac_tcp_timeline"):
++                    report = {**row, "mac_tcp_timeline": {
++                        "status": timeline["status"], "samples": len(timeline["samples"]),
++                    }}
++                print(json.dumps(report, ensure_ascii=False), flush=True)
+         # Allow the server to finish verification and write its final HASH_OK.
+         time.sleep(1.2)
+     except (RuntimeError, TimeoutError, subprocess.SubprocessError) as err:
+@@ -336,7 +372,9 @@
+     trial.add_argument("--queue-len", type=int, choices=(500, 2048), default=500)
+     trial.add_argument("--ba-observer", choices=("reference", "off", "on", "peer"), default="reference")
+     trial.add_argument("--vht-amsdu", action="store_true")
+-    trial.add_argument("--tcp-info-dylib", type=Path, metavar="PATH")
++    telemetry = trial.add_mutually_exclusive_group()
++    telemetry.add_argument("--tcp-info-dylib", type=Path, metavar="PATH")
++    telemetry.add_argument("--tcp-timeline", type=Path, metavar="DYLIB")
+     trial.add_argument("--pairs", type=int, choices=range(1, 5), default=2)
+     args = parser.parse_args()
+     if args.command == "deploy":

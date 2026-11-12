@@ -1,0 +1,143 @@
+diff --git a/src/android.rs b/src/android.rs
+index d4320a0..436cda6 100644
+--- a/src/android.rs
++++ b/src/android.rs
+@@ -135,6 +135,8 @@ struct Monitor {
+     tx_submitted: u64,
+     psf_reported: bool,
+     mif_reported: bool,
++    tx_addba_reported: bool,
++    rx_addba_resp_reported: bool,
+     tx_amsdu_mpdu: u64,
+     tx_amsdu_msdu: u64,
+ }
+@@ -207,11 +209,42 @@ impl Monitor {
+             tx_submitted: 0,
+             psf_reported: false,
+             mif_reported: false,
++            tx_addba_reported: false,
++            rx_addba_resp_reported: false,
+             tx_amsdu_mpdu: 0,
+             tx_amsdu_msdu: 0,
+         })
+     }
+ 
++    fn report_first_tx_addba(&mut self, bytes: &[u8]) {
++        if self.tx_addba_reported || bytes.len() < 33 || bytes[0] != 0xd0 {
++            return;
++        }
++        if bytes[24] == 3 && bytes[25] == 0 {
++            let token = bytes[26];
++            let params = u16::from_le_bytes([bytes[27], bytes[28]]);
++            let ssn = u16::from_le_bytes([bytes[31], bytes[32]]) >> 4;
++            println!("OWLY_TX_ADDBA_REQ_SENT token={token} params=0x{params:04x} ssn={ssn}");
++            self.tx_addba_reported = true;
++        }
++    }
++
++    fn report_first_rx_addba_resp(&mut self, bytes: &[u8]) {
++        if self.rx_addba_resp_reported || bytes.len() < 33 || bytes[0] != 0xd0 {
++            return;
++        }
++        if bytes[24] == 3 && bytes[25] == 1 {
++            let token = bytes[26];
++            let status = u16::from_le_bytes([bytes[27], bytes[28]]);
++            let params = u16::from_le_bytes([bytes[29], bytes[30]]);
++            let win = (params >> 6) & 0x3ff;
++            println!(
++                "OWLY_TX_ADDBA_RESP_RCVD token={token} status={status} params=0x{params:04x} win={win}"
++            );
++            self.rx_addba_resp_reported = true;
++        }
++    }
++
+     fn report_first_submitted_action(&mut self, bytes: &[u8]) {
+         use owly_awdl::{frame, tlv};
+ 
+@@ -316,10 +349,10 @@ impl Air for Monitor {
+                     {
+                         self.rx_gaps.record(received.tsft_us, Instant::now());
+                     }
+-                    return Ok(Received {
+-                        bytes: raw.to_vec(),
+-                        rssi: received.rssi,
+-                    });
++                    let bytes = raw.to_vec();
++                    let rssi = received.rssi;
++                    self.report_first_rx_addba_resp(&bytes);
++                    return Ok(Received { bytes, rssi });
+                 }
+                 Ok(Err(e)) if e.kind() != io::ErrorKind::Interrupted => return Err(e),
+                 _ => {}
+@@ -336,6 +369,7 @@ impl Air for Monitor {
+             Ok(()) => {
+                 self.tx_submitted += 1;
+                 self.report_first_submitted_action(&frame.bytes);
++                self.report_first_tx_addba(&frame.bytes);
+                 if frame.bytes.first() == Some(&0x88)
+                     && frame.bytes.get(24).is_some_and(|flags| flags & 0x80 != 0)
+                 {
+@@ -481,6 +515,16 @@ fn accept_addba_mode() -> io::Result<(u8, bool, bool)> {
+     }
+ }
+ 
++fn tx_addba_mode() -> io::Result<(u8, bool, u16)> {
++    match std::env::var("HOUJI_OWLY_TX_ADDBA") {
++        Err(std::env::VarError::NotPresent) => Ok((0, false, 64)),
++        Ok(value) if value == "0" => Ok((0, false, 64)),
++        Ok(value) if value == "1" => Ok((1, true, 64)),
++        Ok(value) if value == "2" => Ok((2, true, 256)),
++        _ => Err(io::Error::other("expected HOUJI_OWLY_TX_ADDBA=0, 1, or 2")),
++    }
++}
++
+ fn outgoing_vht_profile(accept_addba: bool) -> io::Result<(u8, owly_awdl::VhtProfile)> {
+     let mode = match std::env::var("HOUJI_OWLY_OUTGOING_VHT") {
+         Err(std::env::VarError::NotPresent) => 0,
+@@ -523,8 +567,16 @@ pub async fn run() -> io::Result<()> {
+         ));
+     };
+     let peer = parse_mac(peer)?;
++    let coalesce_us = match std::env::var("OWLY_COALESCE_US") {
++        Ok(raw) => raw.parse::<u64>()
++            .ok().filter(|v| *v <= 4_000)
++            .ok_or_else(|| io::Error::other("OWLY_COALESCE_US must be 0..=4000"))?,
++        Err(std::env::VarError::NotPresent) => 1_000,
++        Err(_) => return Err(io::Error::other("OWLY_COALESCE_US is not Unicode")),
++    };
+     let (accept_addba_raw, accept_addba, accept_addba_amsdu) = accept_addba_mode()?;
+-    let (outgoing_vht_mode, vht_profile) = outgoing_vht_profile(accept_addba)?;
++    let (tx_addba_raw, initiate_addba, initiate_addba_window) = tx_addba_mode()?;
++    let (outgoing_vht_mode, vht_profile) = outgoing_vht_profile(accept_addba || initiate_addba)?;
+     let amsdu = match aggregation.as_str() {
+         "single" => false,
+         "amsdu" => true,
+@@ -555,9 +607,16 @@ pub async fn run() -> io::Result<()> {
+     cfg.no_ack = no_ack;
+     cfg.accept_addba = accept_addba;
+     cfg.accept_addba_amsdu = accept_addba_amsdu;
++    cfg.initiate_addba = initiate_addba;
++    cfg.initiate_addba_window = initiate_addba_window;
++    if initiate_addba {
++        cfg.unicast_queue = 512;
++        cfg.burst_limit = 256;
++    }
+     cfg.advertise_vht80_1ss = vht_profile == owly_awdl::VhtProfile::Mif1ss;
+     cfg.vht_profile = vht_profile;
+     cfg.amsdu = amsdu;
++    cfg.amsdu_coalesce_us = coalesce_us;
+     cfg.max_frame = if amsdu { 7935 } else { 2304 };
+     cfg.rssi_threshold = None;
+ 
+@@ -570,9 +629,10 @@ pub async fn run() -> io::Result<()> {
+         peers,
+     )?;
+     let mut failed = running.failed();
+-    println!("OWLY_COALESCE_US={}", option_env!("HOUJI_OWLY_COALESCE_US").unwrap_or("0"));
++    println!("OWLY_COALESCE_US={coalesce_us}");
+     println!("OWLY_OUTGOING_VHT={outgoing_vht_mode}");
+     println!("OWLY_ACCEPT_ADDBA={accept_addba_raw}");
++    println!("OWLY_TX_ADDBA={tx_addba_raw}");
+     println!(
+         "OWLY_READY iface={TUN} addr={} peer={peer} channel=149 amsdu={amsdu} noack={no_ack} ba={accept_addba}",
+         addr.link_local()

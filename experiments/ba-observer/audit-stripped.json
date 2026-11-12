@@ -1,0 +1,52 @@
+{
+  "checks": {
+    "aarch64": true,
+    "both_params_0444": true,
+    "observer_default_off": true,
+    "candidate_code_changed": true,
+    "abi_matches_both_references": true
+  },
+  "abi_by_reference": {
+    "tested_wideband_ring": {
+      "machine": true,
+      "vermagic": true,
+      "depends": true,
+      "module_name": true,
+      "versions": true,
+      "exports": true,
+      "undefined": true,
+      "module_size": true,
+      "module_relocations": true
+    },
+    "wideband_source_tree_module": {
+      "machine": true,
+      "vermagic": true,
+      "depends": true,
+      "module_name": true,
+      "versions": true,
+      "exports": true,
+      "undefined": true,
+      "module_size": true,
+      "module_relocations": true
+    }
+  },
+  "reference_executable_sections_match_each_other": true,
+  "reference_sha256": {
+    "tested_wideband_ring": "481e3474ea6b42acab5bb5a35b5be7b5e291aa975d7422034ca4e750e857d71c",
+    "wideband_source_tree_module": "b79d17b7b9fc18f75e3404104f84d59fd51ac8a60f20d8fbe5a9a913249ffe21"
+  },
+  "candidate_sha256": "b9f0a77ec9132e57677f83e75e4e3185087b8c4a104878db532a894cb0c4637b",
+  "candidate_vermagic": [
+    "6.1.68 SMP preempt mod_unload modversions aarch64"
+  ],
+  "candidate_depends": [
+    "cfg80211,cnss_utils,hwid,cnss_nl,ipam,houji_wonder_bridge,cnss_prealloc,qcom_iommu_util,sched-walt,qcom_va_minidump,cnss2"
+  ],
+  "candidate_import_count": 567,
+  "candidate_param_permissions": {
+    "pt_ba_observe": "0o444",
+    "pt_ba_stats": "0o444"
+  },
+  "candidate_flag_initial_byte": 0,
+  "device_validation": "not performed"
+}

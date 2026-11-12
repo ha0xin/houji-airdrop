@@ -1,0 +1,29 @@
+{
+  "removed_own_intermediates": [
+    [
+      "super.img.lz4",
+      11183204127
+    ],
+    [
+      "super.img",
+      12443875744
+    ],
+    [
+      "vendor.img",
+      1948352512
+    ],
+    [
+      "vendor_dlkm.img",
+      31551488
+    ],
+    [
+      "vendor-tree",
+      "directory"
+    ],
+    [
+      "vendor-dlkm-tree",
+      "directory"
+    ]
+  ],
+  "free_bytes_after": 50458726400
+}

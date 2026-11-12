@@ -1,0 +1,87 @@
+{
+  "channel": 149,
+  "profile": "vht80-sgi",
+  "aggregation": "amsdu",
+  "ack": "ack",
+  "tcp_mss": 1160,
+  "rx_block_ack": false,
+  "mac_awdl": "02:00:00:00:00:01",
+  "samples": [
+    {
+      "direction": "Mac\u2192\u5c0f\u7c73",
+      "sample": 1,
+      "mode": 0,
+      "bytes": 67108864,
+      "status": "verified",
+      "seconds": 31.940087541999997,
+      "MBps": 2.101085787938258,
+      "sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "pair": 1,
+      "phone_seconds": 31.928651
+    },
+    {
+      "direction": "\u5c0f\u7c73\u2192Mac",
+      "sample": 2,
+      "mode": 1,
+      "bytes": 67108864,
+      "status": "verified",
+      "seconds": 10.123759417000002,
+      "MBps": 6.628848161613715,
+      "sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "pair": 1,
+      "phone_seconds": 10.123096
+    },
+    {
+      "direction": "Mac\u2192\u5c0f\u7c73",
+      "sample": 3,
+      "mode": 0,
+      "bytes": 67108864,
+      "status": "verified",
+      "seconds": 31.047786999999992,
+      "MBps": 2.1614701234583973,
+      "sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "pair": 2,
+      "phone_seconds": 31.038882
+    },
+    {
+      "direction": "\u5c0f\u7c73\u2192Mac",
+      "sample": 4,
+      "mode": 1,
+      "bytes": 67108864,
+      "status": "verified",
+      "seconds": 10.153296292000007,
+      "MBps": 6.609564231162688,
+      "sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "pair": 2,
+      "phone_seconds": 10.152024
+    },
+    {
+      "direction": "Mac\u2192\u5c0f\u7c73",
+      "sample": 5,
+      "mode": 0,
+      "bytes": 67108864,
+      "status": "verified",
+      "seconds": 30.913788208,
+      "MBps": 2.170839223859122,
+      "sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "pair": 3,
+      "phone_seconds": 30.899583
+    },
+    {
+      "direction": "\u5c0f\u7c73\u2192Mac",
+      "sample": 6,
+      "mode": 1,
+      "bytes": 67108864,
+      "status": "verified",
+      "seconds": 10.839925500000007,
+      "MBps": 6.190897160686203,
+      "sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "pair": 3,
+      "phone_seconds": 10.840576
+    }
+  ],
+  "phone_owly0": "2001:db8::38",
+  "radio_exit": 0,
+  "restored": true,
+  "server_sha_receipts": 6
+}

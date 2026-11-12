@@ -1,0 +1,30 @@
+diff --git a/downloads/airdrop-driver-work/three-findings-validation/src/wlan/qca-wifi-host-cmn/dp/wifi3.0/dp_tx.c b/downloads/airdrop-driver-work/peer-tx-investigation/modified/dp_tx.c
+index 87c605a..266cbdf 100644
+--- a/downloads/airdrop-driver-work/three-findings-validation/src/wlan/qca-wifi-host-cmn/dp/wifi3.0/dp_tx.c
++++ b/downloads/airdrop-driver-work/peer-tx-investigation/modified/dp_tx.c
+@@ -67,6 +67,16 @@
+ #endif
+ #include "dp_pt_rate_observer.h"
+ 
++#ifdef DRIVER_PASSTHRU_OWNER
++/* Diagnostic switch: retain association while selecting the original BSS AST.
++ * The completion peer_id must be checked; firmware may resolve RA again.
++ */
++static bool pt_remote_ast = true;
++module_param(pt_remote_ast, bool, 0400);
++MODULE_PARM_DESC(pt_remote_ast,
++	"Override PASSTHRU unicast AST with mapped remote peer (default on)");
++#endif
++
+ /* Flag to skip CCE classify when mesh or tid override enabled */
+ #define DP_TX_SKIP_CCE_CLASSIFY \
+ 	(DP_TXRX_HLOS_TID_OVERRIDE_ENABLED | DP_TX_MESH_ENABLED)
+@@ -3274,7 +3284,7 @@ dp_tx_send_passthru_internal(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
+ 	msdu_info.frm_type = dp_tx_frm_raw;
+ 	qdf_nbuf_pull_head(nbuf, radiotap_len);
+ #ifdef DRIVER_PASSTHRU_OWNER
+-	if (meta.is_unicast && qdf_nbuf_len(nbuf) >= 10 &&
++	if (pt_remote_ast && meta.is_unicast && qdf_nbuf_len(nbuf) >= 10 &&
+ 	    pt_remote_peer_lookup_ast(soc->ctrl_psoc, vdev_id,
+ 				      qdf_nbuf_data(nbuf) + 4,
+ 				      &msdu_info.passthru_ast_idx,

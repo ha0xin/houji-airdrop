@@ -1,0 +1,132 @@
+[
+  {
+    "mode": 0,
+    "telemetry": true,
+    "bad_hash": false,
+    "status": "verified_mac",
+    "tcp_info": {
+      "before": {
+        "mss": 16312,
+        "rtt_current_ms": 1,
+        "rtt_smoothed_ms": 1,
+        "tx_packets": 0,
+        "tx_bytes": 0,
+        "tx_retransmit_packets": 0,
+        "tx_retransmit_bytes": 0,
+        "rx_packets": 0,
+        "rx_bytes": 0,
+        "rx_out_of_order_bytes": 0
+      },
+      "after": {
+        "mss": 16312,
+        "rtt_current_ms": 1,
+        "rtt_smoothed_ms": 1,
+        "tx_packets": 2,
+        "tx_bytes": 4108,
+        "tx_retransmit_packets": 0,
+        "tx_retransmit_bytes": 0,
+        "rx_packets": 2,
+        "rx_bytes": 32,
+        "rx_out_of_order_bytes": 0
+      },
+      "delta": {
+        "tx_packets": 2,
+        "tx_bytes": 4108,
+        "tx_retransmit_packets": 0,
+        "tx_retransmit_bytes": 0,
+        "rx_packets": 2,
+        "rx_bytes": 32,
+        "rx_out_of_order_bytes": 0
+      }
+    }
+  },
+  {
+    "mode": 1,
+    "telemetry": true,
+    "bad_hash": false,
+    "status": "verified_mac",
+    "tcp_info": {
+      "before": {
+        "mss": 16312,
+        "rtt_current_ms": 1,
+        "rtt_smoothed_ms": 1,
+        "tx_packets": 0,
+        "tx_bytes": 0,
+        "tx_retransmit_packets": 0,
+        "tx_retransmit_bytes": 0,
+        "rx_packets": 0,
+        "rx_bytes": 0,
+        "rx_out_of_order_bytes": 0
+      },
+      "after": {
+        "mss": 16312,
+        "rtt_current_ms": 1,
+        "rtt_smoothed_ms": 1,
+        "tx_packets": 2,
+        "tx_bytes": 44,
+        "tx_retransmit_packets": 0,
+        "tx_retransmit_bytes": 0,
+        "rx_packets": 1,
+        "rx_bytes": 4096,
+        "rx_out_of_order_bytes": 0
+      },
+      "delta": {
+        "tx_packets": 2,
+        "tx_bytes": 44,
+        "tx_retransmit_packets": 0,
+        "tx_retransmit_bytes": 0,
+        "rx_packets": 1,
+        "rx_bytes": 4096,
+        "rx_out_of_order_bytes": 0
+      }
+    }
+  },
+  {
+    "mode": 0,
+    "telemetry": false,
+    "bad_hash": false,
+    "status": "verified_mac",
+    "tcp_info": null
+  },
+  {
+    "mode": 0,
+    "telemetry": true,
+    "bad_hash": true,
+    "status": "failed",
+    "tcp_info": {
+      "before": {
+        "mss": 16312,
+        "rtt_current_ms": 1,
+        "rtt_smoothed_ms": 1,
+        "tx_packets": 0,
+        "tx_bytes": 0,
+        "tx_retransmit_packets": 0,
+        "tx_retransmit_bytes": 0,
+        "rx_packets": 0,
+        "rx_bytes": 0,
+        "rx_out_of_order_bytes": 0
+      },
+      "after": {
+        "mss": 16312,
+        "rtt_current_ms": 1,
+        "rtt_smoothed_ms": 1,
+        "tx_packets": 2,
+        "tx_bytes": 4108,
+        "tx_retransmit_packets": 0,
+        "tx_retransmit_bytes": 0,
+        "rx_packets": 2,
+        "rx_bytes": 32,
+        "rx_out_of_order_bytes": 0
+      },
+      "delta": {
+        "tx_packets": 2,
+        "tx_bytes": 4108,
+        "tx_retransmit_packets": 0,
+        "tx_retransmit_bytes": 0,
+        "rx_packets": 2,
+        "rx_bytes": 32,
+        "rx_out_of_order_bytes": 0
+      }
+    }
+  }
+]

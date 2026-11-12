@@ -1,0 +1,72 @@
+--- a/src/userspace/owly/crates/owly-awdl/src/driver.rs
++++ b/src/userspace/owly/crates/owly-awdl/src/driver.rs
+@@ -414,12 +414,17 @@
+     let now = d.now();
+     d.handle(Input::Timer(now));
+     loop {
++        // Keep shutdown ahead of ready traffic without giving RX permanent
++        // priority over host TX, timers and peer publication.
++        if d.stopped.has_changed().unwrap_or(true) {
++            d.log_stats();
++            return Ok(());
++        }
+         let wake = match d.retry_at() {
+             Some(retry) => d.instant(d.timer).min(retry),
+             None => d.instant(d.timer),
+         };
+         tokio::select! {
+-            biased;
+             _ = d.stopped.changed() => {
+                 d.log_stats();
+                 return Ok(());
+@@ -459,8 +464,50 @@
+ #[cfg(test)]
+ mod tests {
+     use super::*;
++
++    struct ReadyAir;
++
++    impl Air for ReadyAir {
++        async fn recv(&mut self) -> io::Result<Received> {
++            Ok(Received { bytes: Vec::new(), rssi: None })
++        }
+ 
++        fn send(&mut self, _: Frame) -> Result<(), Frame> { Ok(()) }
++    }
++
++    struct ReadyNetif(std::sync::Arc<std::sync::atomic::AtomicUsize>);
++
++    impl Netif for ReadyNetif {
++        async fn recv(&mut self) -> io::Result<Ipv6Packet> {
++            self.0.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
++            Ok(Ipv6Packet::echo_request(
++                MacAddr([2, 0, 0, 0, 0, 1]), MacAddr([2, 0, 0, 0, 0, 2]),
++                1, 1, &[1],
++            ))
++        }
++        fn deliver(&mut self, _: Ipv6Packet) {}
++        fn peer_up(&mut self, _: MacAddr) {}
++    }
++
+     #[test]
++    fn continuously_ready_air_does_not_starve_host_or_stop() {
++        use std::sync::{Arc, atomic::{AtomicUsize, Ordering}};
++        let reads = Arc::new(AtomicUsize::new(0));
++        let counter = reads.clone();
++        let cfg = Config::new(MacAddr([2, 0, 0, 0, 0, 1]), "fairness", crate::RadioConstraints {
++            channel: crate::Channel(149), presence: crate::Presence::Fixed,
++        });
++        let (peers, _rx) = watch::channel(Vec::new());
++        let running = spawn(cfg, move || Ok((ReadyAir, ReadyNetif(counter))), peers).unwrap();
++        let deadline = Instant::now() + Duration::from_secs(1);
++        while reads.load(Ordering::Relaxed) < 8 && Instant::now() < deadline {
++            std::thread::sleep(Duration::from_millis(1));
++        }
++        running.stop();
++        assert!(reads.load(Ordering::Relaxed) >= 8, "ready RX starved host TX");
++    }
++
++    #[test]
+     fn times_map_onto_instants() {
+         let t = Time(1_000_001);
+         let epoch = Instant::now();

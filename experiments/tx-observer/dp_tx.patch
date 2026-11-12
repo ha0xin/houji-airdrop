@@ -1,0 +1,63 @@
+--- /work/houji-build/src/baseline/wlan/qca-wifi-host-cmn/dp/wifi3.0/dp_tx.c	2026-11-10 02:41:35.701927936 +0000
++++ /work/houji-build/src/observer/wlan/qca-wifi-host-cmn/dp/wifi3.0/dp_tx.c	2026-11-10 03:29:51.387171790 +0000
+@@ -62,6 +62,8 @@
+ #include <dp_sawf.h>
+ #endif
+ 
++#include "dp_pt_tx_observer.h"
++
+ /* Flag to skip CCE classify when mesh or tid override enabled */
+ #define DP_TX_SKIP_CCE_CLASSIFY \
+ 	(DP_TXRX_HLOS_TID_OVERRIDE_ENABLED | DP_TX_MESH_ENABLED)
+@@ -401,6 +403,8 @@
+ 	struct dp_pdev *pdev = tx_desc->pdev;
+ 	uint8_t comp_status = 0;
+ 
++	dp_pto_end(tx_desc, NULL);
++
+ 	if (dp_tx_release_ds_tx_desc(soc, tx_desc, desc_pool_id))
+ 		return;
+ 
+@@ -3117,6 +3121,7 @@
+ 	dp_tx_desc_history_add(soc, tx_desc->dma_addr, nbuf,
+ 			       tx_desc->id, DP_TX_DESC_MAP);
+ 	dp_tx_update_mcast_param(peer_id, &htt_tcl_metadata, vdev, msdu_info);
++	dp_pto_begin(tx_desc, nbuf);
+ 	/* Enqueue the Tx MSDU descriptor to HW for transmit */
+ 	status = soc->arch_ops.tx_hw_enqueue(soc, vdev, tx_desc,
+ 					     htt_tcl_metadata,
+@@ -3207,7 +3212,7 @@
+ }
+ 
+ static qdf_nbuf_t
+-dp_tx_send_passthru_internal(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
++dp_tx_send_passthru_impl(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
+ 			     qdf_nbuf_t nbuf, struct dp_vdev *expected)
+ {
+ 	struct dp_soc *soc;
+@@ -3277,6 +3282,17 @@
+ 	return result;
+ }
+ 
++static qdf_nbuf_t
++dp_tx_send_passthru_internal(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
++                            qdf_nbuf_t nbuf, struct dp_vdev *expected)
++{
++ qdf_nbuf_t result;
++ dp_pto_call(false, false);
++ result = dp_tx_send_passthru_impl(soc_hdl, vdev_id, nbuf, expected);
++ dp_pto_call(true, result != NULL);
++ return result;
++}
++
+ qdf_nbuf_t dp_tx_send_passthru(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
+ 			     qdf_nbuf_t nbuf)
+ {
+@@ -6380,6 +6396,7 @@
+ 
+ 	if (dp_tx_desc_is_passthru(tx_desc)) {
+ 		/* No Ethernet statistics, peer lookup or fabricated ACK callback. */
++		dp_pto_end(tx_desc, ts);
+ 		DP_STATS_INCC(soc, tx.dropped_fw_removed, 1,
+ 			      (ts->status == HAL_TX_TQM_RR_REM_CMD_REM));
+ 		return;

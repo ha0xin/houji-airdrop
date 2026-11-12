@@ -1,0 +1,85 @@
+--- a/bench.py
++++ b/bench.py
+@@ -55,6 +55,7 @@
+         observer_dir, observer_name = {
+             "aggregate": ("ba-observer", "qca_cld3_kiwi_v2-observer.ko"),
+             "peer": ("ba-peer-observer", "qca_cld3_kiwi_v2-peer-observer.ko"),
++            "caps": ("remote-peer-probe", "qca_cld3_kiwi_v2-peer-caps.ko"),
+         }[observer]
+         files.append(observer_name)
+     try:
+@@ -277,6 +278,7 @@
+     observers = install.add_mutually_exclusive_group()
+     observers.add_argument("--include-ba-observer", dest="observer", action="store_const", const="aggregate")
+     observers.add_argument("--include-ba-peer-observer", dest="observer", action="store_const", const="peer")
++    observers.add_argument("--include-peer-caps", dest="observer", action="store_const", const="caps")
+     trial = sub.add_parser("measure")
+     trial.add_argument("name")
+     trial.add_argument("profile", choices=("ht20", "vht80", "vht80-sgi"))
+--- a/radio-owly.sh
++++ b/radio-owly.sh
+@@ -18,6 +18,7 @@
+ RING_SHA=481e3474ea6b42acab5bb5a35b5be7b5e291aa975d7422034ca4e750e857d71c
+ BA_OBSERVER_SHA=b9f0a77ec9132e57677f83e75e4e3185087b8c4a104878db532a894cb0c4637b
+ BA_PEER_OBSERVER_SHA=1ad02ff5e62183690c6f1d52a075f5d73001ed82d44c59cd37ec3bf2d5b2c3c4
++PEER_CAPS_SHA=739abb094c277b6fa675d9a59de3502019c5344b0a7466b843d43b6eaa2ad7f0
+ TABLE=10075
+ IFACE=owly0
+ driver=
+@@ -223,6 +224,10 @@
+   peer)
+    qca="$ROOT/qca_cld3_kiwi_v2-peer-observer.ko"
+    qca_sha=$BA_PEER_OBSERVER_SHA
++   ;;
++  caps)
++   qca="$ROOT/qca_cld3_kiwi_v2-peer-caps.ko"
++   qca_sha=$PEER_CAPS_SHA
+    ;;
+  esac
+  check "$qca_sha" "$qca"
+@@ -256,11 +261,20 @@
+  case "$ba_mode" in
+   on) set -- "$@" pt_ba_observe=1 ;;
+   peer) set -- "$@" pt_ba_observe=1 "pt_ba_peer=$peer" ;;
++  caps) set -- "$@" pt_peer_caps_observe=1 ;;
+  esac
+  bounded insmod "$qca" "$@"
+  case "$ba_mode" in
+   off) test "$(cat "$W/parameters/pt_ba_observe")" = N ;;
+   on|peer) test "$(cat "$W/parameters/pt_ba_observe")" = Y ;;
++  caps)
++   test "$(cat "$W/parameters/pt_ba_observe")" = N
++   test "$(cat "$W/parameters/pt_ba_peer")" = 0
++   test "$(cat "$W/parameters/pt_peer_caps_observe")" = Y
++   caps=$(cat "$W/parameters/pt_peer_caps")
++   echo "PEER_CAPS_BEFORE $caps"
++   test "$caps" = 'schema=1 enabled=1 sampled=0 create_conf=0 sync_delete=0 fw_unmap_conf=0 dp_unmap_conf=0'
++   ;;
+  esac
+  if test "$ba_mode" = peer; then
+   test "$(cat "$W/parameters/pt_ba_peer")" = 1
+@@ -328,6 +342,12 @@
+  trap 'exit 143' TERM HUP
+  trap 'exit 130' INT
+  enter
++ if test "$ba_mode" = caps; then
++  caps=$(cat "$W/parameters/pt_peer_caps")
++  echo "PEER_CAPS_AFTER $caps"
++  echo "$caps" | grep -q '^schema=1 enabled=1 sampled=1 '
++  return 0
++ fi
+  if test "$vht_amsdu" = 1; then
+   test "$(cat "$W/parameters/pt_vht80")" = Y
+   test "$(cat /sys/class/net/wonder0/mtu)" = 8192
+@@ -486,6 +506,11 @@
+   esac
+   run_job "$@"
+   ;;
++ caps)
++  test "$#" = 2
++  case "$2" in ''|*[!a-zA-Z0-9-]*) exit 2;; esac
++  run_job "$2" vht80-sgi single ack - 0 0 0 500 caps
++  ;;
+  locked) shift; run_locked "$@" ;;
+  recover)
+   job_lock

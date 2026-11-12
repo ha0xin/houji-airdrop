@@ -1,0 +1,489 @@
+diff --git a/qcacld-3.0/core/wma/src/wma_dev_if.c b/qcacld-3.0/core/wma/src/wma_dev_if.c
+--- a/qcacld-3.0/core/wma/src/wma_dev_if.c
++++ b/qcacld-3.0/core/wma/src/wma_dev_if.c
+@@ -29,6 +29,7 @@
+ #ifdef DRIVER_PASSTHRU_OWNER
+ #include <linux/moduleparam.h>
+ #include <linux/spinlock.h>
++#include <linux/delay.h>
+ #include <qdf_pt_remote_peer.h>
+ #include <scheduler_core.h>
+ #include "target_if_vdev_mgr_rx_ops.h"
+@@ -2459,11 +2460,11 @@
+ #ifdef DRIVER_PASSTHRU_OWNER
+ /*
+  * Owner must hold the control lease and a vdev reference throughout.
+- * No caller is installed here. Firmware events lack a generation, so
++ * Firmware events lack a generation, so
+  * the armed key is reserved until this module instance is unloaded.
+  */
+ static DEFINE_SPINLOCK(wma_pt_peer_lock);
+-static struct {
++struct wma_pt_peer_trial {
+ 	tp_wma_handle wma;
+ 	const void *psoc;
+ 	u64 generation;
+@@ -2494,7 +2495,8 @@
+ 	bool dp_released;
+ 	bool obj_released;
+ 	bool compensation;
+-} wma_pt_peer_trial;
++};
++static struct wma_pt_peer_trial wma_pt_peer_trial;
+ 
+ static bool wma_pt_peer_key_matches(tp_wma_handle wma, u32 vdev_id,
+ 				    const u8 *mac)
+@@ -2544,7 +2546,7 @@
+ }
+ 
+ /* Caller owns the PASSTHRU vdev and supplies the sole allowed remote MAC. */
+-static QDF_STATUS __maybe_unused
++static QDF_STATUS
+ wma_pt_peer_create(tp_wma_handle wma, struct wlan_objmgr_vdev *vdev,
+ 		   u64 generation, struct qdf_mac_addr *remote)
+ {
+@@ -2633,7 +2635,7 @@
+ 	return status;
+ }
+ 
+-static QDF_STATUS __maybe_unused
++static QDF_STATUS
+ wma_pt_peer_delete(tp_wma_handle wma, struct wlan_objmgr_vdev *vdev,
+ 		   u64 generation, struct qdf_mac_addr *remote)
+ {
+@@ -2713,13 +2715,13 @@
+ 			wma_pt_peer_trial.slot_installed = true;
+ 		break;
+ 	case PT_REMOTE_HTT_UNMAP:
+-		if (!wma_pt_peer_trial.slot_installed)
++		if (!wma_pt_peer_trial.delete_issued || !wma_pt_peer_trial.slot_installed)
+ 			wma_pt_peer_trial.dp_conflict = true;
+ 		else
+ 			wma_pt_peer_trial.htt_unmap = true;
+ 		break;
+ 	case PT_REMOTE_SLOT_REMOVE:
+-		if (!wma_pt_peer_trial.slot_installed)
++		if (!wma_pt_peer_trial.delete_issued || !wma_pt_peer_trial.slot_installed)
+ 			wma_pt_peer_trial.dp_conflict = true;
+ 		else
+ 			wma_pt_peer_trial.slot_removed = true;
+@@ -2766,6 +2768,8 @@
+ 
+ 	spin_lock_irqsave(&wma_pt_peer_lock, flags);
+ 	if (generation == wma_pt_peer_trial.generation) {
++		if (wma_pt_peer_trial.create_issued && !wma_pt_peer_trial.delete_issued)
++			wma_pt_peer_trial.dp_conflict = true;
+ 		if (obj == PT_REMOTE_DP_OBJECT)
+ 			wma_pt_peer_trial.dp_released = true;
+ 		else
+@@ -2773,6 +2777,146 @@
+ 	}
+ 	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
+ }
++
++#define WMA_PT_PEER_WAIT_MS 1800
++
++enum wma_pt_peer_result {
++	WMA_PT_PEER_IDLE,
++	WMA_PT_PEER_RUNNING,
++	WMA_PT_PEER_HOST_CLEAN,
++	WMA_PT_PEER_COMPLETE,
++	WMA_PT_PEER_COMPENSATED,
++	WMA_PT_PEER_BLOCKED,
++};
++
++static enum wma_pt_peer_result wma_pt_peer_result;
++
++static void wma_pt_peer_snapshot(struct wma_pt_peer_trial *trial)
++{
++	unsigned long flags;
++
++	spin_lock_irqsave(&wma_pt_peer_lock, flags);
++	*trial = wma_pt_peer_trial;
++	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
++}
++
++static bool wma_pt_peer_live_slot(const struct wma_pt_peer_trial *trial)
++{
++	return trial->htt_map && trial->slot_installed &&
++	       !trial->htt_unmap && !trial->slot_removed && !trial->dp_conflict;
++}
++
++static bool wma_pt_peer_clean_delete(const struct wma_pt_peer_trial *trial)
++{
++	return trial->delete_returned && !QDF_IS_STATUS_ERROR(trial->delete_submit) &&
++	       trial->delete_confirmed && trial->htt_unmap && trial->slot_removed &&
++	       trial->dp_released && trial->obj_released && !trial->dp_conflict;
++}
++
++/* Owner holds its handoff ticket and parent DSC operation, with no RTNL. */
++int wma_pt_remote_peer_run(struct wlan_objmgr_vdev *vdev, u64 generation,
++			  struct qdf_mac_addr *remote, bool *retire)
++{
++	tp_wma_handle wma = cds_get_context(QDF_MODULE_ID_WMA);
++	struct wma_pt_peer_trial trial;
++	unsigned long deadline;
++	QDF_STATUS status;
++	int ret = -ETIMEDOUT;
++	enum wma_pt_peer_result result = WMA_PT_PEER_BLOCKED;
++
++	*retire = false;
++	WRITE_ONCE(wma_pt_peer_result, WMA_PT_PEER_RUNNING);
++	status = wma_pt_peer_create(wma, vdev, generation, remote);
++	deadline = jiffies + msecs_to_jiffies(WMA_PT_PEER_WAIT_MS);
++	wma_pt_peer_snapshot(&trial);
++	if (!trial.create_issued) {
++		do {
++			/* Component create can fail after attachment and self ref. */
++			if ((!trial.obj_attached || trial.obj_released) &&
++			    !trial.dp_conflict && !trial.dp_created) {
++				*retire = true;
++				result = WMA_PT_PEER_HOST_CLEAN;
++				ret = QDF_IS_STATUS_ERROR(status) ?
++				      qdf_status_to_os_return(status) : -EIO;
++				goto done;
++			}
++			usleep_range(3000, 5000);
++			wma_pt_peer_snapshot(&trial);
++		} while (time_before(jiffies, deadline));
++		goto done;
++	}
++
++	do {
++		if (trial.create_returned && wma_pt_peer_live_slot(&trial) &&
++		    (trial.create_confirmed || QDF_IS_STATUS_ERROR(status)))
++			break;
++		if (trial.dp_conflict)
++			goto done;
++		usleep_range(3000, 5000);
++		wma_pt_peer_snapshot(&trial);
++	} while (time_before(jiffies, deadline));
++
++	/* An existing slot may be cleaned even when WMI create timed out. */
++	if (!wma_pt_peer_live_slot(&trial))
++		goto done;
++	status = wma_pt_peer_delete(wma, vdev, generation, remote);
++	if (QDF_IS_STATUS_ERROR(status)) {
++		ret = qdf_status_to_os_return(status);
++		goto done;
++	}
++	deadline = jiffies + msecs_to_jiffies(WMA_PT_PEER_WAIT_MS);
++	do {
++		wma_pt_peer_snapshot(&trial);
++		if (wma_pt_peer_clean_delete(&trial) &&
++		    wma->interfaces[trial.vdev_id].peer_count == 1) {
++			*retire = true;
++			if (trial.compensation || trial.create_conflict) {
++				result = WMA_PT_PEER_COMPENSATED;
++				ret = -EIO;
++			} else {
++				result = WMA_PT_PEER_COMPLETE;
++				ret = 0;
++			}
++			break;
++		}
++		if (trial.dp_conflict)
++			break;
++		usleep_range(3000, 5000);
++	} while (time_before(jiffies, deadline));
++done:
++	WRITE_ONCE(wma_pt_peer_result, result);
++	return ret;
++}
++
++static int wma_pt_remote_peer_stats(char *buf, const struct kernel_param *kp)
++{
++	struct wma_pt_peer_trial trial;
++
++	wma_pt_peer_snapshot(&trial);
++	return scnprintf(buf, PAGE_SIZE,
++			 "result=%u generation=%llu vdev=%u peer_id=%u "
++			 "obj_attached=%u obj_created=%u dp_created=%u "
++			 "create_issued=%u create_returned=%u create_submit=%u "
++			 "create_confirm=%u create_status=%u create_dup=%u create_conflict=%u "
++			 "htt_map=%u slot=%u delete_issued=%u delete_returned=%u "
++			 "delete_submit=%u delete_confirm=%u delete_dup=%u htt_unmap=%u "
++			 "slot_removed=%u dp_released=%u obj_released=%u dp_conflict=%u "
++			 "compensation=%u\n",
++			 READ_ONCE(wma_pt_peer_result), trial.generation, trial.vdev_id,
++			 trial.peer_id, trial.obj_attached, trial.obj_created, trial.dp_created,
++			 trial.create_issued, trial.create_returned, trial.create_submit,
++			 trial.create_confirmed, trial.create_status, trial.create_duplicates,
++			 trial.create_conflict, trial.htt_map, trial.slot_installed,
++			 trial.delete_issued, trial.delete_returned, trial.delete_submit,
++			 trial.delete_confirmed, trial.delete_duplicates, trial.htt_unmap,
++			 trial.slot_removed, trial.dp_released, trial.obj_released,
++			 trial.dp_conflict, trial.compensation);
++}
++
++static const struct kernel_param_ops wma_pt_remote_peer_stats_ops = {
++	.get = wma_pt_remote_peer_stats,
++};
++module_param_cb(pt_remote_peer_stats, &wma_pt_remote_peer_stats_ops, NULL, 0400);
+ 
+ #endif
+ 
+diff --git a/qcacld-3.0/core/wma/inc/wma_api.h b/qcacld-3.0/core/wma/inc/wma_api.h
+--- a/qcacld-3.0/core/wma/inc/wma_api.h
++++ b/qcacld-3.0/core/wma/inc/wma_api.h
+@@ -951,6 +951,10 @@
+  * BUSY retains parents; asynchronous ref-put tails require an external join.
+  */
+ QDF_STATUS wma_passthru_reap_failed_deletes(void);
++#ifdef DRIVER_PASSTHRU_OWNER
++int wma_pt_remote_peer_run(struct wlan_objmgr_vdev *vdev, u64 generation,
++			  struct qdf_mac_addr *remote, bool *retire);
++#endif
+ /* Post-fence serialized snapshot: an exact blocked parameter still owns the
+  * SME reference, so one request_put cannot trigger last-ref FW deletion.
+  * The caller excludes WMA parameter consumption until that put returns.
+diff --git a/qcacld-3.0/core/hdd/src/wlan_hdd_passthru_owner.c b/qcacld-3.0/core/hdd/src/wlan_hdd_passthru_owner.c
+--- a/qcacld-3.0/core/hdd/src/wlan_hdd_passthru_owner.c
++++ b/qcacld-3.0/core/hdd/src/wlan_hdd_passthru_owner.c
+@@ -805,6 +805,67 @@
+ 	return ret;
+ }
+ 
++#ifndef HOUJI_PT_OWNER_HOST_TEST
++/*
++ * One-shot diagnostic. The registry user and handoff ticket hold the owner,
++ * endpoint and owner-held vdev ref until the WMI/DP work has returned.
++ */
++int hdd_pt_run_remote_peer(struct hdd_pt_registry *registry, u64 generation,
++			   struct qdf_mac_addr *peer)
++{
++	struct hdd_pt_owner *owner;
++	struct hdd_wh_ticket ticket = {0};
++	unsigned long deadline = jiffies + msecs_to_jiffies(500);
++	QDF_STATUS status;
++	bool retire = true;
++	int ret;
++
++	owner = hdd_pt_acquire(registry, generation);
++	if (!owner)
++		return -ENOENT;
++	mutex_lock(&owner->control);
++	if (owner->phase != HDD_PT_ACTIVE || !owner->endpoint || !owner->vdev ||
++	    owner->frequency != 5745 || owner->channel_busy ||
++	    atomic_read(&owner->closing) || atomic_read(&owner->recovering)) {
++		ret = -ESHUTDOWN;
++		goto unlock;
++	}
++	ret = hdd_wh_enter(&owner->gate, generation, &ticket);
++	if (ret)
++		goto unlock;
++	owner->channel_busy = true;
++	smp_store_release(&owner->active, false);
++	mutex_unlock(&owner->control);
++
++	do {
++		if (atomic_read(&owner->closing)) {
++			ret = -ESHUTDOWN;
++			goto finish;
++		}
++		status = ucfg_dp_passthru_pause(owner->endpoint);
++		if (status != QDF_STATUS_E_BUSY)
++			break;
++		usleep_range(1000, 2000);
++	} while (time_before(jiffies, deadline));
++	ret = qdf_status_to_os_return(status);
++	if (!ret && !atomic_read(&owner->closing))
++		ret = wma_pt_remote_peer_run(owner->vdev, generation, peer, &retire);
++
++finish:
++	mutex_lock(&owner->control);
++	hdd_pt_close_owner(owner, "00", 6);
++	if (!retire)
++		hdd_pt_block(owner, ret ? ret : -EUCLEAN);
++	owner->channel_busy = false;
++	hdd_wh_leave(&ticket);
++	hdd_pt_schedule(owner, 0);
++unlock:
++	mutex_unlock(&owner->control);
++	hdd_pt_release(registry);
++	return ret;
++}
++#endif
++
+ int hdd_pt_activate(struct hdd_pt_registry *registry, u64 generation)
+ {
+ 	struct hdd_pt_owner *owner = hdd_pt_acquire(registry, generation);
+diff --git a/qcacld-3.0/core/hdd/inc/wlan_hdd_passthru_owner.h b/qcacld-3.0/core/hdd/inc/wlan_hdd_passthru_owner.h
+--- a/qcacld-3.0/core/hdd/inc/wlan_hdd_passthru_owner.h
++++ b/qcacld-3.0/core/hdd/inc/wlan_hdd_passthru_owner.h
+@@ -116,6 +116,11 @@
+                        int (*operation)(void *context), void *context);
+ 
+ int hdd_pt_activate(struct hdd_pt_registry *registry, u64 generation);
++#ifndef HOUJI_PT_OWNER_HOST_TEST
++struct qdf_mac_addr;
++int hdd_pt_run_remote_peer(struct hdd_pt_registry *registry, u64 generation,
++			   struct qdf_mac_addr *peer);
++#endif
+ 
+ /* Non-sleeping readiness query for netdev ndo_open; no control mutex. */
+ bool hdd_pt_data_ready(struct hdd_pt_registry *registry, u64 generation);
+diff --git a/qcacld-3.0/core/hdd/src/wlan_hdd_passthru_runtime.c b/qcacld-3.0/core/hdd/src/wlan_hdd_passthru_runtime.c
+--- a/qcacld-3.0/core/hdd/src/wlan_hdd_passthru_runtime.c
++++ b/qcacld-3.0/core/hdd/src/wlan_hdd_passthru_runtime.c
+@@ -65,6 +65,12 @@
+ 	bool callback_registered;
+ 	bool handle_published;
+ 	bool recovery_prepared;
++#ifndef HOUJI_PT_RUNTIME_HOST_TEST
++	bool peer_requested;
++	bool peer_started;
++	int peer_result;
++	struct qdf_mac_addr peer_mac;
++#endif
+ };
+ 
+ /* A CNSS regular lease pins ops/runtime publication. SME callbacks instead
+@@ -309,6 +315,30 @@
+ 		spin_unlock_bh(&rt->event_lock);
+ 		rt->phase = HDD_PT_RT_READY;
+ 	}
++#ifndef HOUJI_PT_RUNTIME_HOST_TEST
++	if (rt->peer_requested && !rt->peer_started) {
++		struct osif_psoc_sync *sync;
++
++		rt->peer_started = true;
++		ret = osif_psoc_sync_op_start(rt->hdd->parent_dev, &sync);
++		if (!ret) {
++			mutex_unlock(&rt->control);
++			if (ucfg_policy_mgr_get_connection_count(rt->hdd->psoc) ||
++			    ucfg_scan_get_pdev_status(rt->hdd->pdev) != SCAN_NOT_IN_PROGRESS)
++				ret = -EBUSY;
++			else
++				ret = hdd_pt_run_remote_peer(&rt->registry, rt->registry.generation,
++						     &rt->peer_mac);
++			osif_psoc_sync_op_stop(sync);
++			mutex_lock(&rt->control);
++		}
++		rt->peer_result = ret;
++		if (atomic_read(&rt->recovering))
++			goto out;
++		hdd_pt_runtime_close(rt);
++		goto closing;
++	}
++#endif
+ 	again = !rt->handle_published;
+ 	goto out;
+ closing:
+@@ -532,6 +562,12 @@
+ 		ret = -ESHUTDOWN;
+ 		goto out;
+ 	}
++#ifndef HOUJI_PT_RUNTIME_HOST_TEST
++	if (rt->peer_requested) {
++		ret = -EBUSY;
++		goto out;
++	}
++#endif
+ 	if (hdd_pt_zero_serial_mode() && hdd_pt_cookie_sequence >= 5) {
+ 		ret = -EOPNOTSUPP;
+ 		goto out;
+@@ -1107,17 +1143,101 @@
+ 	ret = scnprintf(buf, PAGE_SIZE,
+ 			"exclusive=%u published=%u pinned=%u phase=%u error=%d "
+ 			"closing=%d handle=%u freq=%u cookie=%08x events=%u "
+-			"event_error=%d\n",
++			"event_error=%d peer_requested=%u peer_started=%u peer_result=%d\n",
+ 			pt_exclusive, !!rt->provider, hdd_pt_module_pinned,
+ 			rt->phase, rt->error, atomic_read(&rt->closing),
+ 			rt->handle_published, rt->params.channel.freq,
+-			rt->event_cookie, rt->events, rt->event_error);
++			rt->event_cookie, rt->events, rt->event_error, rt->peer_requested,
++				rt->peer_started, rt->peer_result);
+ 	spin_unlock_bh(&rt->event_lock);
+ 	mutex_unlock(&rt->control);
+ out:
+ 	mutex_unlock(&hdd_pt_lifecycle_lock);
+ 	return ret;
+ }
++
++#ifndef HOUJI_PT_RUNTIME_HOST_TEST
++/* Immutable allowlist. Empty by default; setting it alone sends no command. */
++static u8 pt_remote_peer_mac[ETH_ALEN];
++
++static int hdd_pt_remote_peer_mac_set(const char *value,
++				      const struct kernel_param *kp)
++{
++	u8 mac[ETH_ALEN];
++
++	if (!THIS_MODULE || READ_ONCE(THIS_MODULE->state) != MODULE_STATE_COMING)
++		return -EPERM;
++	if (is_valid_ether_addr(pt_remote_peer_mac) || strlen(value) != 17 ||
++	    !mac_pton(value, mac) || !is_valid_ether_addr(mac))
++		return -EINVAL;
++	ether_addr_copy(pt_remote_peer_mac, mac);
++	return 0;
++}
++
++static int hdd_pt_remote_peer_mac_get(char *buf, const struct kernel_param *kp)
++{
++	if (!is_valid_ether_addr(pt_remote_peer_mac))
++		return scnprintf(buf, PAGE_SIZE, "unset\n");
++	return scnprintf(buf, PAGE_SIZE, "%pM\n", pt_remote_peer_mac);
++}
++
++static const struct kernel_param_ops hdd_pt_remote_peer_mac_ops = {
++	.set = hdd_pt_remote_peer_mac_set,
++	.get = hdd_pt_remote_peer_mac_get,
++};
++module_param_cb(pt_remote_peer_mac, &hdd_pt_remote_peer_mac_ops, NULL, 0400);
++
++static int hdd_pt_remote_peer_trigger(const char *value,
++				     const struct kernel_param *kp)
++{
++	struct hdd_pt_runtime *rt;
++	bool run;
++	int ret;
++
++	ret = kstrtobool(value, &run);
++	if (ret)
++		return ret;
++	if (!run || !hdd_pt_exclusive_mode() ||
++	    !is_valid_ether_addr(pt_remote_peer_mac))
++		return -EINVAL;
++	if (THIS_MODULE && READ_ONCE(THIS_MODULE->state) != MODULE_STATE_LIVE)
++		return -EBUSY;
++
++	mutex_lock(&hdd_pt_lifecycle_lock);
++	rt = hdd_pt_current;
++	if (!rt || !rt->provider || !hdd_pt_module_pinned ||
++	    hdd_pt_registration_sealed) {
++		ret = -ESHUTDOWN;
++		goto unlock;
++	}
++	mutex_lock(&rt->control);
++	if (rt->peer_requested || atomic_read(&rt->closing) ||
++	    atomic_read(&rt->recovering) || rt->phase != HDD_PT_RT_READY ||
++	    !rt->handle_published || rt->params.channel.freq != 5745 ||
++	    rt->params.ampdu_enable || rt->params.amsdu_enable ||
++	    ether_addr_equal(pt_remote_peer_mac, rt->params.mac_addr)) {
++		ret = -EBUSY;
++		goto control_unlock;
++	}
++
++	ether_addr_copy(rt->peer_mac.bytes, pt_remote_peer_mac);
++	rt->peer_requested = true;
++	/* The published module pin is retained. Retire/freeze joins this work
++	 * before destroying the runtime and its owner registry. */
++	hdd_pt_runtime_queue(rt, 0);
++	ret = 0;
++control_unlock:
++	mutex_unlock(&rt->control);
++unlock:
++	mutex_unlock(&hdd_pt_lifecycle_lock);
++	return ret;
++}
++
++static const struct kernel_param_ops hdd_pt_remote_peer_trigger_ops = {
++	.set = hdd_pt_remote_peer_trigger,
++};
++module_param_cb(pt_remote_peer_run, &hdd_pt_remote_peer_trigger_ops, NULL, 0200);
++#endif
+ 
+ static const struct kernel_param_ops hdd_pt_activate_ops = {
+ 	.set = hdd_pt_experiment_activate,

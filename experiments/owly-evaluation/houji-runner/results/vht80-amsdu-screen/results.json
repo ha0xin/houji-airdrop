@@ -1,0 +1,38 @@
+{
+  "channel": 149,
+  "profile": "vht80",
+  "aggregation": "amsdu",
+  "ack": "ack",
+  "rx_block_ack": false,
+  "mac_awdl": "02:00:00:00:00:01",
+  "samples": [
+    {
+      "direction": "Mac\u2192\u5c0f\u7c73",
+      "sample": 1,
+      "mode": 0,
+      "bytes": 16777216,
+      "status": "verified",
+      "seconds": 7.305393207999998,
+      "MBps": 2.2965520845103295,
+      "sha256": "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1",
+      "pair": 1,
+      "phone_seconds": 7.295014
+    },
+    {
+      "direction": "\u5c0f\u7c73\u2192Mac",
+      "sample": 2,
+      "mode": 1,
+      "bytes": 16777216,
+      "status": "verified",
+      "seconds": 4.919869292000001,
+      "MBps": 3.4100938468590507,
+      "sha256": "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1",
+      "pair": 1,
+      "phone_seconds": 4.921549
+    }
+  ],
+  "phone_owly0": "2001:db8::39",
+  "radio_exit": 0,
+  "restored": true,
+  "server_sha_receipts": 2
+}

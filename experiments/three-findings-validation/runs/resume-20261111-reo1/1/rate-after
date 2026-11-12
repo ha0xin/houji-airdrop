@@ -1,0 +1,8 @@
+schema=1 enabled=1 completed=5543 valid=5186 invalid=357 tries=6267 amsdu=0 ldpc=5185 ppdus=5186 agg_ppdus=0 agg_mpdus=0 ast_overrides=5227 remote_peer_compl=5543
+bw=1,0,5185,0,0,0,0,0
+mcs=0,0,0,1,0,0,0,0,0,5185,0,0,0,0,0,0
+pkt=1,0,0,5185,0,0,0,0,0,0,0,0,0,0,0,0
+gi=1,5185,0,0
+status=5186,0,357,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+tx_ring=5543,0,0,0,0,0,0,0
+ppdu_bin=5185,0,0,0,0,0

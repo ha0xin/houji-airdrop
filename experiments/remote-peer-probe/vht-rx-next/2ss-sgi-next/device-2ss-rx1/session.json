@@ -1,0 +1,11 @@
+{
+  "token": "[REDACTED]",
+  "profile": "vht80-sgi",
+  "module_sha256": "c57c80fdbd0784c3b9c245bdaffa36c18e441c559b1ed14f602e7892a743dd46",
+  "app_sha256": "c5e17d0cbb0383977a25297742812aff2b0a75c299acf8aa61eb118c99685852",
+  "wonder_init_sha256": "051263b0e329d5da75e07c77381c1d575e79883ec4c790cbd414d080de2ddeb4",
+  "harness_sha256": "3da4915177cb8e4e725829f0e44b1f11698cbc39f4be6aad4fc7f391fd500a94",
+  "channel": 149,
+  "peer_sha256": "88b2ae0c111a148731c60a6b2b82de55a31b4a6239931feb2c943a08b3e4564f",
+  "ifindex": 13
+}

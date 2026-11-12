@@ -1,0 +1,124 @@
+diff --git a/radio-owly.sh b/radio-owly.sh
+--- a/radio-owly.sh
++++ b/radio-owly.sh
+@@ -32,7 +32,7 @@
+ no_native_bridge() {
+  ! ps -A -o ARGS | grep -q '^[a]pp_process /system/bin XosBridge '
+ }
+-stock_files() {
++stock_environment() {
+  test ! -e "$NATIVE/saved.env"
+  test ! -e "$BASE/state/saved.env"
+  test ! -e /sys/module/wonder
+@@ -42,6 +42,10 @@
+  test ! -e /sys/class/net/xos0
+  test ! -e /sys/class/net/"$IFACE"
+  check "$ORIG" "$AMSS"
++}
++
++stock_files() {
++ stock_environment
+  check "$NOTE" "$W/notes/.note.gnu.build-id"
+ }
+ 
+@@ -98,6 +102,40 @@
+  mv "$STATE/snapshot.tmp" "$STATE/saved.env"
+ }
+ 
++restore_service() {
++ if test "$(getprop "init.svc.$1")" != "$2"; then
++  case "$2" in
++   running) start "$1" ;;
++   stopped) stop "$1" ;;
++   *) return 1 ;;
++  esac
++ fi
++ for i in $(seq 1 12); do
++  if test "$(getprop "init.svc.$1")" = "$2"; then return 0; fi
++  sleep 1
++ done
++ return 1
++}
++
++restore_stock_settings() {
++ echo "$saved_pci" > "$PCI"
++ restore_service vendor.cnd "$saved_cnd"
++ restore_service vendor.wifi_hal_legacy "$saved_hal"
++ if test "$saved_scan" = 1; then
++  cmd wifi set-scan-always-available enabled
++ else
++  cmd wifi set-scan-always-available disabled
++ fi
++ cmd wifi set-wifi-enabled enabled
++ setprop sys.xos.exclusive 0
++ wait_wifi
++ test "$(getprop init.svc.vendor.cnd)" = "$saved_cnd"
++ test "$(getprop init.svc.vendor.wifi_hal_legacy)" = "$saved_hal"
++ test "$(settings get global wifi_on)" = 1
++ test "$(settings get global wifi_scan_always_enabled)" = "$saved_scan"
++ test "$(cat "$PCI")" = "$saved_pci"
++}
++
+ restore() {
+  if test ! -e "$STATE/saved.env"; then
+   stock_files
+@@ -107,7 +145,12 @@
+  . "$STATE/saved.env"
+  state RESTORING
+  if test "$saved_boot" != "$(cat /proc/sys/kernel/random/boot_id)"; then
++  stock_environment
++  check d3fbe4f1b62f8c3533609945b617508e8a585660f5640aeeda08f8508416137b "$STOCK"
++  if test ! -e "$W"; then bounded insmod "$STOCK"; fi
+   stock_files
++  test ! -e "$STATE/route-ip" || rm "$STATE/route-ip"
++  restore_stock_settings
+   mv "$STATE/saved.env" "$STATE/previous-boot.env"
+   state STOCK_RESTORED
+   return
+@@ -145,19 +188,9 @@
+  check "$ORIG" "$AMSS"
+  if test ! -e "$W"; then bounded insmod "$STOCK"; fi
+  stock_files
+- echo "$saved_pci" > "$PCI"
+- if test "$saved_cnd" = running; then start vendor.cnd; fi
+- if test "$saved_hal" = running; then start vendor.wifi_hal_legacy; fi
+- if test "$saved_scan" = 1; then
+-  cmd wifi set-scan-always-available enabled
+- else
+-  cmd wifi set-scan-always-available disabled
+- fi
+- cmd wifi set-wifi-enabled enabled
+- setprop sys.xos.exclusive 0
++ restore_stock_settings
+  mv "$STATE/saved.env" "$STATE/last-restored.env"
+  state STOCK_RESTORED
+- wait_wifi
+ }
+ 
+ own_child() {
+@@ -231,6 +264,8 @@
+    ;;
+  esac
+  check "$qca_sha" "$qca"
++ printf '%s %s\n' "$qca_sha" "$qca" > "$STATE/candidate.tmp"
++ mv "$STATE/candidate.tmp" "$STATE/candidate.sha"
+  echo "WLAN_BUILD_SHA=$qca_sha BA_OBSERVER_REQUEST=$ba_mode"
+  check 9d60988f896669604ff2e8cdfa1ba91a7047c1ddd2210b1fa494f506f5eb039c "$RADIO/wonder.ko"
+  test "$(uname -r)" = 6.1.138-android14-11-g0c3d559bcd85-ab14529422
+@@ -469,7 +504,7 @@
+  job_lock
+  token=$1
+  for file in runner.log server.log before.txt after.txt; do rm -f "$STATE/$file"; done
+- rm -f "$STATE/stop-$token" "$STATE/result"
++ rm -f "$STATE/stop-$token" "$STATE/result" "$STATE/candidate.sha"
+  echo "$token" > "$STATE/token"
+  state PREFLIGHT
+  trap finish_job EXIT
+@@ -518,6 +553,7 @@
+   resume_native
+   ;;
+  recover-locked)
++  trap 'rc=$?; trap - EXIT; if test "$rc" != 0; then state RESTORE_FAILED; fi; exit "$rc"' EXIT
+   # Recovery is valid only after the session has stopped and owly0 disappeared.
+   restore
+   ;;

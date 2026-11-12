@@ -1,0 +1,166 @@
+diff --git a/radio-owly.sh b/radio-owly.sh
+--- a/radio-owly.sh
++++ b/radio-owly.sh
+@@ -24,6 +24,7 @@
+ driver=
+ probe=
+ paused=0
++flow_triggered=0
+ 
+ bounded() { "$BB" timeout -s TERM -k 2 25 "$@"; }
+ check() { echo "$1  $2" | sha256sum -c -; }
+@@ -258,7 +259,7 @@
+    qca="$ROOT/qca_cld3_kiwi_v2-peer-observer.ko"
+    qca_sha=$BA_PEER_OBSERVER_SHA
+    ;;
+-  remote)
++  remote|remote-flow)
+    qca="$ROOT/qca_cld3_kiwi_v2-remote-peer.ko"
+    qca_sha=$(cat "$ROOT/remote-peer.sha")
+    test "${#qca_sha}" = 64
+@@ -305,16 +306,18 @@
+   peer) set -- "$@" pt_ba_observe=1 "pt_ba_peer=$peer" ;;
+   caps) set -- "$@" pt_peer_caps_observe=1 ;;
+   remote) set -- "$@" pt_peer_caps_observe=1 pt_remote_reo=1 "pt_remote_peer_mac=$peer" ;;
++  remote-flow) set -- "$@" pt_peer_caps_observe=1 pt_remote_reo=1 pt_remote_reo_flow=1 "pt_remote_peer_mac=$peer" ;;
+  esac
+  bounded insmod "$qca" "$@"
+  case "$ba_mode" in
+   off) test "$(cat "$W/parameters/pt_ba_observe")" = N ;;
+   on|peer) test "$(cat "$W/parameters/pt_ba_observe")" = Y ;;
+-  remote)
++  remote|remote-flow)
+    test "$(cat "$W/parameters/pt_ba_observe")" = N
+    test "$(cat "$W/parameters/pt_ba_peer")" = 0
+    test "$(cat "$W/parameters/pt_remote_peer_mac")" = "$peer"
+    test "$(cat "$W/parameters/pt_remote_reo")" = Y
++   if test "$ba_mode" = remote-flow; then test "$(cat "$W/parameters/pt_remote_reo_flow")" = Y; fi
+    ;;
+   caps)
+    test "$(cat "$W/parameters/pt_ba_observe")" = N
+@@ -373,6 +376,11 @@
+  stop_workers
+  workers_stopped=$?
+  if test "$workers_stopped" != 0; then state RESTORE_FAILED; exit "$workers_stopped"; fi
++ if test "$flow_triggered" = 1; then
++  (set -e; stop_remote_flow)
++  flow_rc=$?
++  if test "$rc" = 0; then rc=$flow_rc; fi
++ fi
+  # Re-enable errexit inside the subshell so a failed guard cannot permit a later unload.
+  (set -e; restore)
+  restored=$?
+@@ -383,14 +391,17 @@
+  exit "$rc"
+ }
+ 
+-run_remote_peer() {
++trigger_remote_peer() {
+  stats=$(cat "$W/parameters/pt_remote_peer_stats")
+  echo "PEER_TRIAL_BEFORE $stats"
+  echo "$stats" | grep -q '^result=0 generation=0 '
+  bounded sh -c 'echo 1 > /sys/module/qca_cld3_kiwi_v2/parameters/pt_remote_peer_run'
++}
++
++collect_remote_peer() {
+  for i in $(seq 1 12); do
+   stats=$(cat "$W/parameters/pt_remote_peer_stats")
+-  case "$stats" in 'result=2 '*|'result=3 '*|'result=4 '*|'result=5 '*|'result=6 '*) break;; esac
++  case "$stats" in 'result=2 '*|'result=3 '*|'result=4 '*|'result=5 '*|'result=6 '*|'result=7 '*) break;; esac
+   sleep 1
+  done
+  printf '%s\n' "$stats" > "$STATE/peer-terminal.txt"
+@@ -416,6 +427,57 @@
+  test ! -e /sys/class/net/wondertap0
+ }
+ 
++start_remote_flow() {
++ flow_triggered=1
++ trigger_remote_peer
++ for i in $(seq 1 12); do
++  stats=$(cat "$W/parameters/pt_remote_peer_stats")
++  if echo "$stats" | grep -q 'flow_enabled=1 flow_ready=1 flow_opened=1 '; then
++   echo "PEER_FLOW_READY $stats"
++   return 0
++  fi
++  case "$stats" in 'result=2 '*|'result=3 '*|'result=4 '*|'result=5 '*|'result=6 '*|'result=7 '*) return 1;; esac
++  sleep 1
++ done
++ return 1
++}
++
++stop_remote_flow() {
++ attempted=0
++ stop_error=0
++ for i in $(seq 1 52); do
++  stats=$(cat "$W/parameters/pt_remote_peer_stats" 2>/dev/null || true)
++  case "$stats" in
++   'result=2 '*|'result=3 '*|'result=4 '*|'result=5 '*|'result=6 '*|'result=7 '*)
++    collect_remote_peer
++    return "$stop_error"
++    ;;
++   'result=0 '*)
++    live=$(cat "$W/parameters/pt_activate" 2>/dev/null || true)
++    if echo "$live" | grep -q 'peer_requested=0 '; then
++     echo PEER_FLOW_NOT_QUEUED
++     return 1
++    fi
++    ;;
++  esac
++  if test "$attempted" = 0 && echo "$stats" | grep -q 'flow_enabled=1 flow_ready=1 '; then
++   attempted=1
++   if ! bounded sh -c 'echo 1 > /sys/module/qca_cld3_kiwi_v2/parameters/pt_remote_reo_stop'; then
++    stats=$(cat "$W/parameters/pt_remote_peer_stats" 2>/dev/null || true)
++    if echo "$stats" | grep -q 'flow_enabled=1 flow_ready=0 '; then
++     echo PEER_FLOW_STOP_ALREADY_CLOSED
++    else
++     echo PEER_FLOW_STOP_WRITE_FAILED
++     stop_error=1
++    fi
++   fi
++  fi
++  sleep 1
++ done
++ echo PEER_FLOW_TERMINAL_TIMEOUT
++ return 1
++}
++
+ run_locked() {
+  token=$1 profile=$2 aggregation=$3 ack=$4 peer=$5 count=$6 size=$7 mss=$8 qlen=$9 ba_mode=${10} vht_amsdu=${11:-0}
+  test ! -e "$STATE/saved.env"
+@@ -425,9 +487,11 @@
+  trap 'exit 130' INT
+  enter
+  if test "$ba_mode" = remote; then
+-  run_remote_peer
++  trigger_remote_peer
++  collect_remote_peer
+   return
+  fi
++ if test "$ba_mode" = remote-flow; then start_remote_flow; fi
+  if test "$ba_mode" = caps; then
+   caps=$(cat "$W/parameters/pt_peer_caps")
+   echo "PEER_CAPS_AFTER $caps"
+@@ -465,6 +529,9 @@
+   kill -0 "$driver"
+   if ! kill -0 "$probe" 2>/dev/null; then wait "$probe"; probe=; break; fi
+   test "$(uptime_s)" -lt "$deadline"
++  if test "$ba_mode" = remote-flow; then
++   grep -q 'flow_enabled=1 flow_ready=1 ' "$W/parameters/pt_remote_peer_stats"
++  fi
+   sleep 1
+  done
+ }
+@@ -646,6 +713,12 @@
+   echo "$3" | grep -qE '^([0-9a-f]{2}:){5}[0-9a-f]{2}$'
+   run_job "$2" vht80-sgi single ack "$3" 0 0 0 500 remote
+   ;;
++ remote-flow)
++  test "$#" = 3
++  case "$2" in ''|*[!a-zA-Z0-9-]*) exit 2;; esac
++  echo "$3" | grep -qE '^([0-9a-f]{2}:){5}[0-9a-f]{2}$'
++  run_job "$2" vht80-sgi single ack "$3" 2 1048576 1160 500 remote-flow
++  ;;
+  locked) shift; run_locked "$@" ;;
+  rehearse|rehearse-locked)
+   test "$#" = 2

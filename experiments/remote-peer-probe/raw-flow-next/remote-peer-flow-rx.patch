@@ -1,0 +1,289 @@
+diff --git a/qca-wifi-host-cmn/qdf/inc/qdf_pt_remote_peer.h b/qca-wifi-host-cmn/qdf/inc/qdf_pt_remote_peer.h
+--- a/qca-wifi-host-cmn/qdf/inc/qdf_pt_remote_peer.h
++++ b/qca-wifi-host-cmn/qdf/inc/qdf_pt_remote_peer.h
+@@ -37,6 +37,12 @@
+ 	PT_REMOTE_REO_QREF_CLEAR,
+ };
+ 
++void pt_remote_peer_flow_be_rx(const void *psoc, u8 vdev_id, u16 peer_id,
++			       bool accepted, u32 capacity, u32 cfg, u32 tlv);
++u64 pt_remote_peer_flow_raw_key(const void *psoc, u8 vdev_id, u16 peer_id,
++				const u8 *ta);
++void pt_remote_peer_flow_raw_submit(u64 generation);
++
+ bool pt_remote_peer_reo_enabled(void);
+ u64 pt_remote_peer_reo_key(const void *psoc, u8 vdev_id, const u8 *mac);
+ bool pt_remote_peer_reo_skip_addba(const void *psoc, u8 vdev_id, const u8 *mac);
+diff --git a/qcacld-3.0/core/wma/src/wma_dev_if.c b/qcacld-3.0/core/wma/src/wma_dev_if.c
+--- a/qcacld-3.0/core/wma/src/wma_dev_if.c
++++ b/qcacld-3.0/core/wma/src/wma_dev_if.c
+@@ -2538,6 +2538,12 @@
+ 	int flow_tx_status;
+ 	u32 flow_tx_first;
+ 	u32 flow_tx_last;
++	u32 flow_be_pass;
++	u32 flow_be_reject;
++	u32 flow_buf_cfg;
++	u32 flow_tlv_size;
++	u32 flow_capacity_max;
++	u32 flow_raw_qos_submit;
+ };
+ static struct wma_pt_peer_trial wma_pt_peer_trial;
+ 
+@@ -2890,6 +2896,66 @@
+ 			generation, tid, path, flush_status);
+ 	if (problem)
+ 		pr_info("PT_REO_DMA_ERROR generation=%llu tid=%u error=%s\n", generation, tid, problem);
++}
++
++static bool wma_pt_peer_flow_key(const void *psoc, u8 vdev_id, u16 peer_id)
++{
++	return wma_pt_peer_trial.flow_ready &&
++	       wma_pt_peer_trial.psoc == psoc &&
++	       wma_pt_peer_trial.vdev_id == vdev_id &&
++	       wma_pt_peer_trial.peer_id == peer_id &&
++	       wma_pt_peer_trial.slot_installed &&
++	       !wma_pt_peer_trial.slot_removed &&
++	       !wma_pt_peer_trial.dp_conflict;
++}
++
++void pt_remote_peer_flow_be_rx(const void *psoc, u8 vdev_id, u16 peer_id,
++			       bool accepted, u32 capacity, u32 cfg, u32 tlv)
++{
++	unsigned long flags;
++
++	if (!READ_ONCE(wma_pt_peer_trial.flow_ready))
++		return;
++	spin_lock_irqsave(&wma_pt_peer_lock, flags);
++	if (wma_pt_peer_flow_key(psoc, vdev_id, peer_id)) {
++		if (accepted)
++			wma_pt_peer_trial.flow_be_pass++;
++		else
++			wma_pt_peer_trial.flow_be_reject++;
++		wma_pt_peer_trial.flow_buf_cfg = cfg;
++		wma_pt_peer_trial.flow_tlv_size = tlv;
++		if (capacity > wma_pt_peer_trial.flow_capacity_max)
++			wma_pt_peer_trial.flow_capacity_max = capacity;
++	}
++	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
++}
++
++u64 pt_remote_peer_flow_raw_key(const void *psoc, u8 vdev_id, u16 peer_id,
++				const u8 *ta)
++{
++	unsigned long flags;
++	u64 generation = 0;
++
++	if (!READ_ONCE(wma_pt_peer_trial.flow_ready))
++		return 0;
++	spin_lock_irqsave(&wma_pt_peer_lock, flags);
++	if (wma_pt_peer_flow_key(psoc, vdev_id, peer_id) &&
++	    !memcmp(wma_pt_peer_trial.mac, ta, QDF_MAC_ADDR_SIZE))
++		generation = wma_pt_peer_trial.generation;
++	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
++	return generation;
++}
++
++void pt_remote_peer_flow_raw_submit(u64 generation)
++{
++	unsigned long flags;
++
++	if (!generation)
++		return;
++	spin_lock_irqsave(&wma_pt_peer_lock, flags);
++	if (generation == wma_pt_peer_trial.generation)
++		wma_pt_peer_trial.flow_raw_qos_submit++;
++	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
+ }
+ 
+ void pt_remote_peer_dp_event(const void *psoc, u8 vdev_id, const u8 *mac,
+@@ -3322,7 +3388,9 @@
+ 			 "reo_dma_detached=%x reo_dma_freed=%x reo_dma_duplicates=%x reo_dma_conflict=%x "
+ 			 "flow_enabled=%u flow_ready=%u flow_opened=%u flow_stop=%u "
+ 			 "flow_cpu_quiet=%u flow_tx_quiet=%u flow_status=%d "
+-			 "flow_quiesce_status=%d flow_tx_status=%d flow_tx_first=%u flow_tx_last=%u\n",
++			 "flow_quiesce_status=%d flow_tx_status=%d flow_tx_first=%u flow_tx_last=%u "
++			 "flow_be_pass=%u flow_be_reject=%u flow_raw_qos_submit=%u "
++			 "flow_buf_cfg=%u flow_tlv_size=%u flow_capacity_max=%u\n",
+ 			 READ_ONCE(wma_pt_peer_result), trial.generation, trial.vdev_id,
+ 			 trial.peer_id, trial.obj_attached, trial.obj_created, trial.dp_created,
+ 			 trial.create_issued, trial.create_returned, trial.create_submit,
+@@ -3347,7 +3415,9 @@
+ 			 READ_ONCE(pt_remote_reo_flow), trial.flow_ready, trial.flow_opened,
+ 			 trial.flow_stop, trial.flow_cpu_quiet, trial.flow_tx_quiet,
+ 			 trial.flow_status, trial.flow_quiesce_status, trial.flow_tx_status,
+-			 trial.flow_tx_first, trial.flow_tx_last);
++			 trial.flow_tx_first, trial.flow_tx_last,
++			 trial.flow_be_pass, trial.flow_be_reject, trial.flow_raw_qos_submit,
++			 trial.flow_buf_cfg, trial.flow_tlv_size, trial.flow_capacity_max);
+ }
+ 
+ static const struct kernel_param_ops wma_pt_remote_peer_stats_ops = {
+diff --git a/qca-wifi-host-cmn/dp/wifi3.0/dp_rx.c b/qca-wifi-host-cmn/dp/wifi3.0/dp_rx.c
+--- a/qca-wifi-host-cmn/dp/wifi3.0/dp_rx.c
++++ b/qca-wifi-host-cmn/dp/wifi3.0/dp_rx.c
+@@ -1126,6 +1126,10 @@
+ 
+ #ifdef DRIVER_PASSTHRU_DP
+ #include "dp_pt_ba_observer.h"
++
++#ifdef DRIVER_PASSTHRU_OWNER
++#include <qdf_pt_remote_peer.h>
++#endif
+ #include "dp_pt_ba_peer_state.h"
+ 
+ /* Explicit opt-in for the measured Stage39 kiwi_v2/Samsung-AMSS experiment.
+@@ -1141,7 +1145,7 @@
+  */
+ static QDF_STATUS
+ dp_rx_deliver_raw_passthru(struct dp_soc *soc, struct dp_vdev *vdev,
+-			  qdf_nbuf_t nbuf)
++			  qdf_nbuf_t nbuf, uint16_t peer_id)
+ {
+ 	uint8_t *rx_tlvs;
+ 	uint32_t tlv_len, prefix;
+@@ -1149,6 +1153,10 @@
+ 	bool fcs_error, metadata = false;
+ 	uint64_t rx_ticks = 0;
+ 	int8_t signal = 0;
++#ifdef DRIVER_PASSTHRU_OWNER
++	u64 flow = 0;
++	const uint8_t *raw;
++#endif
+ 
+ 	if (!dp_passthru_enter(vdev))
+ 		return status;
+@@ -1183,6 +1191,15 @@
+         metadata = hal_rx_passthru_kiwi_metadata(soc->hal_soc, rx_tlvs,
+                                                  tlv_len, &rx_ticks, &signal);
+     pt_ba_peer_raw(vdev, nbuf, metadata, fcs_error);
++#ifdef DRIVER_PASSTHRU_OWNER
++	raw = qdf_nbuf_data(nbuf);
++	/* QoS Data, clean FCS, and addressed to this PASSTHRU vdev. */
++	if (peer_id != HTT_INVALID_PEER && !fcs_error && qdf_nbuf_len(nbuf) >= 26 &&
++	    raw[0] == 0x88 &&
++	    !qdf_mem_cmp(raw + 4, vdev->mac_addr.raw, QDF_MAC_ADDR_SIZE))
++		flow = pt_remote_peer_flow_raw_key(soc->ctrl_psoc, vdev->vdev_id,
++						   peer_id, raw + 10);
++#endif
+     if (!qdf_nbuf_update_radiotap_passthru(nbuf, vdev->passthru_freq,
+                                          fcs_error, metadata,
+                                          rx_ticks / 960, signal)) {
+@@ -1190,6 +1207,9 @@
+ 		goto out;
+ 	}
+ 
++#ifdef DRIVER_PASSTHRU_OWNER
++	pt_remote_peer_flow_raw_submit(flow);
++#endif
+ 	/* Do not inspect nbuf or interpret the status as retained ownership. */
+ 	vdev->osif_rx(vdev->osif_vdev, nbuf);
+ 	status = QDF_STATUS_SUCCESS;
+@@ -1201,7 +1221,7 @@
+ /* Consume a list, taking an independent vdev ref across every callback. */
+ static QDF_STATUS
+ dp_rx_deliver_passthru_list(struct dp_soc *soc, struct dp_vdev *vdev,
+-			   qdf_nbuf_t list)
++			   qdf_nbuf_t list, uint16_t peer_id)
+ {
+ 	qdf_nbuf_t nbuf, next;
+ 	QDF_STATUS status = QDF_STATUS_SUCCESS;
+@@ -1212,7 +1232,7 @@
+ 		next = qdf_nbuf_next(nbuf);
+ 		qdf_nbuf_set_next(nbuf, NULL);
+ 		if (!held || QDF_IS_STATUS_ERROR(
+-				dp_rx_deliver_raw_passthru(soc, vdev, nbuf))) {
++				dp_rx_deliver_raw_passthru(soc, vdev, nbuf, peer_id))) {
+ 			dp_rx_nbuf_free(nbuf);
+ 			status = QDF_STATUS_E_FAILURE;
+ 		}
+@@ -1297,7 +1317,7 @@
+ 			goto drop;
+ 		dp_rx_skip_tlvs(soc, nbuf, pad);
+ 		if (!QDF_IS_STATUS_ERROR(
+-				dp_rx_deliver_raw_passthru(soc, held, nbuf)))
++				dp_rx_deliver_raw_passthru(soc, held, nbuf, HTT_INVALID_PEER)))
+ 			continue;
+ drop:
+ 		dp_rx_nbuf_free(nbuf);
+@@ -1339,7 +1359,7 @@
+ 		goto drop;
+ 	qdf_nbuf_set_pktlen(nbuf, pkt_len);
+ 	dp_rx_skip_tlvs(soc, nbuf, pad);
+-	if (!QDF_IS_STATUS_ERROR(dp_rx_deliver_raw_passthru(soc, vdev, nbuf)))
++	if (!QDF_IS_STATUS_ERROR(dp_rx_deliver_raw_passthru(soc, vdev, nbuf, HTT_INVALID_PEER)))
+ 		goto out;
+ drop:
+ 	dp_rx_nbuf_free(nbuf);
+@@ -1359,7 +1379,8 @@
+ 
+ #ifdef DRIVER_PASSTHRU_DP
+ 	if (vdev->opmode == wlan_op_mode_passthru) {
+-		dp_rx_deliver_passthru_list(vdev->pdev->soc, vdev, nbuf_list);
++		dp_rx_deliver_passthru_list(vdev->pdev->soc, vdev, nbuf_list,
++					    txrx_peer ? txrx_peer->peer_id : HTT_INVALID_PEER);
+ 		return;
+ 	}
+ #endif
+@@ -2686,7 +2707,8 @@
+ 
+ #ifdef DRIVER_PASSTHRU_DP
+ 	if (vdev && vdev->opmode == wlan_op_mode_passthru)
+-		return dp_rx_deliver_passthru_list(soc, vdev, nbuf_head);
++		return dp_rx_deliver_passthru_list(soc, vdev, nbuf_head,
++						   txrx_peer ? txrx_peer->peer_id : HTT_INVALID_PEER);
+ #endif
+ 	if (dp_rx_validate_rx_callbacks(soc, vdev, txrx_peer, nbuf_head) !=
+ 					QDF_STATUS_SUCCESS)
+diff --git a/qca-wifi-host-cmn/dp/wifi3.0/be/dp_be_rx.c b/qca-wifi-host-cmn/dp/wifi3.0/be/dp_be_rx.c
+--- a/qca-wifi-host-cmn/dp/wifi3.0/be/dp_be_rx.c
++++ b/qca-wifi-host-cmn/dp/wifi3.0/be/dp_be_rx.c
+@@ -18,6 +18,10 @@
+  */
+ 
+ #include "cdp_txrx_cmn_struct.h"
++
++#ifdef DRIVER_PASSTHRU_OWNER
++#include <qdf_pt_remote_peer.h>
++#endif
+ #include "hal_hw_headers.h"
+ #include "dp_types.h"
+ #include "dp_rx.h"
+@@ -831,6 +835,12 @@
+ 			    !hal_rx_passthru_tlv_size_valid(soc->hal_soc,
+ 							    soc->rx_pkt_tlv_size) ||
+ 			    capacity < soc->rx_pkt_tlv_size) {
++#ifdef DRIVER_PASSTHRU_OWNER
++				pt_remote_peer_flow_be_rx(soc->ctrl_psoc, vdev->vdev_id,
++					txrx_peer->peer_id, false, capacity,
++					wlan_cfg_rx_buffer_size(soc->wlan_cfg_ctx),
++					soc->rx_pkt_tlv_size);
++#endif
+ 				dp_rx_nbuf_free(nbuf);
+ 				nbuf = next;
+ 				continue;
+@@ -839,12 +849,24 @@
+ 			msdu_len = QDF_NBUF_CB_RX_PKT_LEN(nbuf);
+ 			pkt_len = msdu_len + l3_pad + soc->rx_pkt_tlv_size;
+ 			if (pkt_len > capacity || dp_rx_check_pkt_len(soc, pkt_len)) {
++#ifdef DRIVER_PASSTHRU_OWNER
++				pt_remote_peer_flow_be_rx(soc->ctrl_psoc, vdev->vdev_id,
++					txrx_peer->peer_id, false, capacity,
++					wlan_cfg_rx_buffer_size(soc->wlan_cfg_ctx),
++					soc->rx_pkt_tlv_size);
++#endif
+ 				dp_rx_nbuf_free(nbuf);
+ 				nbuf = next;
+ 				continue;
+ 			}
+ 			qdf_nbuf_set_pktlen(nbuf, pkt_len);
+ 			dp_rx_skip_tlvs(soc, nbuf, l3_pad);
++#ifdef DRIVER_PASSTHRU_OWNER
++			pt_remote_peer_flow_be_rx(soc->ctrl_psoc, vdev->vdev_id,
++				txrx_peer->peer_id, true, capacity,
++				wlan_cfg_rx_buffer_size(soc->wlan_cfg_ctx),
++				soc->rx_pkt_tlv_size);
++#endif
+ 			dp_rx_deliver_raw(vdev, nbuf, txrx_peer, link_id);
+ 			nbuf = next;
+ 			continue;

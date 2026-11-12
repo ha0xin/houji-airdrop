@@ -1,0 +1,304 @@
+{
+  "token": "[REDACTED]",
+  "module_sha256": "bbb6d59c67942ec57da12fb6f367c82d4430ebda1abfca88ffac24c977f49ba7",
+  "harness_sha256": "df40147c2e25019b7651a496dc41bcb5b5d2bc3edcabf18b0a8b2791ed154150",
+  "channel": 149,
+  "rx_ba": false,
+  "throughput_test": false,
+  "bounded_hash_flow": true,
+  "preserve_self_ast": false,
+  "self_only_flow": false,
+  "remote_map_only_flow": false,
+  "mac_awdl_ifindex": 13,
+  "mac_awdl_sha256": "88b2ae0c111a148731c60a6b2b82de55a31b4a6239931feb2c943a08b3e4564f",
+  "capacity_configuration": {
+    "rx_dma_bytes": 4224,
+    "tx_phy_request": "vht80-sgi",
+    "aggregation": "amsdu",
+    "ack": true,
+    "mss": 1160,
+    "tun_queue": 500,
+    "tx_vht_amsdu": false,
+    "outgoing_vht_advertisement": true,
+    "owly_variant": "outgoing-vht",
+    "tx_vht_extension_present": false,
+    "payload_bytes": 1048576,
+    "pairs": 1
+  },
+  "samples": [
+    {
+      "direction": "Mac→小米",
+      "sample": 1,
+      "mode": 0,
+      "bytes": 1048576,
+      "status": "verified",
+      "seconds": 1.056748417,
+      "MBps": 0.992266449735311,
+      "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83",
+      "mac_wall_start_ns": 1794312113474163000,
+      "mac_wall_end_ns": 1794312114547318000,
+      "phone_seconds": 1.015968
+    },
+    {
+      "direction": "小米→Mac",
+      "sample": 2,
+      "mode": 1,
+      "bytes": 1048576,
+      "status": "verified",
+      "seconds": 0.393215917,
+      "MBps": 2.6666672295465594,
+      "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83",
+      "mac_wall_start_ns": 1794312114547480000,
+      "mac_wall_end_ns": 1794312114946975000,
+      "phone_seconds": 0.393799
+    }
+  ],
+  "radio_exit": 0,
+  "initial": null,
+  "ready": null,
+  "terminal": null,
+  "final": null,
+  "drain": null,
+  "flow_hash_verified": true,
+  "outgoing_vht": {
+    "app_sha256": "ab84ddba4c05ee2a5f9bc0f5f304a1c053e1074cc7a268265c2026956bebcbf8",
+    "matching_app_load": true,
+    "requested": true,
+    "reported_switch": [
+      "OWLY_OUTGOING_VHT=true"
+    ],
+    "first_host_submitted_mif_container": [
+      "bf0c00000000fcff0000fcff0000"
+    ],
+    "verified": true
+  },
+  "mac_awdl_schedule": [
+    {
+      "sample": 1,
+      "mac_wall_start_ns": 1794312113474163000,
+      "mac_wall_end_ns": 1794312114547318000,
+      "schedule": [
+        {
+          "wall_ns": 1794312113848999936,
+          "infra_channel": 36,
+          "infra_percent_raw": 48,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            149,
+            36,
+            36,
+            36,
+            36,
+            6,
+            149,
+            149,
+            149,
+            36,
+            36,
+            36,
+            36
+          ],
+          "state": "Data"
+        },
+        {
+          "wall_ns": 1794312113994999808,
+          "infra_channel": 36,
+          "infra_percent_raw": 48,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            149,
+            36,
+            36,
+            36,
+            36,
+            6,
+            149,
+            149,
+            149,
+            36,
+            36,
+            36,
+            36
+          ],
+          "state": "Data"
+        }
+      ],
+      "rrm": [
+        {
+          "wall_ns": 1794312113848999936,
+          "channels": [
+            {
+              "channel": 6,
+              "bitmap": [
+                "00",
+                "00",
+                "00",
+                "00",
+                "0f",
+                "00",
+                "00",
+                "00"
+              ]
+            },
+            {
+              "channel": 149,
+              "bitmap": [
+                "ff",
+                "ff",
+                "00",
+                "00",
+                "f0",
+                "ff",
+                "00",
+                "00"
+              ]
+            },
+            {
+              "channel": 36,
+              "bitmap": [
+                "00",
+                "00",
+                "ff",
+                "ff",
+                "00",
+                "00",
+                "ff",
+                "ff"
+              ]
+            }
+          ]
+        }
+      ],
+      "steering": [
+        {
+          "wall_ns": 1794312113848000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312113848000000,
+          "matched_roles": []
+        }
+      ],
+      "peer_dumps": [
+        {
+          "wall_ns": 1794312113994999808,
+          "matched_roles": [],
+          "peers": 4,
+          "cached": 2,
+          "Tx": 14445,
+          "Rx": 38766
+        }
+      ],
+      "rows_seen": 40,
+      "phy_or_ba_labels": 0
+    },
+    {
+      "sample": 2,
+      "mac_wall_start_ns": 1794312114547480000,
+      "mac_wall_end_ns": 1794312114946975000,
+      "schedule": [],
+      "rrm": [],
+      "steering": [
+        {
+          "wall_ns": 1794312114898000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312114898000128,
+          "matched_roles": []
+        }
+      ],
+      "peer_dumps": [],
+      "rows_seen": 4,
+      "phy_or_ba_labels": 0
+    }
+  ],
+  "restored": true,
+  "rx_capacity": {
+    "same_boot": true,
+    "kernel_log_coverage": true,
+    "matching_load": true,
+    "boot_before": "428f3996-861d-4bf7-af96-a31d3a5a35a4",
+    "boot_after": "428f3996-861d-4bf7-af96-a31d3a5a35a4",
+    "dmesg_time_before": [
+      6.437117,
+      2427.690024
+    ],
+    "dmesg_time_after": [
+      9.124848,
+      2450.925261
+    ],
+    "observed": {
+      "cfg": [
+        [
+          4224
+        ]
+      ],
+      "pool": [
+        [
+          4224,
+          128,
+          16384
+        ]
+      ],
+      "map": [
+        [
+          4224,
+          7808
+        ],
+        [
+          4224,
+          7680
+        ]
+      ],
+      "htt": [
+        [
+          4224,
+          0,
+          0
+        ],
+        [
+          4224,
+          1,
+          0
+        ]
+      ],
+      "raw": [
+        [
+          130,
+          272,
+          0,
+          7680
+        ]
+      ]
+    },
+    "unexpected": [],
+    "new_lines": [
+      "[ 2434.779414] PT_RX_CAPACITY cfg_bytes=4224",
+      "[ 2434.793474] PT_RX_CAPACITY pool_bytes=4224 align=128 entries=16384",
+      "[ 2434.793491] PT_RX_CAPACITY map_bytes=4224 linear=7808",
+      "[ 2434.795973] PT_RX_CAPACITY map_bytes=4224 linear=7680",
+      "[ 2434.966480] PT_RX_CAPACITY htt_bytes=4224 mac_id=0 host_submit_status=0",
+      "[ 2434.966537] PT_RX_CAPACITY htt_bytes=4224 mac_id=1 host_submit_status=0",
+      "[ 2439.143287] PT_RX_CAPACITY raw_osif_bytes=130 tlv=272 pad=0 linear_span=7680"
+    ],
+    "verified": true
+  },
+  "verified": true
+}

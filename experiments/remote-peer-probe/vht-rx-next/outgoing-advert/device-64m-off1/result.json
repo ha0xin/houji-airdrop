@@ -1,0 +1,3080 @@
+{
+  "token": "[REDACTED]",
+  "module_sha256": "bbb6d59c67942ec57da12fb6f367c82d4430ebda1abfca88ffac24c977f49ba7",
+  "harness_sha256": "df40147c2e25019b7651a496dc41bcb5b5d2bc3edcabf18b0a8b2791ed154150",
+  "channel": 149,
+  "rx_ba": false,
+  "throughput_test": true,
+  "bounded_hash_flow": true,
+  "preserve_self_ast": false,
+  "self_only_flow": false,
+  "remote_map_only_flow": false,
+  "mac_awdl_ifindex": 13,
+  "mac_awdl_sha256": "88b2ae0c111a148731c60a6b2b82de55a31b4a6239931feb2c943a08b3e4564f",
+  "capacity_configuration": {
+    "rx_dma_bytes": 4224,
+    "tx_phy_request": "vht80-sgi",
+    "aggregation": "amsdu",
+    "ack": true,
+    "mss": 1160,
+    "tun_queue": 500,
+    "tx_vht_amsdu": false,
+    "outgoing_vht_advertisement": false,
+    "owly_variant": "outgoing-vht",
+    "tx_vht_extension_present": false,
+    "payload_bytes": 67108864,
+    "pairs": 3
+  },
+  "samples": [
+    {
+      "direction": "Mac→小米",
+      "sample": 1,
+      "mode": 0,
+      "bytes": 67108864,
+      "status": "verified",
+      "seconds": 30.3866925,
+      "MBps": 2.208495182554008,
+      "sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "mac_wall_start_ns": 1794312194993061000,
+      "mac_wall_end_ns": 1794312225603831000,
+      "phone_seconds": 30.37391
+    },
+    {
+      "direction": "小米→Mac",
+      "sample": 2,
+      "mode": 1,
+      "bytes": 67108864,
+      "status": "verified",
+      "seconds": 11.09099425,
+      "MBps": 6.050752753748836,
+      "sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "mac_wall_start_ns": 1794312225604038000,
+      "mac_wall_end_ns": 1794312236701650000,
+      "phone_seconds": 11.089145
+    },
+    {
+      "direction": "Mac→小米",
+      "sample": 3,
+      "mode": 0,
+      "bytes": 67108864,
+      "status": "verified",
+      "seconds": 30.007565375,
+      "MBps": 2.236398160308932,
+      "sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "mac_wall_start_ns": 1794312236701773000,
+      "mac_wall_end_ns": 1794312266719222000,
+      "phone_seconds": 29.997408
+    },
+    {
+      "direction": "小米→Mac",
+      "sample": 4,
+      "mode": 1,
+      "bytes": 67108864,
+      "status": "verified",
+      "seconds": 15.734275666,
+      "MBps": 4.265138441994804,
+      "sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "mac_wall_start_ns": 1794312266719334000,
+      "mac_wall_end_ns": 1794312282460471000,
+      "phone_seconds": 15.733845
+    },
+    {
+      "direction": "Mac→小米",
+      "sample": 5,
+      "mode": 0,
+      "bytes": 67108864,
+      "status": "verified",
+      "seconds": 53.937973916,
+      "MBps": 1.2441858514098365,
+      "sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "mac_wall_start_ns": 1794312282460648000,
+      "mac_wall_end_ns": 1794312336407337000,
+      "phone_seconds": 53.927777
+    },
+    {
+      "direction": "小米→Mac",
+      "sample": 6,
+      "mode": 1,
+      "bytes": 67108864,
+      "status": "verified",
+      "seconds": 19.796121333,
+      "MBps": 3.3900006405865972,
+      "sha256": "281e519df3077b557c6b03f5da83c4e8d397219259615dd7c3308f89cae8f2a6",
+      "mac_wall_start_ns": 1794312336407458000,
+      "mac_wall_end_ns": 1794312356210039000,
+      "phone_seconds": 19.797008
+    }
+  ],
+  "radio_exit": 0,
+  "initial": null,
+  "ready": null,
+  "terminal": null,
+  "final": null,
+  "drain": null,
+  "flow_hash_verified": true,
+  "outgoing_vht": {
+    "app_sha256": "ab84ddba4c05ee2a5f9bc0f5f304a1c053e1074cc7a268265c2026956bebcbf8",
+    "matching_app_load": true,
+    "requested": false,
+    "reported_switch": [
+      "OWLY_OUTGOING_VHT=false"
+    ],
+    "first_host_submitted_mif_container": [
+      "absent"
+    ],
+    "verified": true
+  },
+  "throughput_by_direction": {
+    "Mac→小米": {
+      "verified": 3,
+      "failed_or_missing": 0,
+      "bytes": 201326592,
+      "seconds": 114.332231791,
+      "weighted_MBps": 1.7608909477777552,
+      "peak_sample_MBps": 2.236398160308932
+    },
+    "小米→Mac": {
+      "verified": 3,
+      "failed_or_missing": 0,
+      "bytes": 201326592,
+      "seconds": 46.621391249,
+      "weighted_MBps": 4.318330847844837,
+      "peak_sample_MBps": 6.050752753748836
+    }
+  },
+  "mac_awdl_schedule": [
+    {
+      "sample": 1,
+      "mac_wall_start_ns": 1794312194993061000,
+      "mac_wall_end_ns": 1794312225603831000,
+      "schedule": [
+        {
+          "wall_ns": 1794312195112000000,
+          "infra_channel": 36,
+          "infra_percent_raw": 60,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            0,
+            0,
+            0,
+            0,
+            0,
+            6,
+            149,
+            149,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "state": "Idle"
+        },
+        {
+          "wall_ns": 1794312195636000000,
+          "infra_channel": 36,
+          "infra_percent_raw": 24,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36,
+            6,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36
+          ],
+          "state": "Data"
+        },
+        {
+          "wall_ns": 1794312197993999872,
+          "infra_channel": 36,
+          "infra_percent_raw": 24,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36,
+            6,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36
+          ],
+          "state": "Data"
+        },
+        {
+          "wall_ns": 1794312203993999872,
+          "infra_channel": 36,
+          "infra_percent_raw": 24,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36,
+            6,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36
+          ],
+          "state": "Data"
+        },
+        {
+          "wall_ns": 1794312209992999936,
+          "infra_channel": 36,
+          "infra_percent_raw": 24,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36,
+            6,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36
+          ],
+          "state": "Data"
+        },
+        {
+          "wall_ns": 1794312216000999936,
+          "infra_channel": 36,
+          "infra_percent_raw": 24,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36,
+            6,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36
+          ],
+          "state": "Data"
+        },
+        {
+          "wall_ns": 1794312222000000000,
+          "infra_channel": 36,
+          "infra_percent_raw": 24,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36,
+            6,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36
+          ],
+          "state": "Data"
+        }
+      ],
+      "rrm": [
+        {
+          "wall_ns": 1794312195112000000,
+          "channels": [
+            {
+              "channel": 6,
+              "bitmap": [
+                "00",
+                "00",
+                "00",
+                "00",
+                "0f",
+                "00",
+                "00",
+                "00"
+              ]
+            },
+            {
+              "channel": 149,
+              "bitmap": [
+                "ff",
+                "0f",
+                "00",
+                "00",
+                "f0",
+                "0f",
+                "00",
+                "00"
+              ]
+            }
+          ]
+        },
+        {
+          "wall_ns": 1794312195636000000,
+          "channels": [
+            {
+              "channel": 6,
+              "bitmap": [
+                "00",
+                "00",
+                "00",
+                "00",
+                "0f",
+                "00",
+                "00",
+                "00"
+              ]
+            },
+            {
+              "channel": 149,
+              "bitmap": [
+                "ff",
+                "ff",
+                "ff",
+                "00",
+                "f0",
+                "ff",
+                "ff",
+                "00"
+              ]
+            },
+            {
+              "channel": 36,
+              "bitmap": [
+                "00",
+                "00",
+                "00",
+                "ff",
+                "00",
+                "00",
+                "00",
+                "ff"
+              ]
+            }
+          ]
+        }
+      ],
+      "steering": [
+        {
+          "wall_ns": 1794312195636000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312195636000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312196684000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312196684000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312197732999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312197732999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312198782000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312198782000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312199829999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312199829999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312200879000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312200879000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312201927000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312201927000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312202976000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312202976000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312204024000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312204024000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312205072999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312205072999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312206121999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312206121999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312207176999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312207176999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312208224000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312208224000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312209273999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312209273999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312210316000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312210316000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312211364000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312211364000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312212413000192,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312212413000192,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312213460999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312213460999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312214509999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312214509999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312215564999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312215564999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312216614000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312216614000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312217663000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312217663000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312218711000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312218711000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312219760999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312219760999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312220808000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312220808000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312221857000192,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312221857000192,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312222904999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312222904999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312223953999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312223953999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312225003000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312225003000064,
+          "matched_roles": []
+        }
+      ],
+      "peer_dumps": [
+        {
+          "wall_ns": 1794312197993999872,
+          "matched_roles": [],
+          "peers": 5,
+          "cached": 1,
+          "Tx": 14447,
+          "Rx": 38769
+        },
+        {
+          "wall_ns": 1794312203993999872,
+          "matched_roles": [],
+          "peers": 5,
+          "cached": 1,
+          "Tx": 14447,
+          "Rx": 38769
+        },
+        {
+          "wall_ns": 1794312209992999936,
+          "matched_roles": [],
+          "peers": 5,
+          "cached": 1,
+          "Tx": 14447,
+          "Rx": 38769
+        },
+        {
+          "wall_ns": 1794312216000999936,
+          "matched_roles": [],
+          "peers": 4,
+          "cached": 1,
+          "Tx": 14447,
+          "Rx": 38769
+        },
+        {
+          "wall_ns": 1794312222000000000,
+          "matched_roles": [],
+          "peers": 4,
+          "cached": 1,
+          "Tx": 14447,
+          "Rx": 38769
+        }
+      ],
+      "rows_seen": 378,
+      "phy_or_ba_labels": 0
+    },
+    {
+      "sample": 2,
+      "mac_wall_start_ns": 1794312225604038000,
+      "mac_wall_end_ns": 1794312236701650000,
+      "schedule": [
+        {
+          "wall_ns": 1794312228000999936,
+          "infra_channel": 36,
+          "infra_percent_raw": 24,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36,
+            6,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36
+          ],
+          "state": "Data"
+        },
+        {
+          "wall_ns": 1794312234000000000,
+          "infra_channel": 36,
+          "infra_percent_raw": 24,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36,
+            6,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36
+          ],
+          "state": "Data"
+        }
+      ],
+      "rrm": [],
+      "steering": [
+        {
+          "wall_ns": 1794312226052000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312226052000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312227100000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312227100000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312228148000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312228148000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312229196999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312229196999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312230246000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312230246000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312231296999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312231296999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312232345999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312232345999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312233394000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312233394000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312234443000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312234443000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312235491000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312235491000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312236540000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312236540000000,
+          "matched_roles": []
+        }
+      ],
+      "peer_dumps": [
+        {
+          "wall_ns": 1794312228000999936,
+          "matched_roles": [],
+          "peers": 3,
+          "cached": 1,
+          "Tx": 14447,
+          "Rx": 38769
+        },
+        {
+          "wall_ns": 1794312234000000000,
+          "matched_roles": [],
+          "peers": 4,
+          "cached": 1,
+          "Tx": 14447,
+          "Rx": 38775
+        }
+      ],
+      "rows_seen": 167,
+      "phy_or_ba_labels": 0
+    },
+    {
+      "sample": 3,
+      "mac_wall_start_ns": 1794312236701773000,
+      "mac_wall_end_ns": 1794312266719222000,
+      "schedule": [
+        {
+          "wall_ns": 1794312240000000000,
+          "infra_channel": 36,
+          "infra_percent_raw": 24,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36,
+            6,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36
+          ],
+          "state": "Data"
+        },
+        {
+          "wall_ns": 1794312246000000000,
+          "infra_channel": 36,
+          "infra_percent_raw": 24,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36,
+            6,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36
+          ],
+          "state": "Data"
+        },
+        {
+          "wall_ns": 1794312252000999936,
+          "infra_channel": 36,
+          "infra_percent_raw": 24,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36,
+            6,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36
+          ],
+          "state": "Data"
+        },
+        {
+          "wall_ns": 1794312258000999936,
+          "infra_channel": 36,
+          "infra_percent_raw": 24,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36,
+            6,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36
+          ],
+          "state": "Data"
+        },
+        {
+          "wall_ns": 1794312264000999936,
+          "infra_channel": 36,
+          "infra_percent_raw": 24,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36,
+            6,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36
+          ],
+          "state": "Data"
+        }
+      ],
+      "rrm": [],
+      "steering": [
+        {
+          "wall_ns": 1794312237588000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312237588000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312238637000192,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312238637000192,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312239684999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312239684999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312240734999808,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312240734999808,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312241782000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312241782000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312242831000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312242831000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312243880000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312243880000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312244928000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312244928000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312245976999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312245976999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312247025000192,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312247025000192,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312248075000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312248075000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312249121999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312249121999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312250171000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312250171000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312251220000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312251220000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312252268000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312252268000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312253316999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312253316999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312254364999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312254364999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312255414000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312255414000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312256461999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312256461999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312257510999808,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312257510999808,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312258560000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312258560000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312259608000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312259608000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312260657000192,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312260657000192,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312261706000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312261706000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312262753999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312262753999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312263803000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312263803000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312264851000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312264851000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312265898999808,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312265898999808,
+          "matched_roles": []
+        }
+      ],
+      "peer_dumps": [
+        {
+          "wall_ns": 1794312240000000000,
+          "matched_roles": [],
+          "peers": 4,
+          "cached": 1,
+          "Tx": 14447,
+          "Rx": 38777
+        },
+        {
+          "wall_ns": 1794312246000000000,
+          "matched_roles": [],
+          "peers": 3,
+          "cached": 1,
+          "Tx": 14447,
+          "Rx": 38777
+        },
+        {
+          "wall_ns": 1794312252000999936,
+          "matched_roles": [],
+          "peers": 3,
+          "cached": 1,
+          "Tx": 14447,
+          "Rx": 38777
+        },
+        {
+          "wall_ns": 1794312258000999936,
+          "matched_roles": [],
+          "peers": 3,
+          "cached": 1,
+          "Tx": 14447,
+          "Rx": 38777
+        },
+        {
+          "wall_ns": 1794312264000999936,
+          "matched_roles": [],
+          "peers": 2,
+          "cached": 1,
+          "Tx": 14447,
+          "Rx": 38777
+        }
+      ],
+      "rows_seen": 353,
+      "phy_or_ba_labels": 0
+    },
+    {
+      "sample": 4,
+      "mac_wall_start_ns": 1794312266719334000,
+      "mac_wall_end_ns": 1794312282460471000,
+      "schedule": [
+        {
+          "wall_ns": 1794312270000000000,
+          "infra_channel": 36,
+          "infra_percent_raw": 24,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36,
+            6,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36
+          ],
+          "state": "Data"
+        },
+        {
+          "wall_ns": 1794312276000000000,
+          "infra_channel": 36,
+          "infra_percent_raw": 24,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36,
+            6,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36
+          ],
+          "state": "Data"
+        },
+        {
+          "wall_ns": 1794312282000000000,
+          "infra_channel": 36,
+          "infra_percent_raw": 24,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36,
+            6,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36
+          ],
+          "state": "Data"
+        }
+      ],
+      "rrm": [],
+      "steering": [
+        {
+          "wall_ns": 1794312266948000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312266948000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312267996999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312267996999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312269046000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312269046000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312270094000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312270094000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312271141999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312271141999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312272191000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312272191000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312273240000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312273240000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312274288999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312274288999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312275336999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312275336999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312276384999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312276384999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312277433000192,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312277433000192,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312278483000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312278483000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312279530999808,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312279532000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312280580000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312280580000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312281628000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312281628000000,
+          "matched_roles": []
+        }
+      ],
+      "peer_dumps": [
+        {
+          "wall_ns": 1794312270000000000,
+          "matched_roles": [],
+          "peers": 2,
+          "cached": 1,
+          "Tx": 14447,
+          "Rx": 38777
+        },
+        {
+          "wall_ns": 1794312276000000000,
+          "matched_roles": [],
+          "peers": 2,
+          "cached": 1,
+          "Tx": 14447,
+          "Rx": 38777
+        },
+        {
+          "wall_ns": 1794312282000000000,
+          "matched_roles": [],
+          "peers": 2,
+          "cached": 1,
+          "Tx": 14447,
+          "Rx": 38777
+        }
+      ],
+      "rows_seen": 196,
+      "phy_or_ba_labels": 0
+    },
+    {
+      "sample": 5,
+      "mac_wall_start_ns": 1794312282460648000,
+      "mac_wall_end_ns": 1794312336407337000,
+      "schedule": [
+        {
+          "wall_ns": 1794312287000999936,
+          "infra_channel": 36,
+          "infra_percent_raw": 24,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36,
+            6,
+            149,
+            149,
+            149,
+            149,
+            149,
+            36,
+            36
+          ],
+          "state": "Data"
+        },
+        {
+          "wall_ns": 1794312289104999936,
+          "infra_channel": 36,
+          "infra_percent_raw": 48,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            149,
+            36,
+            36,
+            36,
+            36,
+            6,
+            149,
+            149,
+            149,
+            36,
+            36,
+            36,
+            36
+          ],
+          "state": "Data"
+        },
+        {
+          "wall_ns": 1794312293000000000,
+          "infra_channel": 36,
+          "infra_percent_raw": 48,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            149,
+            36,
+            36,
+            36,
+            36,
+            6,
+            149,
+            149,
+            149,
+            36,
+            36,
+            36,
+            36
+          ],
+          "state": "Data"
+        },
+        {
+          "wall_ns": 1794312299000000000,
+          "infra_channel": 36,
+          "infra_percent_raw": 48,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            149,
+            36,
+            36,
+            36,
+            36,
+            6,
+            149,
+            149,
+            149,
+            36,
+            36,
+            36,
+            36
+          ],
+          "state": "Data"
+        },
+        {
+          "wall_ns": 1794312304999000064,
+          "infra_channel": 36,
+          "infra_percent_raw": 48,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            149,
+            36,
+            36,
+            36,
+            36,
+            6,
+            149,
+            149,
+            149,
+            36,
+            36,
+            36,
+            36
+          ],
+          "state": "Data"
+        },
+        {
+          "wall_ns": 1794312310000999936,
+          "infra_channel": 36,
+          "infra_percent_raw": 48,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            149,
+            36,
+            36,
+            36,
+            36,
+            6,
+            149,
+            149,
+            149,
+            36,
+            36,
+            36,
+            36
+          ],
+          "state": "Data"
+        },
+        {
+          "wall_ns": 1794312316000000000,
+          "infra_channel": 36,
+          "infra_percent_raw": 48,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            149,
+            36,
+            36,
+            36,
+            36,
+            6,
+            149,
+            149,
+            149,
+            36,
+            36,
+            36,
+            36
+          ],
+          "state": "Data"
+        },
+        {
+          "wall_ns": 1794312322000000000,
+          "infra_channel": 36,
+          "infra_percent_raw": 48,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            149,
+            36,
+            36,
+            36,
+            36,
+            6,
+            149,
+            149,
+            149,
+            36,
+            36,
+            36,
+            36
+          ],
+          "state": "Data"
+        },
+        {
+          "wall_ns": 1794312328000000000,
+          "infra_channel": 36,
+          "infra_percent_raw": 48,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            149,
+            36,
+            36,
+            36,
+            36,
+            6,
+            149,
+            149,
+            149,
+            36,
+            36,
+            36,
+            36
+          ],
+          "state": "Data"
+        },
+        {
+          "wall_ns": 1794312334000000000,
+          "infra_channel": 36,
+          "infra_percent_raw": 48,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            149,
+            36,
+            36,
+            36,
+            36,
+            6,
+            149,
+            149,
+            149,
+            36,
+            36,
+            36,
+            36
+          ],
+          "state": "Data"
+        }
+      ],
+      "rrm": [
+        {
+          "wall_ns": 1794312288268999936,
+          "channels": [
+            {
+              "channel": 6,
+              "bitmap": [
+                "00",
+                "00",
+                "00",
+                "00",
+                "0f",
+                "00",
+                "00",
+                "00"
+              ]
+            },
+            {
+              "channel": 149,
+              "bitmap": [
+                "ff",
+                "ff",
+                "ff",
+                "00",
+                "f0",
+                "ff",
+                "ff",
+                "00"
+              ]
+            },
+            {
+              "channel": 36,
+              "bitmap": [
+                "00",
+                "00",
+                "00",
+                "ff",
+                "00",
+                "00",
+                "00",
+                "ff"
+              ]
+            }
+          ]
+        },
+        {
+          "wall_ns": 1794312288268999936,
+          "channels": [
+            {
+              "channel": 6,
+              "bitmap": [
+                "00",
+                "00",
+                "00",
+                "00",
+                "0f",
+                "00",
+                "00",
+                "00"
+              ]
+            },
+            {
+              "channel": 149,
+              "bitmap": [
+                "ff",
+                "ff",
+                "ff",
+                "00",
+                "f0",
+                "ff",
+                "ff",
+                "00"
+              ]
+            },
+            {
+              "channel": 36,
+              "bitmap": [
+                "00",
+                "00",
+                "00",
+                "ff",
+                "00",
+                "00",
+                "00",
+                "ff"
+              ]
+            }
+          ]
+        },
+        {
+          "wall_ns": 1794312288328000000,
+          "channels": [
+            {
+              "channel": 6,
+              "bitmap": [
+                "00",
+                "00",
+                "00",
+                "00",
+                "0f",
+                "00",
+                "00",
+                "00"
+              ]
+            },
+            {
+              "channel": 149,
+              "bitmap": [
+                "ff",
+                "ff",
+                "ff",
+                "00",
+                "f0",
+                "ff",
+                "ff",
+                "00"
+              ]
+            },
+            {
+              "channel": 36,
+              "bitmap": [
+                "00",
+                "00",
+                "00",
+                "ff",
+                "00",
+                "00",
+                "00",
+                "ff"
+              ]
+            }
+          ]
+        },
+        {
+          "wall_ns": 1794312288496000000,
+          "channels": [
+            {
+              "channel": 6,
+              "bitmap": [
+                "00",
+                "00",
+                "00",
+                "00",
+                "0f",
+                "00",
+                "00",
+                "00"
+              ]
+            },
+            {
+              "channel": 149,
+              "bitmap": [
+                "ff",
+                "ff",
+                "ff",
+                "00",
+                "f0",
+                "ff",
+                "ff",
+                "00"
+              ]
+            },
+            {
+              "channel": 36,
+              "bitmap": [
+                "00",
+                "00",
+                "00",
+                "ff",
+                "00",
+                "00",
+                "00",
+                "ff"
+              ]
+            }
+          ]
+        },
+        {
+          "wall_ns": 1794312288588999936,
+          "channels": [
+            {
+              "channel": 6,
+              "bitmap": [
+                "00",
+                "00",
+                "00",
+                "00",
+                "0f",
+                "00",
+                "00",
+                "00"
+              ]
+            },
+            {
+              "channel": 149,
+              "bitmap": [
+                "ff",
+                "ff",
+                "ff",
+                "00",
+                "f0",
+                "ff",
+                "ff",
+                "00"
+              ]
+            },
+            {
+              "channel": 36,
+              "bitmap": [
+                "00",
+                "00",
+                "00",
+                "ff",
+                "00",
+                "00",
+                "00",
+                "ff"
+              ]
+            }
+          ]
+        },
+        {
+          "wall_ns": 1794312288612999936,
+          "channels": [
+            {
+              "channel": 6,
+              "bitmap": [
+                "00",
+                "00",
+                "00",
+                "00",
+                "0f",
+                "00",
+                "00",
+                "00"
+              ]
+            },
+            {
+              "channel": 149,
+              "bitmap": [
+                "ff",
+                "ff",
+                "ff",
+                "00",
+                "f0",
+                "ff",
+                "ff",
+                "00"
+              ]
+            },
+            {
+              "channel": 36,
+              "bitmap": [
+                "00",
+                "00",
+                "00",
+                "ff",
+                "00",
+                "00",
+                "00",
+                "ff"
+              ]
+            }
+          ]
+        },
+        {
+          "wall_ns": 1794312288851000064,
+          "channels": [
+            {
+              "channel": 6,
+              "bitmap": [
+                "00",
+                "00",
+                "00",
+                "00",
+                "0f",
+                "00",
+                "00",
+                "00"
+              ]
+            },
+            {
+              "channel": 149,
+              "bitmap": [
+                "ff",
+                "ff",
+                "ff",
+                "00",
+                "f0",
+                "ff",
+                "ff",
+                "00"
+              ]
+            },
+            {
+              "channel": 36,
+              "bitmap": [
+                "00",
+                "00",
+                "00",
+                "ff",
+                "00",
+                "00",
+                "00",
+                "ff"
+              ]
+            }
+          ]
+        },
+        {
+          "wall_ns": 1794312289104999936,
+          "channels": [
+            {
+              "channel": 6,
+              "bitmap": [
+                "00",
+                "00",
+                "00",
+                "00",
+                "0f",
+                "00",
+                "00",
+                "00"
+              ]
+            },
+            {
+              "channel": 149,
+              "bitmap": [
+                "ff",
+                "ff",
+                "00",
+                "00",
+                "f0",
+                "ff",
+                "00",
+                "00"
+              ]
+            },
+            {
+              "channel": 36,
+              "bitmap": [
+                "00",
+                "00",
+                "ff",
+                "ff",
+                "00",
+                "00",
+                "ff",
+                "ff"
+              ]
+            }
+          ]
+        }
+      ],
+      "steering": [
+        {
+          "wall_ns": 1794312282676999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312282676999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312283726000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312283726000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312284773999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312284773999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312285823000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312285823000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312286871000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312286871000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312287920000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312287920000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312288968000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312288968000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312290020999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312290020999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312291068999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312291068999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312292118000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312292118000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312293165999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312293165999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312294214999808,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312294214999808,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312295264000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312295264000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312296312000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312296312000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312297360000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312297360000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312298408999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312298408999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312299457999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312299457999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312300508000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312300508000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312301555000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312301555000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312302604000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312302604000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312303653000192,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312303653000192,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312304700999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312304700999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312305750000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312305750000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312306798000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312306798000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312307846999808,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312307846999808,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312308895000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312308895000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312309944000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312309944000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312310992999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312310992999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312312040999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312312040999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312313088999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312313088999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312314138000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312314138000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312315187000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312315187000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312316234999808,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312316234999808,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312317284000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312317284000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312318332000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312318332000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312319380999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312319380999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312320428999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312320428999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312321477999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312321477999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312322527000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312322527000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312323575000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312323575000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312324624000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312324624000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312325673000192,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312325673000192,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312326720999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312326720999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312327769999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312327769999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312328818000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312328818000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312329867000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312329867000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312330915000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312330915000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312331964000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312331964000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312333012000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312333012000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312334061000192,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312334061000192,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312335109999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312335109999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312336157999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312336157999872,
+          "matched_roles": []
+        }
+      ],
+      "peer_dumps": [
+        {
+          "wall_ns": 1794312287000999936,
+          "matched_roles": [],
+          "peers": 2,
+          "cached": 1,
+          "Tx": 14447,
+          "Rx": 38777
+        },
+        {
+          "wall_ns": 1794312293000000000,
+          "matched_roles": [],
+          "peers": 2,
+          "cached": 1,
+          "Tx": 14447,
+          "Rx": 38781
+        },
+        {
+          "wall_ns": 1794312299000000000,
+          "matched_roles": [],
+          "peers": 2,
+          "cached": 1,
+          "Tx": 14447,
+          "Rx": 38789
+        },
+        {
+          "wall_ns": 1794312304999000064,
+          "matched_roles": [],
+          "peers": 2,
+          "cached": 1,
+          "Tx": 14447,
+          "Rx": 38789
+        },
+        {
+          "wall_ns": 1794312310000999936,
+          "matched_roles": [],
+          "peers": 2,
+          "cached": 1,
+          "Tx": 14447,
+          "Rx": 38789
+        },
+        {
+          "wall_ns": 1794312316000000000,
+          "matched_roles": [],
+          "peers": 2,
+          "cached": 1,
+          "Tx": 14447,
+          "Rx": 38789
+        },
+        {
+          "wall_ns": 1794312322000000000,
+          "matched_roles": [],
+          "peers": 2,
+          "cached": 1,
+          "Tx": 14447,
+          "Rx": 38789
+        },
+        {
+          "wall_ns": 1794312328000000000,
+          "matched_roles": [],
+          "peers": 2,
+          "cached": 1,
+          "Tx": 14447,
+          "Rx": 38789
+        },
+        {
+          "wall_ns": 1794312334000000000,
+          "matched_roles": [],
+          "peers": 2,
+          "cached": 1,
+          "Tx": 14447,
+          "Rx": 38789
+        }
+      ],
+      "rows_seen": 731,
+      "phy_or_ba_labels": 0
+    },
+    {
+      "sample": 6,
+      "mac_wall_start_ns": 1794312336407458000,
+      "mac_wall_end_ns": 1794312356210039000,
+      "schedule": [
+        {
+          "wall_ns": 1794312340000000000,
+          "infra_channel": 36,
+          "infra_percent_raw": 48,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            149,
+            36,
+            36,
+            36,
+            36,
+            6,
+            149,
+            149,
+            149,
+            36,
+            36,
+            36,
+            36
+          ],
+          "state": "Data"
+        },
+        {
+          "wall_ns": 1794312346000000000,
+          "infra_channel": 36,
+          "infra_percent_raw": 48,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            149,
+            36,
+            36,
+            36,
+            36,
+            6,
+            149,
+            149,
+            149,
+            36,
+            36,
+            36,
+            36
+          ],
+          "state": "Data"
+        },
+        {
+          "wall_ns": 1794312352000000000,
+          "infra_channel": 36,
+          "infra_percent_raw": 48,
+          "sdb_raw": 0,
+          "channel_triplet": [
+            6,
+            149,
+            149
+          ],
+          "slots": [
+            149,
+            149,
+            149,
+            149,
+            36,
+            36,
+            36,
+            36,
+            6,
+            149,
+            149,
+            149,
+            36,
+            36,
+            36,
+            36
+          ],
+          "state": "Data"
+        }
+      ],
+      "rrm": [],
+      "steering": [
+        {
+          "wall_ns": 1794312337207000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312337207000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312338256000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312338256000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312339304000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312339304000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312340352999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312340352999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312341400999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312341400999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312342450000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312342450000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312343497999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312343497999872,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312344546999808,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312344546999808,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312345596000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312345596000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312346644999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312346644999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312347693000192,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312347693000192,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312348740999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312348740999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312349790999808,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312349790999808,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312350838000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312350838000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312351887000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312351887000064,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312352936000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312352936000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312353984000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312353984000000,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312355032999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312355032999936,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312356082000128,
+          "matched_roles": []
+        },
+        {
+          "wall_ns": 1794312356082000128,
+          "matched_roles": []
+        }
+      ],
+      "peer_dumps": [
+        {
+          "wall_ns": 1794312340000000000,
+          "matched_roles": [],
+          "peers": 2,
+          "cached": 1,
+          "Tx": 14447,
+          "Rx": 38789
+        },
+        {
+          "wall_ns": 1794312346000000000,
+          "matched_roles": [],
+          "peers": 2,
+          "cached": 1,
+          "Tx": 14447,
+          "Rx": 38789
+        },
+        {
+          "wall_ns": 1794312352000000000,
+          "matched_roles": [],
+          "peers": 2,
+          "cached": 1,
+          "Tx": 14447,
+          "Rx": 38789
+        }
+      ],
+      "rows_seen": 219,
+      "phy_or_ba_labels": 0
+    }
+  ],
+  "restored": true,
+  "rx_capacity": {
+    "same_boot": true,
+    "kernel_log_coverage": true,
+    "matching_load": true,
+    "boot_before": "428f3996-861d-4bf7-af96-a31d3a5a35a4",
+    "boot_after": "428f3996-861d-4bf7-af96-a31d3a5a35a4",
+    "dmesg_time_before": [
+      10.702753,
+      2508.439225
+    ],
+    "dmesg_time_after": [
+      597.134071,
+      2695.449195
+    ],
+    "observed": {
+      "cfg": [
+        [
+          4224
+        ]
+      ],
+      "pool": [
+        [
+          4224,
+          128,
+          16384
+        ]
+      ],
+      "map": [
+        [
+          4224,
+          7808
+        ],
+        [
+          4224,
+          7680
+        ]
+      ],
+      "htt": [
+        [
+          4224,
+          0,
+          0
+        ],
+        [
+          4224,
+          1,
+          0
+        ]
+      ],
+      "raw": [
+        [
+          130,
+          272,
+          0,
+          7680
+        ]
+      ]
+    },
+    "unexpected": [],
+    "new_lines": [
+      "[ 2515.944304] PT_RX_CAPACITY cfg_bytes=4224",
+      "[ 2515.960792] PT_RX_CAPACITY pool_bytes=4224 align=128 entries=16384",
+      "[ 2515.960808] PT_RX_CAPACITY map_bytes=4224 linear=7808",
+      "[ 2515.963574] PT_RX_CAPACITY map_bytes=4224 linear=7680",
+      "[ 2516.128966] PT_RX_CAPACITY htt_bytes=4224 mac_id=0 host_submit_status=0",
+      "[ 2516.129008] PT_RX_CAPACITY htt_bytes=4224 mac_id=1 host_submit_status=0",
+      "[ 2520.841317] PT_RX_CAPACITY raw_osif_bytes=130 tlv=272 pad=0 linear_span=7680"
+    ],
+    "verified": true
+  },
+  "verified": true
+}

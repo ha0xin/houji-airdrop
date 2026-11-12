@@ -1,0 +1,401 @@
+diff --git a/qca-wifi-host-cmn/qdf/inc/qdf_pt_remote_peer.h b/qca-wifi-host-cmn/qdf/inc/qdf_pt_remote_peer.h
+--- a/qca-wifi-host-cmn/qdf/inc/qdf_pt_remote_peer.h
++++ b/qca-wifi-host-cmn/qdf/inc/qdf_pt_remote_peer.h
+@@ -30,7 +30,18 @@
+ 	PT_REMOTE_REO_QREF_MODE = 8,
+ };
+ 
++enum pt_remote_reo_binding {
++	PT_REMOTE_REO_QUEUE_POSTED,
++	PT_REMOTE_REO_QUEUE_TAIL,
++	PT_REMOTE_REO_QREF_WRITE,
++	PT_REMOTE_REO_QREF_CLEAR,
++};
++
+ bool pt_remote_peer_reo_enabled(void);
++u64 pt_remote_peer_reo_key(const void *psoc, u8 vdev_id, const u8 *mac);
++bool pt_remote_peer_reo_skip_addba(const void *psoc, u8 vdev_id, const u8 *mac);
++void pt_remote_peer_reo_binding(u64 generation, enum pt_remote_reo_binding event,
++				u32 mask, u32 status);
+ void pt_remote_peer_reo_step(const void *psoc, u8 vdev_id, const u8 *mac,
+ 			     enum pt_remote_reo_step step, u32 status, u32 flags);
+ 
+diff --git a/qcacld-3.0/core/wma/src/wma_dev_if.c b/qcacld-3.0/core/wma/src/wma_dev_if.c
+--- a/qcacld-3.0/core/wma/src/wma_dev_if.c
++++ b/qcacld-3.0/core/wma/src/wma_dev_if.c
+@@ -2512,6 +2512,15 @@
+ 	u32 reo_setup_status;
+ 	u32 reo_status[PT_REMOTE_REO_STEPS];
+ 	u32 reo_flags[PT_REMOTE_REO_STEPS];
++	u32 reo_queue_posted;
++	u32 reo_queue_tail;
++	u32 reo_queue_error;
++	u32 reo_queue_duplicates;
++	u8 reo_posts[32];
++	u8 reo_tails[32];
++	u32 reo_qref_write;
++	u32 reo_qref_clear;
++	u32 reo_addba_suppressed;
+ };
+ static struct wma_pt_peer_trial wma_pt_peer_trial;
+ 
+@@ -2724,6 +2733,70 @@
+ 		}
+ 	}
+ 	spin_unlock_irqrestore(&wma_pt_peer_lock, lock_flags);
++}
++
++u64 pt_remote_peer_reo_key(const void *psoc, u8 vdev_id, const u8 *mac)
++{
++	return pt_remote_peer_reo_enabled() ?
++	       pt_remote_peer_release_key(psoc, vdev_id, mac) : 0;
++}
++
++void pt_remote_peer_reo_binding(u64 generation, enum pt_remote_reo_binding event,
++				u32 mask, u32 status)
++{
++	unsigned long flags;
++	int tid;
++
++	if (!generation)
++		return;
++	spin_lock_irqsave(&wma_pt_peer_lock, flags);
++	if (generation != wma_pt_peer_trial.generation ||
++	    !wma_pt_peer_trial.reo_setup_issued)
++		goto unlock;
++
++	switch (event) {
++	case PT_REMOTE_REO_QUEUE_POSTED:
++		if (status) {
++			wma_pt_peer_trial.reo_queue_error |= mask;
++			break;
++		}
++		wma_pt_peer_trial.reo_queue_posted |= mask;
++		for (tid = 0; tid < 32; tid++)
++			if ((mask & BIT(tid)) && ++wma_pt_peer_trial.reo_posts[tid] != 1)
++				wma_pt_peer_trial.reo_queue_duplicates |= BIT(tid);
++		break;
++	case PT_REMOTE_REO_QUEUE_TAIL:
++		wma_pt_peer_trial.reo_queue_tail |= mask;
++		for (tid = 0; tid < 32; tid++)
++			if ((mask & BIT(tid)) && ++wma_pt_peer_trial.reo_tails[tid] != 1)
++				wma_pt_peer_trial.reo_queue_duplicates |= BIT(tid);
++		if (status)
++			wma_pt_peer_trial.reo_queue_error |= mask;
++		break;
++	case PT_REMOTE_REO_QREF_WRITE:
++		wma_pt_peer_trial.reo_qref_write |= mask;
++		break;
++	case PT_REMOTE_REO_QREF_CLEAR:
++		wma_pt_peer_trial.reo_qref_clear |= mask;
++		break;
++	}
++unlock:
++	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
++}
++
++bool pt_remote_peer_reo_skip_addba(const void *psoc, u8 vdev_id, const u8 *mac)
++{
++	unsigned long flags;
++	bool skip;
++
++	if (!pt_remote_peer_reo_enabled())
++		return false;
++	spin_lock_irqsave(&wma_pt_peer_lock, flags);
++	skip = wma_pt_peer_dp_key_matches(psoc, vdev_id, mac);
++	if (skip)
++		wma_pt_peer_trial.reo_addba_suppressed++;
++	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
++	return skip;
+ }
+ 
+ void pt_remote_peer_dp_event(const void *psoc, u8 vdev_id, const u8 *mac,
+@@ -2850,6 +2923,11 @@
+ 	       !trial->htt_unmap && !trial->slot_removed && !trial->dp_conflict;
+ }
+ 
++static bool wma_pt_peer_reo_pending(const struct wma_pt_peer_trial *trial)
++{
++	return memcmp(trial->reo_posts, trial->reo_tails, sizeof(trial->reo_posts));
++}
++
+ static bool wma_pt_peer_clean_delete(const struct wma_pt_peer_trial *trial)
+ {
+ 	return trial->delete_returned && !QDF_IS_STATUS_ERROR(trial->delete_submit) &&
+@@ -2908,6 +2986,7 @@
+ 	    !QDF_IS_STATUS_ERROR(trial.create_submit) && trial.create_confirmed &&
+ 	    !trial.create_status && !trial.create_conflict) {
+ 		void *dp_soc = cds_get_context(QDF_MODULE_ID_SOC);
++		u32 tid_mask;
+ 		u32 expected = PT_REMOTE_REO_DMA | PT_REMOTE_REO_BA_INACTIVE |
+ 			       PT_REMOTE_REO_WINDOW_ONE;
+ 		unsigned long flags;
+@@ -2924,6 +3003,22 @@
+ 		wma_pt_peer_snapshot(&trial);
+ 		if (QDF_IS_STATUS_ERROR(status) || trial.reo_conflict ||
+ 		    trial.reo_steps != (BIT(PT_REMOTE_REO_STEPS) - 1))
++			reo_error = -EIO;
++		/* Accepted target-interface work may still reference the DMA.
++		 * Wait for the actual scheduler callback tail before deleting.
++		 */
++		deadline = jiffies + msecs_to_jiffies(WMA_PT_PEER_WAIT_MS);
++		while (wma_pt_peer_reo_pending(&trial) &&
++		       time_before(jiffies, deadline)) {
++			usleep_range(3000, 5000);
++			wma_pt_peer_snapshot(&trial);
++		}
++		if (wma_pt_peer_reo_pending(&trial))
++			goto done;
++		tid_mask = BIT(trial.reo_flags[PT_REMOTE_REO_NON_QOS] >> 8) | BIT(0);
++		if (trial.reo_queue_error || trial.reo_queue_duplicates ||
++		    (trial.reo_queue_tail | trial.reo_qref_write) != tid_mask ||
++		    (trial.reo_queue_tail && trial.reo_qref_write))
+ 			reo_error = -EIO;
+ 		for (i = 0; i < PT_REMOTE_REO_STEPS; i++)
+ 			if (trial.reo_status[i] ||
+@@ -2979,7 +3074,8 @@
+ 			 "reo_duplicates=%u reo_conflict=%u setup_issued=%u setup_returned=%u "
+ 			 "setup_status=%u route_submit=%u route_param=%u "
+ 			 "nonqos_setup=%u tid0_setup=%u "
+-			 "nonqos_flags=%u tid0_flags=%u\n",
++			 "nonqos_flags=%u tid0_flags=%u reo_queue_posted=%x "
++			 "reo_queue_tail=%x reo_queue_error=%x reo_queue_duplicates=%x reo_qref_write=%x reo_qref_clear=%x addba_suppressed=%u\n",
+ 			 READ_ONCE(wma_pt_peer_result), trial.generation, trial.vdev_id,
+ 			 trial.peer_id, trial.obj_attached, trial.obj_created, trial.dp_created,
+ 			 trial.create_issued, trial.create_returned, trial.create_submit,
+@@ -2997,7 +3093,9 @@
+ 			 trial.reo_status[PT_REMOTE_REO_NON_QOS],
+ 			 trial.reo_status[PT_REMOTE_REO_TID0],
+ 			 trial.reo_flags[PT_REMOTE_REO_NON_QOS],
+-			 trial.reo_flags[PT_REMOTE_REO_TID0]);
++			 trial.reo_flags[PT_REMOTE_REO_TID0], trial.reo_queue_posted,
++			 trial.reo_queue_tail, trial.reo_queue_error, trial.reo_queue_duplicates,
++			 trial.reo_qref_write, trial.reo_qref_clear, trial.reo_addba_suppressed);
+ }
+ 
+ static const struct kernel_param_ops wma_pt_remote_peer_stats_ops = {
+diff --git a/qca-wifi-host-cmn/target_if/dp/src/target_if_dp.c b/qca-wifi-host-cmn/target_if/dp/src/target_if_dp.c
+--- a/qca-wifi-host-cmn/target_if/dp/src/target_if_dp.c
++++ b/qca-wifi-host-cmn/target_if/dp/src/target_if_dp.c
+@@ -116,6 +116,18 @@
+ 	return;
+ }
+ 
++#ifdef DRIVER_PASSTHRU_OWNER
++#define PT_TARGET_REO_KEY(psoc, vid, mac) pt_remote_peer_reo_key(psoc, vid, mac)
++#define PT_TARGET_REO_POST(key, mask, status) \
++	pt_remote_peer_reo_binding(key, PT_REMOTE_REO_QUEUE_POSTED, mask, status)
++#define PT_TARGET_REO_TAIL(key, mask, status) \
++	pt_remote_peer_reo_binding(key, PT_REMOTE_REO_QUEUE_TAIL, mask, status)
++#else
++#define PT_TARGET_REO_KEY(psoc, vid, mac) 0
++#define PT_TARGET_REO_POST(key, mask, status) ((void)(key), (void)(mask))
++#define PT_TARGET_REO_TAIL(key, mask, status) ((void)(key), (void)(mask))
++#endif
++
+ #ifdef SERIALIZE_QUEUE_SETUP
+ static QDF_STATUS
+ target_if_rx_reorder_queue_setup(struct scheduler_msg *msg)
+@@ -126,6 +138,8 @@
+ 	QDF_STATUS status;
+ 	struct wlan_objmgr_pdev *pdev;
+ 	struct wlan_objmgr_psoc *psoc;
++	u64 trial;
++	u32 trial_mask;
+ 
+ 	if (!(msg->bodyptr)) {
+ 		target_if_err("rx_reorder: Invalid message body");
+@@ -134,12 +148,18 @@
+ 
+ 	q_params = msg->bodyptr;
+ 	psoc = (struct wlan_objmgr_psoc *)q_params->psoc;
++	trial = PT_TARGET_REO_KEY(psoc, q_params->vdev_id, q_params->peer_mac);
++	trial_mask = trial ? BIT(q_params->tid) : 0;
+ 
+ 	pdev = wlan_objmgr_get_pdev_by_id(psoc, q_params->pdev_id,
+ 					  WLAN_PDEV_TARGET_IF_ID);
+ 
+ 	if (!pdev) {
+ 		target_if_err("pdev with id %d is NULL", q_params->pdev_id);
++		if (trial) {
++			qdf_mem_free(q_params);
++			PT_TARGET_REO_TAIL(trial, trial_mask, QDF_STATUS_E_INVAL);
++		}
+ 		return QDF_STATUS_E_INVAL;
+ 	}
+ 
+@@ -164,6 +184,7 @@
+ out:
+ 	wlan_objmgr_pdev_release_ref(pdev, WLAN_PDEV_TARGET_IF_ID);
+ 	qdf_mem_free(q_params);
++	PT_TARGET_REO_TAIL(trial, trial_mask, status);
+ 
+ 	return status;
+ }
+@@ -177,6 +198,8 @@
+ 	QDF_STATUS status;
+ 	struct wlan_objmgr_pdev *pdev;
+ 	struct wlan_objmgr_psoc *psoc;
++	u64 trial;
++	u32 trial_mask;
+ 	int tid;
+ 
+ 	if (!(msg->bodyptr)) {
+@@ -186,11 +209,17 @@
+ 
+ 	q_params = msg->bodyptr;
+ 	psoc = (struct wlan_objmgr_psoc *)q_params->psoc;
++	trial = PT_TARGET_REO_KEY(psoc, q_params->vdev_id, q_params->peer_mac);
++	trial_mask = trial ? q_params->tid_bitmap : 0;
+ 
+ 	pdev = wlan_objmgr_get_pdev_by_id(psoc, q_params->pdev_id,
+ 					  WLAN_PDEV_TARGET_IF_ID);
+ 	if (!pdev) {
+ 		target_if_err("pdev with id %d is NULL", q_params->pdev_id);
++		if (trial) {
++			qdf_mem_free(q_params);
++			PT_TARGET_REO_TAIL(trial, trial_mask, QDF_STATUS_E_INVAL);
++		}
+ 		return QDF_STATUS_E_INVAL;
+ 	}
+ 
+@@ -224,6 +253,7 @@
+ out:
+ 	wlan_objmgr_pdev_release_ref(pdev, WLAN_PDEV_TARGET_IF_ID);
+ 	qdf_mem_free(q_params);
++	PT_TARGET_REO_TAIL(trial, trial_mask, status);
+ 
+ 	return status;
+ }
+@@ -260,6 +290,8 @@
+ 	status = scheduler_post_message(QDF_MODULE_ID_TARGET_IF,
+ 					QDF_MODULE_ID_TARGET_IF,
+ 					QDF_MODULE_ID_TARGET_IF, &msg);
++
++	PT_TARGET_REO_POST(PT_TARGET_REO_KEY(psoc, vdev_id, peer_macaddr), BIT(tid), status);
+ 
+ 	if (status != QDF_STATUS_SUCCESS)
+ 		qdf_mem_free(q_params);
+@@ -308,6 +340,8 @@
+ 					QDF_MODULE_ID_TARGET_IF,
+ 					QDF_MODULE_ID_TARGET_IF, &msg);
+ 
++	PT_TARGET_REO_POST(PT_TARGET_REO_KEY(psoc, tid_params->vdev_id, tid_params->peer_macaddr), tid_params->tid_bitmap, status);
++
+ 	if (status != QDF_STATUS_SUCCESS)
+ 		qdf_mem_free(q_params);
+ 
+@@ -354,6 +388,9 @@
+ 							      &param);
+ 	wlan_objmgr_pdev_release_ref(pdev, WLAN_PDEV_TARGET_IF_ID);
+ 
++	PT_TARGET_REO_POST(PT_TARGET_REO_KEY(psoc, vdev_id, peer_macaddr), BIT(tid), QDF_STATUS_SUCCESS);
++	PT_TARGET_REO_TAIL(PT_TARGET_REO_KEY(psoc, vdev_id, peer_macaddr), BIT(tid), status);
++
+ 	return status;
+ }
+ 
+@@ -382,6 +419,9 @@
+ 	status = wmi_unified_peer_multi_rx_reorder_queue_setup_send(
+ 						pdev_wmi_handle, tid_params);
+ 	wlan_objmgr_pdev_release_ref(pdev, WLAN_PDEV_TARGET_IF_ID);
++
++	PT_TARGET_REO_POST(PT_TARGET_REO_KEY(psoc, tid_params->vdev_id, tid_params->peer_macaddr), tid_params->tid_bitmap, QDF_STATUS_SUCCESS);
++	PT_TARGET_REO_TAIL(PT_TARGET_REO_KEY(psoc, tid_params->vdev_id, tid_params->peer_macaddr), tid_params->tid_bitmap, status);
+ 
+ 	return status;
+ }
+diff --git a/qca-wifi-host-cmn/dp/wifi3.0/dp_rx_tid.c b/qca-wifi-host-cmn/dp/wifi3.0/dp_rx_tid.c
+--- a/qca-wifi-host-cmn/dp/wifi3.0/dp_rx_tid.c
++++ b/qca-wifi-host-cmn/dp/wifi3.0/dp_rx_tid.c
+@@ -1272,7 +1272,7 @@
+ #ifdef DRIVER_PASSTHRU_OWNER
+ 	struct dp_soc *soc = peer->vdev->pdev->soc;
+ 	struct dp_rx_tid *rx;
+-	u32 flags = 0;
++	u32 flags = tid << 8;
+ 
+ 	if (!pt_remote_peer_reo_enabled() || !peer->rx_tid ||
+ 	    !pt_remote_peer_release_key(soc->ctrl_psoc, peer->vdev->vdev_id,
+@@ -1326,6 +1326,10 @@
+ 	/*
+ 	 * Setup the rest of TID's to handle LFR
+ 	 */
++#ifdef DRIVER_PASSTHRU_OWNER
++	if (pt_remote_peer_reo_key(soc->ctrl_psoc, vdev->vdev_id, peer->mac_addr.raw))
++		return;
++#endif
+ 	dp_peer_setup_remaining_tids(peer);
+ }
+ 
+diff --git a/qca-wifi-host-cmn/dp/wifi3.0/be/dp_be_rx.h b/qca-wifi-host-cmn/dp/wifi3.0/be/dp_be_rx.h
+--- a/qca-wifi-host-cmn/dp/wifi3.0/be/dp_be_rx.h
++++ b/qca-wifi-host-cmn/dp/wifi3.0/be/dp_be_rx.h
+@@ -24,6 +24,10 @@
+ #include "dp_be.h"
+ #include "dp_peer.h"
+ #include <dp_rx.h>
++
++#ifdef DRIVER_PASSTHRU_OWNER
++#include <qdf_pt_remote_peer.h>
++#endif
+ #include "hal_be_rx.h"
+ #include "hal_be_rx_tlv.h"
+ 
+@@ -467,6 +471,12 @@
+ 						   peer->peer_id,
+ 						   tid, peer->rx_tid[tid].
+ 							hw_qdesc_paddr);
++#ifdef DRIVER_PASSTHRU_OWNER
++			pt_remote_peer_reo_binding(
++				pt_remote_peer_reo_key(soc->ctrl_psoc, peer->vdev->vdev_id,
++						       peer->mac_addr.raw),
++				PT_REMOTE_REO_QREF_WRITE, BIT(tid), 0);
++#endif
+ 
+ 			if (!tid_bitmap) {
+ 				dp_peer_err("tid_bitmap=0. All tids setup fail");
+diff --git a/qca-wifi-host-cmn/dp/wifi3.0/dp_peer.c b/qca-wifi-host-cmn/dp/wifi3.0/dp_peer.c
+--- a/qca-wifi-host-cmn/dp/wifi3.0/dp_peer.c
++++ b/qca-wifi-host-cmn/dp/wifi3.0/dp_peer.c
+@@ -2652,6 +2652,12 @@
+ 		for (tid = 0; tid < DP_MAX_TIDS; tid++) {
+ 			hal_reo_shared_qaddr_write(soc->hal_soc,
+ 						   peer_id, tid, 0);
++#ifdef DRIVER_PASSTHRU_OWNER
++			pt_remote_peer_reo_binding(
++				pt_remote_peer_reo_key(soc->ctrl_psoc, peer->vdev->vdev_id,
++						       peer->mac_addr.raw),
++				PT_REMOTE_REO_QREF_CLEAR, BIT(tid), 0);
++#endif
+ 		}
+ 	}
+ }
+diff --git a/qca-wifi-host-cmn/dp/wifi3.0/dp_htt.c b/qca-wifi-host-cmn/dp/wifi3.0/dp_htt.c
+--- a/qca-wifi-host-cmn/dp/wifi3.0/dp_htt.c
++++ b/qca-wifi-host-cmn/dp/wifi3.0/dp_htt.c
+@@ -23,6 +23,10 @@
+ #include "dp_peer.h"
+ #include "dp_types.h"
+ #include "dp_pt_ba_peer.h"
++
++#ifdef DRIVER_PASSTHRU_OWNER
++#include <qdf_pt_remote_peer.h>
++#endif
+ #include "dp_internal.h"
+ #include "dp_ipa.h"
+ #include "dp_rx.h"
+@@ -3597,6 +3601,13 @@
+ 	pt_ba_peer_record(peer, PT_BA_HTT_LOOKUP, tid, win_sz);
+ #endif
+ 
++#ifdef DRIVER_PASSTHRU_OWNER
++	if (pt_remote_peer_reo_skip_addba(soc->ctrl_psoc, peer->vdev->vdev_id,
++					  peer->mac_addr.raw)) {
++		dp_peer_unref_delete(peer, DP_MOD_ID_HTT);
++		return;
++	}
++#endif
+ 	status = dp_addba_requestprocess_wifi3((struct cdp_soc_t *)soc,
+ 					       peer->mac_addr.raw,
+ 					       peer->vdev->vdev_id, 0,

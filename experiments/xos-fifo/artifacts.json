@@ -1,0 +1,5 @@
+{
+  "wideband/ring/qca_cld3_kiwi_v2.ko": "481e3474ea6b42acab5bb5a35b5be7b5e291aa975d7422034ca4e750e857d71c",
+  "xos-fifo/libxos.so": "44b5d8b70e590de64d5c4177e9f25123756cab8cb4151e2dcd9a457cb1ff3a49",
+  "device-tests/20261110/xos_vhas_flow": "f11d4a3655cf5b1062b4855771bc7d1d9d09d45a68b2fb0d0a8391288ec0d21d"
+}

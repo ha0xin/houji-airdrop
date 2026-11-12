@@ -1,0 +1,118 @@
+--- a/radio-owly.sh
++++ b/radio-owly.sh
+@@ -254,6 +254,11 @@
+  case "$app_sha" in *[!0-9a-f]*) return 1;; esac
+  check "$app_sha" "$ROOT/houji-owly-outgoing-vht"
+  echo "OUTGOING_VHT_BUILD_SHA=$app_sha"
++ winit_sha=$(cat "$ROOT/wonder-init-2ss.sha")
++ test "${#winit_sha}" = 64
++ case "$winit_sha" in *[!0-9a-f]*) return 1;; esac
++ check "$winit_sha" "$ROOT/wonder-init-2ss"
++ echo "WONDER_INIT_2SS_SHA=$winit_sha"
+  check "$CANDIDATE" "$RADIO/amss20.bin"
+  check 9a8345d87ec1186a29b413935b4efdbd38566e7e22374e70a7a85510b2970e9a "$RADIO/houji_wonder_bridge.ko"
+  qca="$ROOT/qca_cld3_kiwi_v2-remote-peer.ko"
+@@ -302,18 +307,25 @@
+  "$BB" mount -i -o remount,bind,ro,nosuid,relatime "$RADIO/amss20.bin" "$AMSS"
+  insmod "$RADIO/houji_wonder_bridge.ko"
+  vht=0
+- case "$profile" in vht80|vht80-sgi) vht=1;; esac
++ vht_2ss=0
++ case "$profile" in
++  vht80|vht80-sgi) vht=1 ;;
++  vht80-2ss-sgi|vht80-2ss-mcs8-sgi|vht80-2ss-mcs9-sgi) vht=1; vht_2ss=1 ;;
++ esac
+  set -- pt_exclusive=1 pt_zero_serial=1 pt_rx_metadata=1 pt_vht80="$vht" pt_rate_observe=1 pt_single_ring=1
+  case "$ba_mode" in
+   on) set -- "$@" pt_ba_observe=1 ;;
+   peer) set -- "$@" pt_ba_observe=1 "pt_ba_peer=$peer" ;;
+   caps) set -- "$@" pt_peer_caps_observe=1 ;;
+  esac
+- bounded insmod "$qca" "$@" pt_rx_capacity_4224=1 "pt_rx_phy_peer=$peer"
++ bounded insmod "$qca" "$@" pt_rx_capacity_4224=1 "pt_rx_phy_peer=$peer" pt_vht80_2ss="$vht_2ss"
+  test "$(cat "$W/parameters/pt_rx_phy_peer")" = "$peer"
+  echo RX_PHY_PEER_READBACK=Y
+  test "$(cat "$W/parameters/pt_rx_capacity_4224")" = Y
+  echo RX_CAPACITY_LOAD_READBACK=Y
++ expected_2ss=$(if test "$vht_2ss" = 1; then echo Y; else echo N; fi)
++ test "$(cat "$W/parameters/pt_vht80_2ss")" = "$expected_2ss"
++ echo "VHT80_2SS_LOAD_READBACK=$expected_2ss"
+  case "$ba_mode" in
+   off) test "$(cat "$W/parameters/pt_ba_observe")" = N ;;
+   on|peer) test "$(cat "$W/parameters/pt_ba_observe")" = Y ;;
+@@ -335,8 +347,8 @@
+  insmod "$RADIO/wonder.ko" synthetic_provider=1
+  phy=$(iw phy | awk '$0 == "Wiphy wonder" { found=1; next } found && $1 == "wiphy" && $2 == "index:" { print $3; exit }')
+  case "$phy" in ''|*[!0-9]*) return 1;; esac
+- bounded ./wonder-init create "$phy"
+- bounded ./wonder-init cache "$phy" "$(cat /sys/class/net/wonder0/ifindex)" "$profile" "$country" 149
++ bounded ./wonder-init-2ss create "$phy"
++ bounded ./wonder-init-2ss cache "$phy" "$(cat /sys/class/net/wonder0/ifindex)" "$profile" "$country" 149
+  # Allow the complete radiotap+MPDU length on the monitor.
+  if test "$aggregation" = amsdu; then ip link set dev wonder0 mtu 8192; fi
+  bounded ip link set dev wonder0 up
+@@ -385,7 +397,7 @@
+ }
+ 
+ run_phase() {
+- HOUJI_OWLY_OUTGOING_VHT="$outgoing_vht" ./houji-owly-outgoing-vht "$peer" "$aggregation" "$ack" > "$STATE/runner.log" 2>&1 &
++ HOUJI_OWLY_OUTGOING_VHT="$outgoing_vht" HOUJI_OWLY_ACCEPT_ADDBA="$accept_addba" ./houji-owly-outgoing-vht "$peer" "$aggregation" "$ack" > "$STATE/runner.log" 2>&1 &
+  driver=$!
+  for i in $(seq 1 10); do
+   if grep -q '^OWLY_READY ' "$STATE/runner.log"; then break; fi
+@@ -402,6 +414,7 @@
+  test "$(cat /sys/class/net/"$IFACE"/tx_queue_len)" = "$qlen"
+  routes
+  cat "$W/parameters/pt_rx_phy_stats" > "$phase_dir/before"
++ cat "$W/parameters/pt_rate_stats" > "$phase_dir/rate-before"
+  set -- "$count" "$size"
+  if test "$mss" != 0; then set -- "$@" "$mss"; fi
+  ./owly-hashprobe "$@" > "$STATE/server.log" 2>&1 &
+@@ -411,12 +424,14 @@
+  deadline=$(($(uptime_s) + (count == 6 ? 440 : 150)))
+  while test ! -e "$STATE/stop-$token"; do
+   kill -0 "$driver"
++  if test -e "$phase_dir/abort"; then break; fi
+   if ! kill -0 "$probe" 2>/dev/null; then wait "$probe"; probe=; break; fi
+   test "$(uptime_s)" -lt "$deadline"
+   sleep 1
+  done
+  test ! -e "$STATE/stop-$token"
+  cat "$W/parameters/pt_rx_phy_stats" > "$phase_dir/after"
++ cat "$W/parameters/pt_rate_stats" > "$phase_dir/rate-after"
+  stop_workers
+  probe= driver=
+  clean_routes
+@@ -447,10 +462,10 @@
+    test "$(uptime_s)" -lt "$lease_deadline"
+    sleep 1
+   done
+-  read -r outgoing_vht count size extra < "$phase_dir/request"
++  read -r outgoing_vht accept_addba count size extra < "$phase_dir/request"
+   test -z "$extra"
+-  case "$outgoing_vht:$count:$size" in
+-   0:2:1048576|1:2:1048576|0:2:16777216|1:2:16777216|0:6:67108864|1:6:67108864) ;;
++  case "$outgoing_vht:$accept_addba:$count:$size" in
++   0:0:2:1048576|1:0:2:1048576|2:0:2:1048576|2:1:2:1048576|2:2:2:1048576|0:0:2:16777216|1:0:2:16777216|2:0:2:16777216|2:1:2:16777216|2:2:2:16777216|0:0:6:67108864|1:0:6:67108864|2:0:6:67108864|2:1:6:67108864|2:2:6:67108864) ;;
+    *) return 2 ;;
+   esac
+   run_phase
+@@ -566,7 +581,8 @@
+   shift
+   test "$#" = 12
+   test "${12}" = 0
+-  test "$2:$3:$4:$8:$9:${10}:${11}" = vht80-sgi:amsdu:ack:1160:500:reference:0
++  case "$2" in vht80-sgi|vht80-2ss-sgi|vht80-2ss-mcs8-sgi|vht80-2ss-mcs9-sgi) ;; *) exit 2 ;; esac
++  test "$3:$4:$8:$9:${10}:${11}" = amsdu:ack:1160:500:reference:0
+   test "$6:$7" = 0:0
+   case "${11:-0}" in
+    0) ;;
+@@ -581,7 +597,7 @@
+   case "$8:$9" in 0:500|1160:500|1160:2048) ;; *) exit 2;; esac
+   case "$1" in ''|*[!a-zA-Z0-9-]*) exit 2;; esac
+   case "$2:$3:$4" in
+-   ht20:single:ack|vht80:single:ack|vht80:amsdu:ack|vht80-sgi:amsdu:ack|vht80-sgi:amsdu:noack) ;;
++   ht20:single:ack|vht80:single:ack|vht80:amsdu:ack|vht80-sgi:amsdu:ack|vht80-sgi:amsdu:noack|vht80-2ss-sgi:amsdu:ack|vht80-2ss-mcs8-sgi:amsdu:ack|vht80-2ss-mcs9-sgi:amsdu:ack) ;;
+    *) exit 2;;
+   esac
+   echo "$5" | grep -Eq '^([0-9a-f]{2}:){5}[0-9a-f]{2}$'

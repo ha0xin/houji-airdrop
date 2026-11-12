@@ -1,0 +1,131 @@
+--- a/crates/owly-awdl/src/node.rs
++++ b/crates/owly-awdl/src/node.rs
+@@ -109,6 +109,8 @@
+     pub no_ack: bool,
+     /// Accept a peer's Block Ack session (AWDL-15).
+     pub accept_addba: bool,
++    /// Advertise 80 MHz VHT with one spatial stream and the 3895-byte MPDU limit.
++    pub advertise_vht80_1ss: bool,
+     /// Send unicast packets to one peer as A-MSDUs, up to the peer's limit.
+     pub amsdu: bool,
+     /// The largest frame the radio takes, MAC header included.
+@@ -133,6 +135,7 @@
+             rate: TxRate::BASIC,
+             no_ack,
+             accept_addba: false,
++            advertise_vht80_1ss: false,
+             amsdu: false,
+             max_frame: 2304,
+             rssi_threshold: Some(-65),
+@@ -694,6 +697,7 @@
+             sequence: &self.sequence,
+             election: &self.election,
+             ht: Some(HT),
++            advertise_vht80_1ss: self.cfg.advertise_vht80_1ss,
+         };
+         let mif = subtype == frame::subtype::MIF;
+         let bytes = frame::action_frame(self.cfg.addr, seq, subtype, now.micros() as u32, |out| {
+--- a/crates/owly-awdl/src/tlv.rs
++++ b/crates/owly-awdl/src/tlv.rs
+@@ -352,6 +352,7 @@
+     pub sequence: &'a Sequence,
+     pub election: &'a crate::election::Election,
+     pub ht: Option<HtCapabilities>,
++    pub advertise_vht80_1ss: bool,
+ }
+ 
+ fn tlv(out: &mut Vec<u8>, kind: u8, value: impl FnOnce(&mut Vec<u8>)) {
+@@ -488,6 +489,23 @@
+     });
+ }
+ 
++fn put_vht80_1ss_capabilities(out: &mut Vec<u8>) {
++    const VHT_CAPABILITIES_IE: u8 = 191;
++    const CAPABILITIES_LEN: u8 = 12;
++    const MCS_1SS_0_TO_7: u16 = 0xfffc;
++
++    tlv(out, kind::IEEE80211_CONTAINER, |v| {
++        v.u8(VHT_CAPABILITIES_IE);
++        v.u8(CAPABILITIES_LEN);
++        // Max MPDU 3895, base 80 MHz support, optional VHT feature bits clear.
++        v.le32(0);
++        v.le16(MCS_1SS_0_TO_7); // RX MCS, NSS 2–8 unsupported
++        v.le16(0); // RX highest data rate unspecified
++        v.le16(MCS_1SS_0_TO_7); // TX MCS, NSS 2–8 unsupported
++        v.le16(0); // TX highest data rate unspecified
++    });
++}
++
+ /// A PSF's or MIF's TLVs, in legacy's order. Both carry the HT
+ /// capabilities, as an iPhone's do; only MIFs carry the host name.
+ pub fn put_all(out: &mut Vec<u8>, own: &Own, mif: bool) {
+@@ -500,6 +518,9 @@
+         put_ht_capabilities(out, ht);
+     }
+     if mif {
++        if own.advertise_vht80_1ss {
++            put_vht80_1ss_capabilities(out);
++        }
+         put_arpa(out, own.name);
+     }
+     put_data_path_state(out, own);
+@@ -513,6 +534,10 @@
+     use alloc::vec;
+ 
+     fn own_frame(mif: bool) -> Vec<u8> {
++        own_frame_with_vht(mif, false)
++    }
++
++    fn own_frame_with_vht(mif: bool, advertise_vht80_1ss: bool) -> Vec<u8> {
+         let mac = MacAddr([2, 0, 0, 0, 0, 1]);
+         let seq = Sequence::fixed(Channel(44));
+         let mut e = Election::own(mac);
+@@ -533,10 +558,28 @@
+             sequence: &seq,
+             election: &e,
+             ht: Some(HtCapabilities::ONE_STREAM),
++            advertise_vht80_1ss,
+         };
+         let mut out = Vec::new();
+         put_all(&mut out, &own, mif);
+         out
++    }
++
++    #[test]
++    fn vht80_1ss_only_extends_the_mif() {
++        let psf = own_frame(false);
++        assert_eq!(own_frame_with_vht(false, true), psf);
++
++        let mif = own_frame(true);
++        let mut advertised = own_frame_with_vht(true, true);
++        let wire = [
++            17, 14, 0, 191, 12, 0, 0, 0, 0, 0xfc, 0xff, 0, 0, 0xfc, 0xff, 0, 0,
++        ];
++        let offset = advertised.windows(wire.len()).position(|bytes| bytes == wire).unwrap();
++        let kinds: Vec<u8> = tlvs(&advertised).map(|entry| entry.unwrap().kind).collect();
++        assert_eq!(kinds, vec![4, 5, 18, 24, 6, 7, 17, 16, 12, 21]);
++        advertised.drain(offset..offset + wire.len());
++        assert_eq!(advertised, mif);
+     }
+ 
+     // spec: AWDL-4
+--- a/crates/owly-awdl/tests/node.rs
++++ b/crates/owly-awdl/tests/node.rs
+@@ -63,6 +63,7 @@
+         sequence,
+         election: &e,
+         ht: Some(HtCapabilities::ONE_STREAM),
++        advertise_vht80_1ss: false,
+     };
+     frame::action_frame(mac, 1, kind, 0, |out| {
+         tlv::put_all(out, &own, kind == subtype::MIF)
+--- a/crates/owly-radio/src/capture.rs
++++ b/crates/owly-radio/src/capture.rs
+@@ -304,6 +304,7 @@
+             sequence: &seq,
+             election: &e,
+             ht: None,
++            advertise_vht80_1ss: false,
+         };
+         frame::action_frame(from, 0, frame::subtype::MIF, 0, |o| {
+             put_all(o, &own, true);

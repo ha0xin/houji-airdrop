@@ -1,0 +1,233 @@
+--- a/crates/owly-awdl/src/tlv.rs
++++ b/crates/owly-awdl/src/tlv.rs
+@@ -300,6 +300,33 @@
+     pub version: Option<(u8, u8)>,
+     pub ht: Option<HtCapabilities>,
+     pub data_path: Option<DataPathState>,
++    pub vht_max_mpdu: Option<usize>,
++    pub vht_container_present: bool,
++}
++
++/// The IEEE 802.11 container holds standard id/length/value IEs.
++fn vht_max_mpdu(mut ies: &[u8]) -> Option<usize> {
++    const VHT_CAPABILITIES: u8 = 191;
++    let mut limit = None;
++    while !ies.is_empty() {
++        let (&id, rest) = ies.split_first()?;
++        let (&len, rest) = rest.split_first()?;
++        let (body, tail) = rest.split_at_checked(usize::from(len))?;
++        if id == VHT_CAPABILITIES {
++            if body.len() != 12 || limit.is_some() {
++                return None;
++            }
++            let capability = u32::from_le_bytes(body[..4].try_into().ok()?);
++            limit = Some(match capability & 0x3 {
++                0 => 3895,
++                1 => 7991,
++                2 => 11454,
++                _ => return None,
++            });
++        }
++        ies = tail;
++    }
++    limit
+ }
+ 
+ impl Advert {
+@@ -325,6 +352,14 @@
+                 kind::ARPA => a.name = Some(parse_arpa(value)?),
+                 kind::VERSION => a.version = Some(parse_version(value)?),
+                 kind::HT_CAPABILITIES => a.ht = Some(HtCapabilities::parse(value)?),
++                kind::IEEE80211_CONTAINER => {
++                    a.vht_max_mpdu = if a.vht_container_present {
++                        None
++                    } else {
++                        vht_max_mpdu(value)
++                    };
++                    a.vht_container_present = true;
++                }
+                 kind::DATA_PATH_STATE => a.data_path = Some(DataPathState::parse(value)?),
+                 // The sync tree's layout isn't known (docs/open-questions.md,
+                 // item 11) and the election doesn't need it; the rest carry
+@@ -508,6 +543,34 @@
+ 
+ #[cfg(test)]
+ mod tests {
++
++    #[test]
++    fn vht_capability_checks_ie_and_container_bounds() {
++        use super::*;
++        let mut ie = [0u8; 14];
++        ie[0] = 191;
++        ie[1] = 12;
++        for (index, expected) in [Some(3895), Some(7991), Some(11454), None].into_iter().enumerate() {
++            ie[2] = index as u8;
++            assert_eq!(vht_max_mpdu(&ie), expected);
++        }
++        ie[2] = 2;
++        let mut duplicate = alloc::vec::Vec::from(ie);
++        duplicate.extend_from_slice(&ie);
++        assert_eq!(vht_max_mpdu(&duplicate), None);
++        assert_eq!(vht_max_mpdu(&ie[..13]), None);
++        let mut tlv = alloc::vec![kind::IEEE80211_CONTAINER, 14, 0];
++        tlv.extend_from_slice(&ie);
++        let a = Advert::parse(&tlv).unwrap();
++        assert!(a.vht_container_present);
++        assert_eq!(a.vht_max_mpdu, Some(11454));
++        let first = tlv.clone();
++        tlv.extend_from_slice(&first);
++        let a = Advert::parse(&tlv).unwrap();
++        assert!(a.vht_container_present);
++        assert_eq!(a.vht_max_mpdu, None);
++        assert!(Advert::parse(&first[..first.len() - 1]).is_err());
++    }
+     use super::*;
+     use crate::election::Election;
+     use alloc::vec;
+--- a/crates/owly-awdl/src/peer.rs
++++ b/crates/owly-awdl/src/peer.rs
+@@ -24,6 +24,7 @@
+     /// How far its AW schedule is ahead of ours, in µs.
+     pub sync_offset_us: Option<i64>,
+     pub ht: Option<HtCapabilities>,
++    pub(crate) vht_max_mpdu: Option<(Time, usize)>,
+     /// Its station address on its infrastructure network.
+     pub infra: Option<MacAddr>,
+     /// Whether it has sent a MIF.
+@@ -58,6 +59,7 @@
+             sequence: None,
+             sync_offset_us: None,
+             ht: None,
++            vht_max_mpdu: None,
+             infra: None,
+             mif: false,
+             v2: false,
+--- a/crates/owly-awdl/src/node.rs
++++ b/crates/owly-awdl/src/node.rs
+@@ -111,6 +111,8 @@
+     pub accept_addba: bool,
+     /// Send unicast packets to one peer as A-MSDUs, up to the peer's limit.
+     pub amsdu: bool,
++    /// Use VHT limits only when the host independently configures a VHT PHY.
++    pub vht_amsdu: bool,
+     /// The largest frame the radio takes, MAC header included.
+     pub max_frame: usize,
+     /// Peers heard more weakly than this, in dBm, aren't taken on; known
+@@ -134,6 +136,7 @@
+             no_ack,
+             accept_addba: false,
+             amsdu: false,
++            vht_amsdu: false,
+             max_frame: 2304,
+             rssi_threshold: Some(-65),
+             neighbour_echo: true,
+@@ -146,6 +149,7 @@
+ #[derive(Debug, Clone, Default, PartialEq, Eq)]
+ pub struct Stats {
+     pub rx_action: u64,
++    pub last_rx_vht_max_mpdu: usize,
+     pub rx_data: u64,
+     pub rx_malformed: u64,
+     pub tx_action: u64,
+@@ -421,6 +425,10 @@
+         // Parsed whole before anything changes.
+         let Ok(advert) = Advert::parse(tlvs) else {
+             self.stats.rx_malformed += 1;
++            if let Some(peer) = self.peers.get_mut(&src) {
++                peer.vht_max_mpdu = None;
++                self.stats.last_rx_vht_max_mpdu = 0;
++            }
+             return;
+         };
+         if !known && self.peers.len() >= self.cfg.max_peers.max(1) {
+@@ -432,6 +440,10 @@
+         peer.last_seen = now;
+         if rssi.is_some() {
+             peer.rssi = rssi;
++        }
++        if advert.vht_container_present {
++            peer.vht_max_mpdu = advert.vht_max_mpdu.map(|limit| (now, limit));
++            self.stats.last_rx_vht_max_mpdu = advert.vht_max_mpdu.unwrap_or(0);
+         }
+         let up = peer.absorb(&advert, subtype == frame::subtype::MIF);
+         if let Some(s) = advert.sync {
+@@ -791,6 +803,21 @@
+ 
+     // Bulk IPv6 data can wait briefly for another MSDU. Keep the delay
+     // before frame creation and recheck the channel when retrying.
++    fn amsdu_limit(cfg: &Config, peer: &Peer, now: Time) -> usize {
++        // This sender makes clear three-address QoS data with no HT control.
++        const QOS_HEADER: usize = frame::HEADER_LEN + 2;
++        const FCS: usize = 4;
++        let ht = peer.ht.map_or(AMSDU_DEFAULT_MAX, |h| h.max_amsdu());
++        let limit = match peer.vht_max_mpdu {
++            Some((received, mpdu)) if cfg.vht_amsdu && now.since(received) <= PEER_TIMEOUT_US => {
++                mpdu.saturating_sub(QOS_HEADER + FCS)
++            }
++            _ => ht,
++        };
++        // The packing check already counts subframe headers, LLC/AWDL and padding.
++        limit.min(cfg.max_frame.saturating_sub(QOS_HEADER))
++    }
++
+     const AMSDU_COALESCE_US: u64 = 1_000;
+     const AMSDU_COALESCE_MIN_BYTES: usize = 512;
+ 
+@@ -820,10 +847,7 @@
+             let rate = self.cfg.rate.for_peer(peer.ht.as_ref());
+             let mut batch = Vec::from([q]);
+             if self.cfg.amsdu && peer.ht.is_some() {
+-                let limit = peer
+-                    .ht
+-                    .map_or(AMSDU_DEFAULT_MAX, |h| h.max_amsdu())
+-                    .min(self.cfg.max_frame.saturating_sub(frame::HEADER_LEN + 2));
++                let limit = Self::amsdu_limit(&self.cfg, peer, now);
+                 let first_len = frame::amsdu_subframe_len(batch[0].packet.data.len());
+                 let mut len = first_len;
+                 let mut rest = VecDeque::new();
+@@ -916,3 +940,33 @@
+         t.max(now)
+     }
+ }
++
++#[cfg(test)]
++mod vht_amsdu_tests {
++    use super::*;
++
++    #[test]
++    fn vht_limit_accounts_for_mpdu_headers_and_falls_back() {
++        let local = MacAddr([2, 0, 0, 0, 0, 1]);
++        let remote = MacAddr([2, 0, 0, 0, 0, 2]);
++        let now = Time(1);
++        let mut cfg = Config::new(local, "test", RadioConstraints {
++            channel: Channel(149), presence: Presence::Fixed,
++        });
++        let mut peer = Peer::new(remote, now);
++        cfg.max_frame = 12000;
++        peer.ht = Some(HtCapabilities::ONE_STREAM);
++        peer.vht_max_mpdu = Some((now, 11454));
++        assert_eq!(Node::amsdu_limit(&cfg, &peer, now), 3839);
++        cfg.vht_amsdu = true;
++        for limit in [3895, 7991, 11454] {
++            peer.vht_max_mpdu = Some((now, limit));
++            assert_eq!(Node::amsdu_limit(&cfg, &peer, now) + 26 + 4, limit);
++        }
++        cfg.max_frame = 7935;
++        assert_eq!(Node::amsdu_limit(&cfg, &peer, now) + 26, 7935);
++        assert_eq!(Node::amsdu_limit(&cfg, &peer, now.plus(PEER_TIMEOUT_US + 1)), 3839);
++        peer.vht_max_mpdu = None;
++        assert_eq!(Node::amsdu_limit(&cfg, &peer, now), 3839);
++    }
++}
+--- a/crates/owly-awdl/src/driver.rs
++++ b/crates/owly-awdl/src/driver.rs
+@@ -379,7 +379,8 @@
+         let s = self.node.stats();
+         let l = &self.lateness;
+         tracing::info!(
+-            "STATS tx_action {} tx_unicast {} tx_multicast {} tx_amsdu {} | radio full {} gave up {} | rx_action {} rx_data {} rx_malformed {} delivered {} | dropped no_peer {} queue {} expired {} | syn held {} released {} | no_overlap {} | timer late avg {} µs max {} µs",
++            "STATS peer_vht_max_mpdu={} tx_action {} tx_unicast {} tx_multicast {} tx_amsdu {} | radio full {} gave up {} | rx_action {} rx_data {} rx_malformed {} delivered {} | dropped no_peer {} queue {} expired {} | syn held {} released {} | no_overlap {} | timer late avg {} µs max {} µs",
++            s.last_rx_vht_max_mpdu,
+             s.tx_action,
+             s.tx_unicast,
+             s.tx_multicast,

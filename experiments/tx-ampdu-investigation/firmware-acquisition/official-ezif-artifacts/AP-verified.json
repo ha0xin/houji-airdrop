@@ -1,0 +1,14 @@
+{
+  "source": "https://cloud-neofussvr.samsungmobile.com/NF_SmartDownloadBinaryForMass.do?file=/neofus/910/SM-S928B_4_20260920035540_tjiwm69uku_fac.zip.enc4",
+  "entry": {
+    "name": "AP_S928BXXU6EZIF_S928BXXU6EZIF_MQB115064488_REV00_user_low_ship_MULTI_CERT_meta_OS17.tar.md5",
+    "size": 21744404603,
+    "compressed": 19423140093,
+    "offset": 86034058,
+    "crc32": 3666200036,
+    "method": 8
+  },
+  "actual_crc32": 3666200036,
+  "actual_size": 21744404603,
+  "sha256": "09a16cb9055b8c82e02b9b67635971171ee134ca45d5356c82961defd1e7fe45"
+}

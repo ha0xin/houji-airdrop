@@ -1,0 +1,390 @@
+[
+  {
+    "run": "tcp-info-best2-64m",
+    "restored": true,
+    "directions": [
+      {
+        "direction": "Mac→小米",
+        "MBps": 2.155660389724188,
+        "endpoint_tcp_info": {
+          "before": {
+            "mss": 1148,
+            "rtt_current_ms": 0,
+            "rtt_smoothed_ms": 0,
+            "tx_packets": 0,
+            "tx_bytes": 0,
+            "tx_retransmit_packets": 0,
+            "tx_retransmit_bytes": 0,
+            "rx_packets": 0,
+            "rx_bytes": 0,
+            "rx_out_of_order_bytes": 0
+          },
+          "after": {
+            "mss": 1148,
+            "rtt_current_ms": 25,
+            "rtt_smoothed_ms": 27,
+            "tx_packets": 27769,
+            "tx_bytes": 67524452,
+            "tx_retransmit_packets": 369,
+            "tx_retransmit_bytes": 415576,
+            "rx_packets": 2,
+            "rx_bytes": 32,
+            "rx_out_of_order_bytes": 0
+          },
+          "delta": {
+            "tx_packets": 27769,
+            "tx_bytes": 67524452,
+            "tx_retransmit_packets": 369,
+            "tx_retransmit_bytes": 415576,
+            "rx_packets": 2,
+            "rx_bytes": 32,
+            "rx_out_of_order_bytes": 0
+          }
+        }
+      },
+      {
+        "direction": "小米→Mac",
+        "MBps": 6.426476138350456,
+        "endpoint_tcp_info": {
+          "before": {
+            "mss": 1148,
+            "rtt_current_ms": 0,
+            "rtt_smoothed_ms": 0,
+            "tx_packets": 0,
+            "tx_bytes": 0,
+            "tx_retransmit_packets": 0,
+            "tx_retransmit_bytes": 0,
+            "rx_packets": 0,
+            "rx_bytes": 0,
+            "rx_out_of_order_bytes": 0
+          },
+          "after": {
+            "mss": 1148,
+            "rtt_current_ms": 7,
+            "rtt_smoothed_ms": 19,
+            "tx_packets": 2,
+            "tx_bytes": 44,
+            "tx_retransmit_packets": 0,
+            "tx_retransmit_bytes": 0,
+            "rx_packets": 6347,
+            "rx_bytes": 67112308,
+            "rx_out_of_order_bytes": 6491940
+          },
+          "delta": {
+            "tx_packets": 2,
+            "tx_bytes": 44,
+            "tx_retransmit_packets": 0,
+            "tx_retransmit_bytes": 0,
+            "rx_packets": 6347,
+            "rx_bytes": 67112308,
+            "rx_out_of_order_bytes": 6491940
+          }
+        }
+      }
+    ]
+  },
+  {
+    "run": "tcp-timeline-best1-64m",
+    "restored": true,
+    "directions": [
+      {
+        "direction": "Mac→小米",
+        "MBps": 1.2952879115631097,
+        "timeline": {
+          "sample_count": 260,
+          "max_sample_spacing_ms": 204.84475,
+          "recovery_samples": 37,
+          "max_srtt_ms": 1000,
+          "send_window_min_bytes": 65535,
+          "send_window_median_bytes": 6292992.0,
+          "cwnd_min_bytes": 1148,
+          "cwnd_median_bytes": 84378.0,
+          "zero_delta_intervals": 18,
+          "zero_delta_field": "tx_bytes",
+          "longest_zero_delta": {
+            "start": {
+              "offset_ns": 1805118167,
+              "mss": 1148,
+              "rtt_current_ms": 680,
+              "rtt_smoothed_ms": 679,
+              "tx_packets": 1930,
+              "tx_bytes": 4541500,
+              "tx_retransmit_packets": 1,
+              "tx_retransmit_bytes": 1148,
+              "rx_packets": 0,
+              "rx_bytes": 0,
+              "rx_out_of_order_bytes": 0,
+              "snd_cwnd_bytes": 2276484,
+              "snd_wnd_bytes": 5094400,
+              "snd_sbbytes": 3839572,
+              "loss_recovery": 0
+            },
+            "end": {
+              "offset_ns": 2201809167,
+              "mss": 1148,
+              "rtt_current_ms": 895,
+              "rtt_smoothed_ms": 894,
+              "tx_packets": 1930,
+              "tx_bytes": 4541500,
+              "tx_retransmit_packets": 1,
+              "tx_retransmit_bytes": 1148,
+              "rx_packets": 0,
+              "rx_bytes": 0,
+              "rx_out_of_order_bytes": 0,
+              "snd_cwnd_bytes": 2276484,
+              "snd_wnd_bytes": 5987840,
+              "snd_sbbytes": 3393000,
+              "loss_recovery": 0
+            }
+          }
+        }
+      },
+      {
+        "direction": "小米→Mac",
+        "MBps": 3.7582901826686417,
+        "timeline": {
+          "sample_count": 90,
+          "max_sample_spacing_ms": 205.07,
+          "recovery_samples": 0,
+          "max_srtt_ms": 21,
+          "send_window_min_bytes": 65535,
+          "send_window_median_bytes": 65536.0,
+          "cwnd_min_bytes": 11480,
+          "cwnd_median_bytes": 11492.0,
+          "zero_delta_intervals": 17,
+          "zero_delta_field": "rx_bytes",
+          "longest_zero_delta": {
+            "start": {
+              "offset_ns": 201549833,
+              "mss": 1148,
+              "rtt_current_ms": 67,
+              "rtt_smoothed_ms": 21,
+              "tx_packets": 1,
+              "tx_bytes": 12,
+              "tx_retransmit_packets": 0,
+              "tx_retransmit_bytes": 0,
+              "rx_packets": 150,
+              "rx_bytes": 1596868,
+              "rx_out_of_order_bytes": 0,
+              "snd_cwnd_bytes": 11492,
+              "snd_wnd_bytes": 65536,
+              "snd_sbbytes": 0,
+              "loss_recovery": 0
+            },
+            "end": {
+              "offset_ns": 405104500,
+              "mss": 1148,
+              "rtt_current_ms": 67,
+              "rtt_smoothed_ms": 21,
+              "tx_packets": 1,
+              "tx_bytes": 12,
+              "tx_retransmit_packets": 0,
+              "tx_retransmit_bytes": 0,
+              "rx_packets": 150,
+              "rx_bytes": 1596868,
+              "rx_out_of_order_bytes": 0,
+              "snd_cwnd_bytes": 11492,
+              "snd_wnd_bytes": 65536,
+              "snd_sbbytes": 0,
+              "loss_recovery": 0
+            }
+          }
+        }
+      }
+    ]
+  },
+  {
+    "run": "tcp-timeline-off1-64m",
+    "restored": true,
+    "directions": [
+      {
+        "direction": "Mac→小米",
+        "MBps": 2.1364837109108312,
+        "endpoint_tcp_info": {
+          "before": {
+            "mss": 1148,
+            "rtt_current_ms": 0,
+            "rtt_smoothed_ms": 0,
+            "tx_packets": 0,
+            "tx_bytes": 0,
+            "tx_retransmit_packets": 0,
+            "tx_retransmit_bytes": 0,
+            "rx_packets": 0,
+            "rx_bytes": 0,
+            "rx_out_of_order_bytes": 0
+          },
+          "after": {
+            "mss": 1148,
+            "rtt_current_ms": 21,
+            "rtt_smoothed_ms": 23,
+            "tx_packets": 27776,
+            "tx_bytes": 67463336,
+            "tx_retransmit_packets": 309,
+            "tx_retransmit_bytes": 354460,
+            "rx_packets": 2,
+            "rx_bytes": 32,
+            "rx_out_of_order_bytes": 0
+          },
+          "delta": {
+            "tx_packets": 27776,
+            "tx_bytes": 67463336,
+            "tx_retransmit_packets": 309,
+            "tx_retransmit_bytes": 354460,
+            "rx_packets": 2,
+            "rx_bytes": 32,
+            "rx_out_of_order_bytes": 0
+          }
+        }
+      },
+      {
+        "direction": "小米→Mac",
+        "MBps": 6.309358138277244,
+        "endpoint_tcp_info": {
+          "before": {
+            "mss": 1148,
+            "rtt_current_ms": 0,
+            "rtt_smoothed_ms": 0,
+            "tx_packets": 0,
+            "tx_bytes": 0,
+            "tx_retransmit_packets": 0,
+            "tx_retransmit_bytes": 0,
+            "rx_packets": 0,
+            "rx_bytes": 0,
+            "rx_out_of_order_bytes": 0
+          },
+          "after": {
+            "mss": 1148,
+            "rtt_current_ms": 7,
+            "rtt_smoothed_ms": 23,
+            "tx_packets": 2,
+            "tx_bytes": 44,
+            "tx_retransmit_packets": 0,
+            "tx_retransmit_bytes": 0,
+            "rx_packets": 6337,
+            "rx_bytes": 67108864,
+            "rx_out_of_order_bytes": 6641180
+          },
+          "delta": {
+            "tx_packets": 2,
+            "tx_bytes": 44,
+            "tx_retransmit_packets": 0,
+            "tx_retransmit_bytes": 0,
+            "rx_packets": 6337,
+            "rx_bytes": 67108864,
+            "rx_out_of_order_bytes": 6641180
+          }
+        }
+      }
+    ]
+  },
+  {
+    "run": "tcp-timeline-best2-64m",
+    "restored": true,
+    "directions": [
+      {
+        "direction": "Mac→小米",
+        "MBps": 2.1326336252960627,
+        "timeline": {
+          "sample_count": 158,
+          "max_sample_spacing_ms": 205.014042,
+          "recovery_samples": 16,
+          "max_srtt_ms": 1504,
+          "send_window_min_bytes": 65535,
+          "send_window_median_bytes": 6292992.0,
+          "cwnd_min_bytes": 1012,
+          "cwnd_median_bytes": 79786.0,
+          "zero_delta_intervals": 4,
+          "zero_delta_field": "tx_bytes",
+          "longest_zero_delta": {
+            "start": {
+              "offset_ns": 3603334666,
+              "mss": 1148,
+              "rtt_current_ms": 465,
+              "rtt_smoothed_ms": 492,
+              "tx_packets": 2811,
+              "tx_bytes": 8387028,
+              "tx_retransmit_packets": 27,
+              "tx_retransmit_bytes": 30724,
+              "rx_packets": 0,
+              "rx_bytes": 0,
+              "rx_out_of_order_bytes": 0,
+              "snd_cwnd_bytes": 3237360,
+              "snd_wnd_bytes": 6292992,
+              "snd_sbbytes": 3937152,
+              "loss_recovery": 0
+            },
+            "end": {
+              "offset_ns": 4205098000,
+              "mss": 1148,
+              "rtt_current_ms": 1055,
+              "rtt_smoothed_ms": 1054,
+              "tx_packets": 2811,
+              "tx_bytes": 8387028,
+              "tx_retransmit_packets": 27,
+              "tx_retransmit_bytes": 30724,
+              "rx_packets": 0,
+              "rx_bytes": 0,
+              "rx_out_of_order_bytes": 0,
+              "snd_cwnd_bytes": 3237360,
+              "snd_wnd_bytes": 6292992,
+              "snd_sbbytes": 2653028,
+              "loss_recovery": 0
+            }
+          }
+        }
+      },
+      {
+        "direction": "小米→Mac",
+        "MBps": 6.4496378014070475,
+        "timeline": {
+          "sample_count": 53,
+          "max_sample_spacing_ms": 204.865958,
+          "recovery_samples": 0,
+          "max_srtt_ms": 20,
+          "send_window_min_bytes": 65535,
+          "send_window_median_bytes": 65536,
+          "cwnd_min_bytes": 11480,
+          "cwnd_median_bytes": 11492,
+          "zero_delta_intervals": 1,
+          "zero_delta_field": "rx_bytes",
+          "longest_zero_delta": {
+            "start": {
+              "offset_ns": 1804796500,
+              "mss": 1148,
+              "rtt_current_ms": 35,
+              "rtt_smoothed_ms": 20,
+              "tx_packets": 1,
+              "tx_bytes": 12,
+              "tx_retransmit_packets": 0,
+              "tx_retransmit_bytes": 0,
+              "rx_packets": 1445,
+              "rx_bytes": 15039948,
+              "rx_out_of_order_bytes": 4222344,
+              "snd_cwnd_bytes": 11492,
+              "snd_wnd_bytes": 65536,
+              "snd_sbbytes": 0,
+              "loss_recovery": 0
+            },
+            "end": {
+              "offset_ns": 2004775541,
+              "mss": 1148,
+              "rtt_current_ms": 35,
+              "rtt_smoothed_ms": 20,
+              "tx_packets": 1,
+              "tx_bytes": 12,
+              "tx_retransmit_packets": 0,
+              "tx_retransmit_bytes": 0,
+              "rx_packets": 1445,
+              "rx_bytes": 15039948,
+              "rx_out_of_order_bytes": 4222344,
+              "snd_cwnd_bytes": 11492,
+              "snd_wnd_bytes": 65536,
+              "snd_sbbytes": 0,
+              "loss_recovery": 0
+            }
+          }
+        }
+      }
+    ]
+  }
+]

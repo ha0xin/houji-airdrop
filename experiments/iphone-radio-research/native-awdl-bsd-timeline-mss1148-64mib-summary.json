@@ -1,0 +1,770 @@
+{
+  "weighted_MBps": 24.75985750757802,
+  "samples": [
+    {
+      "sample": 1,
+      "MBps": 27.30380030091242,
+      "seconds": 2.457858,
+      "mss_before_clamp": 1428,
+      "mss": 1148,
+      "samples": 13,
+      "rtt_nonzero_count": 12,
+      "srtt_min_ms": 14,
+      "srtt_median_ms": 27.0,
+      "srtt_max_ms": 60,
+      "tx_bytes_delta": 66408352,
+      "tx_retransmit_bytes_delta": 7448,
+      "tx_retransmit_packets_delta": 8,
+      "longest_zero_delta_ms": 0.0,
+      "cwnd_median_bytes": 1380792,
+      "snd_wnd_median_bytes": 2097120,
+      "loss_recovery_samples": 4,
+      "mac_scheduler": {
+        "schedule": [
+          {
+            "wall_ns": 1794309409417999872,
+            "infra_channel": 36,
+            "infra_percent_raw": 24,
+            "sdb_raw": 0,
+            "channel_triplet": [
+              6,
+              149,
+              149
+            ],
+            "slots": [
+              149,
+              149,
+              149,
+              149,
+              149,
+              149,
+              36,
+              36,
+              6,
+              149,
+              149,
+              149,
+              149,
+              149,
+              36,
+              36
+            ],
+            "state": "Data"
+          },
+          {
+            "wall_ns": 1794309410002000128,
+            "infra_channel": 36,
+            "infra_percent_raw": 24,
+            "sdb_raw": 0,
+            "channel_triplet": [
+              6,
+              149,
+              149
+            ],
+            "slots": [
+              149,
+              149,
+              149,
+              149,
+              149,
+              149,
+              36,
+              36,
+              6,
+              149,
+              149,
+              149,
+              149,
+              149,
+              36,
+              36
+            ],
+            "state": "Data"
+          }
+        ],
+        "rrm": [
+          {
+            "wall_ns": 1794309409417999872,
+            "channels": [
+              {
+                "channel": 6,
+                "bitmap": [
+                  "00",
+                  "00",
+                  "00",
+                  "00",
+                  "0f",
+                  "00",
+                  "00",
+                  "00"
+                ]
+              },
+              {
+                "channel": 149,
+                "bitmap": [
+                  "ff",
+                  "ff",
+                  "ff",
+                  "00",
+                  "f0",
+                  "ff",
+                  "ff",
+                  "00"
+                ]
+              },
+              {
+                "channel": 36,
+                "bitmap": [
+                  "00",
+                  "00",
+                  "00",
+                  "ff",
+                  "00",
+                  "00",
+                  "00",
+                  "ff"
+                ]
+              }
+            ]
+          },
+          {
+            "wall_ns": 1794309410466000128,
+            "channels": [
+              {
+                "channel": 6,
+                "bitmap": [
+                  "00",
+                  "00",
+                  "00",
+                  "00",
+                  "0f",
+                  "00",
+                  "00",
+                  "00"
+                ]
+              },
+              {
+                "channel": 149,
+                "bitmap": [
+                  "ff",
+                  "ff",
+                  "ff",
+                  "00",
+                  "f0",
+                  "ff",
+                  "ff",
+                  "00"
+                ]
+              },
+              {
+                "channel": 36,
+                "bitmap": [
+                  "00",
+                  "00",
+                  "00",
+                  "ff",
+                  "00",
+                  "00",
+                  "00",
+                  "ff"
+                ]
+              }
+            ]
+          },
+          {
+            "wall_ns": 1794309410840000000,
+            "channels": [
+              {
+                "channel": 6,
+                "bitmap": [
+                  "00",
+                  "00",
+                  "00",
+                  "00",
+                  "0f",
+                  "00",
+                  "00",
+                  "00"
+                ]
+              },
+              {
+                "channel": 149,
+                "bitmap": [
+                  "ff",
+                  "ff",
+                  "ff",
+                  "00",
+                  "f0",
+                  "ff",
+                  "ff",
+                  "00"
+                ]
+              },
+              {
+                "channel": 36,
+                "bitmap": [
+                  "00",
+                  "00",
+                  "00",
+                  "ff",
+                  "00",
+                  "00",
+                  "00",
+                  "ff"
+                ]
+              }
+            ]
+          }
+        ],
+        "steering": [
+          {
+            "wall_ns": 1794309409417999872,
+            "matched_roles": []
+          },
+          {
+            "wall_ns": 1794309409417999872,
+            "matched_roles": []
+          },
+          {
+            "wall_ns": 1794309410466000128,
+            "matched_roles": []
+          },
+          {
+            "wall_ns": 1794309410466000128,
+            "matched_roles": []
+          },
+          {
+            "wall_ns": 1794309411516999936,
+            "matched_roles": []
+          },
+          {
+            "wall_ns": 1794309411516999936,
+            "matched_roles": []
+          }
+        ],
+        "peer_dumps": [
+          {
+            "wall_ns": 1794309410002000128,
+            "matched_roles": [],
+            "peers": 2,
+            "cached": 1,
+            "Tx": 14333,
+            "Rx": 38061
+          }
+        ],
+        "rows_seen": 105,
+        "phy_or_ba_labels": 0
+      }
+    },
+    {
+      "sample": 2,
+      "MBps": 24.88487915787491,
+      "seconds": 2.69677275,
+      "mss_before_clamp": 1428,
+      "mss": 1148,
+      "samples": 14,
+      "rtt_nonzero_count": 13,
+      "srtt_min_ms": 8,
+      "srtt_median_ms": 30,
+      "srtt_max_ms": 183,
+      "tx_bytes_delta": 63111504,
+      "tx_retransmit_bytes_delta": 3444,
+      "tx_retransmit_packets_delta": 3,
+      "longest_zero_delta_ms": 0.0,
+      "cwnd_median_bytes": 2097120.0,
+      "snd_wnd_median_bytes": 2097120.0,
+      "loss_recovery_samples": 1,
+      "mac_scheduler": {
+        "schedule": [
+          {
+            "wall_ns": 1794309414660000000,
+            "infra_channel": 36,
+            "infra_percent_raw": 48,
+            "sdb_raw": 0,
+            "channel_triplet": [
+              6,
+              149,
+              149
+            ],
+            "slots": [
+              149,
+              149,
+              149,
+              149,
+              36,
+              36,
+              36,
+              36,
+              6,
+              149,
+              149,
+              149,
+              36,
+              36,
+              36,
+              36
+            ],
+            "state": "Data"
+          },
+          {
+            "wall_ns": 1794309416000999936,
+            "infra_channel": 36,
+            "infra_percent_raw": 48,
+            "sdb_raw": 0,
+            "channel_triplet": [
+              6,
+              149,
+              149
+            ],
+            "slots": [
+              149,
+              149,
+              149,
+              149,
+              36,
+              36,
+              36,
+              36,
+              6,
+              149,
+              149,
+              149,
+              36,
+              36,
+              36,
+              36
+            ],
+            "state": "Data"
+          }
+        ],
+        "rrm": [
+          {
+            "wall_ns": 1794309414660000000,
+            "channels": [
+              {
+                "channel": 6,
+                "bitmap": [
+                  "00",
+                  "00",
+                  "00",
+                  "00",
+                  "0f",
+                  "00",
+                  "00",
+                  "00"
+                ]
+              },
+              {
+                "channel": 149,
+                "bitmap": [
+                  "ff",
+                  "ff",
+                  "00",
+                  "00",
+                  "f0",
+                  "ff",
+                  "00",
+                  "00"
+                ]
+              },
+              {
+                "channel": 36,
+                "bitmap": [
+                  "00",
+                  "00",
+                  "ff",
+                  "ff",
+                  "00",
+                  "00",
+                  "ff",
+                  "ff"
+                ]
+              }
+            ]
+          },
+          {
+            "wall_ns": 1794309416005000192,
+            "channels": [
+              {
+                "channel": 6,
+                "bitmap": [
+                  "00",
+                  "00",
+                  "00",
+                  "00",
+                  "0f",
+                  "00",
+                  "00",
+                  "00"
+                ]
+              },
+              {
+                "channel": 149,
+                "bitmap": [
+                  "ff",
+                  "ff",
+                  "00",
+                  "00",
+                  "f0",
+                  "ff",
+                  "00",
+                  "00"
+                ]
+              },
+              {
+                "channel": 36,
+                "bitmap": [
+                  "00",
+                  "00",
+                  "ff",
+                  "ff",
+                  "00",
+                  "00",
+                  "ff",
+                  "ff"
+                ]
+              }
+            ]
+          },
+          {
+            "wall_ns": 1794309416789999872,
+            "channels": [
+              {
+                "channel": 6,
+                "bitmap": [
+                  "00",
+                  "00",
+                  "00",
+                  "00",
+                  "0f",
+                  "00",
+                  "00",
+                  "00"
+                ]
+              },
+              {
+                "channel": 149,
+                "bitmap": [
+                  "ff",
+                  "ff",
+                  "00",
+                  "00",
+                  "f0",
+                  "ff",
+                  "00",
+                  "00"
+                ]
+              },
+              {
+                "channel": 36,
+                "bitmap": [
+                  "00",
+                  "00",
+                  "ff",
+                  "ff",
+                  "00",
+                  "00",
+                  "ff",
+                  "ff"
+                ]
+              }
+            ]
+          }
+        ],
+        "steering": [
+          {
+            "wall_ns": 1794309414660000000,
+            "matched_roles": []
+          },
+          {
+            "wall_ns": 1794309414660000000,
+            "matched_roles": []
+          },
+          {
+            "wall_ns": 1794309415711000064,
+            "matched_roles": []
+          },
+          {
+            "wall_ns": 1794309415711000064,
+            "matched_roles": []
+          },
+          {
+            "wall_ns": 1794309416757999872,
+            "matched_roles": []
+          },
+          {
+            "wall_ns": 1794309416757999872,
+            "matched_roles": []
+          }
+        ],
+        "peer_dumps": [
+          {
+            "wall_ns": 1794309416000999936,
+            "matched_roles": [],
+            "peers": 2,
+            "cached": 1,
+            "Tx": 14337,
+            "Rx": 38077
+          }
+        ],
+        "rows_seen": 101,
+        "phy_or_ba_labels": 0
+      }
+    },
+    {
+      "sample": 3,
+      "MBps": 22.545941871741285,
+      "seconds": 2.9765385,
+      "mss_before_clamp": 1428,
+      "mss": 1148,
+      "samples": 15,
+      "rtt_nonzero_count": 14,
+      "srtt_min_ms": 7,
+      "srtt_median_ms": 44.0,
+      "srtt_max_ms": 202,
+      "tx_bytes_delta": 66443452,
+      "tx_retransmit_bytes_delta": 2296,
+      "tx_retransmit_packets_delta": 2,
+      "longest_zero_delta_ms": 0.0,
+      "cwnd_median_bytes": 2097120,
+      "snd_wnd_median_bytes": 2097120,
+      "loss_recovery_samples": 1,
+      "mac_scheduler": {
+        "schedule": [
+          {
+            "wall_ns": 1794309419903000064,
+            "infra_channel": 36,
+            "infra_percent_raw": 48,
+            "sdb_raw": 0,
+            "channel_triplet": [
+              6,
+              149,
+              149
+            ],
+            "slots": [
+              149,
+              149,
+              149,
+              149,
+              36,
+              36,
+              36,
+              36,
+              6,
+              149,
+              149,
+              149,
+              36,
+              36,
+              36,
+              36
+            ],
+            "state": "Data"
+          },
+          {
+            "wall_ns": 1794309422002000128,
+            "infra_channel": 36,
+            "infra_percent_raw": 48,
+            "sdb_raw": 0,
+            "channel_triplet": [
+              6,
+              149,
+              149
+            ],
+            "slots": [
+              149,
+              149,
+              149,
+              149,
+              36,
+              36,
+              36,
+              36,
+              6,
+              149,
+              149,
+              149,
+              36,
+              36,
+              36,
+              36
+            ],
+            "state": "Data"
+          }
+        ],
+        "rrm": [
+          {
+            "wall_ns": 1794309419903000064,
+            "channels": [
+              {
+                "channel": 6,
+                "bitmap": [
+                  "00",
+                  "00",
+                  "00",
+                  "00",
+                  "0f",
+                  "00",
+                  "00",
+                  "00"
+                ]
+              },
+              {
+                "channel": 149,
+                "bitmap": [
+                  "ff",
+                  "ff",
+                  "00",
+                  "00",
+                  "f0",
+                  "ff",
+                  "00",
+                  "00"
+                ]
+              },
+              {
+                "channel": 36,
+                "bitmap": [
+                  "00",
+                  "00",
+                  "ff",
+                  "ff",
+                  "00",
+                  "00",
+                  "ff",
+                  "ff"
+                ]
+              }
+            ]
+          },
+          {
+            "wall_ns": 1794309421276000000,
+            "channels": [
+              {
+                "channel": 6,
+                "bitmap": [
+                  "00",
+                  "00",
+                  "00",
+                  "00",
+                  "0f",
+                  "00",
+                  "00",
+                  "00"
+                ]
+              },
+              {
+                "channel": 149,
+                "bitmap": [
+                  "ff",
+                  "ff",
+                  "00",
+                  "00",
+                  "f0",
+                  "ff",
+                  "00",
+                  "00"
+                ]
+              },
+              {
+                "channel": 36,
+                "bitmap": [
+                  "00",
+                  "00",
+                  "ff",
+                  "ff",
+                  "00",
+                  "00",
+                  "ff",
+                  "ff"
+                ]
+              }
+            ]
+          },
+          {
+            "wall_ns": 1794309421304000000,
+            "channels": [
+              {
+                "channel": 6,
+                "bitmap": [
+                  "00",
+                  "00",
+                  "00",
+                  "00",
+                  "0f",
+                  "00",
+                  "00",
+                  "00"
+                ]
+              },
+              {
+                "channel": 149,
+                "bitmap": [
+                  "ff",
+                  "ff",
+                  "00",
+                  "00",
+                  "f0",
+                  "ff",
+                  "00",
+                  "00"
+                ]
+              },
+              {
+                "channel": 36,
+                "bitmap": [
+                  "00",
+                  "00",
+                  "ff",
+                  "ff",
+                  "00",
+                  "00",
+                  "ff",
+                  "ff"
+                ]
+              }
+            ]
+          }
+        ],
+        "steering": [
+          {
+            "wall_ns": 1794309419903000064,
+            "matched_roles": []
+          },
+          {
+            "wall_ns": 1794309419903000064,
+            "matched_roles": []
+          },
+          {
+            "wall_ns": 1794309420948999936,
+            "matched_roles": []
+          },
+          {
+            "wall_ns": 1794309420948999936,
+            "matched_roles": []
+          },
+          {
+            "wall_ns": 1794309422002000128,
+            "matched_roles": []
+          },
+          {
+            "wall_ns": 1794309422002000128,
+            "matched_roles": []
+          }
+        ],
+        "peer_dumps": [
+          {
+            "wall_ns": 1794309422002000128,
+            "matched_roles": [],
+            "peers": 3,
+            "cached": 1,
+            "Tx": 14341,
+            "Rx": 38103
+          }
+        ],
+        "rows_seen": 122,
+        "phy_or_ba_labels": 0
+      }
+    }
+  ]
+}

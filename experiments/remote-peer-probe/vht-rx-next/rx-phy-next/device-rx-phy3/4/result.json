@@ -1,0 +1,11 @@
+{
+  "token": "[REDACTED]",
+  "phase": 4,
+  "mode": "mif",
+  "bytes_per_sample": 16777216,
+  "pairs": 1,
+  "samples": [],
+  "mac_tcp_timeline_helper_sha256": "08df1ba7007c2e13dd959f118d103a181d98c040e03cc0a979e924a1127e9860",
+  "error": "radio lease already exited (1)",
+  "verified": false
+}

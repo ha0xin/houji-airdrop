@@ -1,0 +1,125 @@
+[
+  {
+    "token": "[REDACTED]",
+    "module_sha256": "bbb6d59c67942ec57da12fb6f367c82d4430ebda1abfca88ffac24c977f49ba7",
+    "outgoing_vht": {
+      "app_sha256": "93bb62c50f7ca36ab760a73c2cac529fad30b92692d47cb09087f0b163613c55",
+      "matching_app_load": true,
+      "requested": "mif",
+      "reported_scope": [
+        "Mif"
+      ],
+      "first_host_submitted_psf_container": [
+        "absent"
+      ],
+      "first_host_submitted_mif_container": [
+        "bf0c00000000fcff0000fcff0000"
+      ],
+      "verified": true
+    },
+    "restored": true,
+    "verified": true,
+    "result_path": "device-small-mif1/result.json",
+    "result_sha256": "2e313927d993288c5f034b9799c2183eb6dda5412bec9099ead7873c299fe8b1",
+    "samples": [
+      {
+        "direction": "Mac→小米",
+        "sample": 1,
+        "bytes": 1048576,
+        "status": "verified",
+        "MBps": 0.7131899750539196,
+        "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83"
+      },
+      {
+        "direction": "小米→Mac",
+        "sample": 2,
+        "bytes": 1048576,
+        "status": "verified",
+        "MBps": 8.865650946108188,
+        "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83"
+      }
+    ]
+  },
+  {
+    "token": "[REDACTED]",
+    "module_sha256": "bbb6d59c67942ec57da12fb6f367c82d4430ebda1abfca88ffac24c977f49ba7",
+    "outgoing_vht": {
+      "app_sha256": "93bb62c50f7ca36ab760a73c2cac529fad30b92692d47cb09087f0b163613c55",
+      "matching_app_load": true,
+      "requested": "both",
+      "reported_scope": [
+        "PsfAndMif"
+      ],
+      "first_host_submitted_psf_container": [
+        "bf0c00000000fcff0000fcff0000"
+      ],
+      "first_host_submitted_mif_container": [
+        "bf0c00000000fcff0000fcff0000"
+      ],
+      "verified": true
+    },
+    "restored": true,
+    "verified": true,
+    "result_path": "device-small-both1/result.json",
+    "result_sha256": "3543893d5099655673c84156f93ef48011ae55cb8a01864a66674c10e8ea9601",
+    "samples": [
+      {
+        "direction": "Mac→小米",
+        "sample": 1,
+        "bytes": 1048576,
+        "status": "verified",
+        "MBps": 0.8909263899802972,
+        "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83"
+      },
+      {
+        "direction": "小米→Mac",
+        "sample": 2,
+        "bytes": 1048576,
+        "status": "verified",
+        "MBps": 3.1655239968392093,
+        "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83"
+      }
+    ]
+  },
+  {
+    "token": "[REDACTED]",
+    "module_sha256": "bbb6d59c67942ec57da12fb6f367c82d4430ebda1abfca88ffac24c977f49ba7",
+    "outgoing_vht": {
+      "app_sha256": "93bb62c50f7ca36ab760a73c2cac529fad30b92692d47cb09087f0b163613c55",
+      "matching_app_load": true,
+      "requested": "mif",
+      "reported_scope": [
+        "Mif"
+      ],
+      "first_host_submitted_psf_container": [
+        "absent"
+      ],
+      "first_host_submitted_mif_container": [
+        "bf0c00000000fcff0000fcff0000"
+      ],
+      "verified": true
+    },
+    "restored": true,
+    "verified": true,
+    "result_path": "device-small-mif2/result.json",
+    "result_sha256": "89e760d4792436660f488627e784e7de41cc521b68c2a0d369e2fa78a60e1ede",
+    "samples": [
+      {
+        "direction": "Mac→小米",
+        "sample": 1,
+        "bytes": 1048576,
+        "status": "verified",
+        "MBps": 1.0404392015260193,
+        "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83"
+      },
+      {
+        "direction": "小米→Mac",
+        "sample": 2,
+        "bytes": 1048576,
+        "status": "verified",
+        "MBps": 8.851120318253933,
+        "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83"
+      }
+    ]
+  }
+]

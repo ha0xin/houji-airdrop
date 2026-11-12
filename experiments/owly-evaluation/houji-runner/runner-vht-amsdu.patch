@@ -1,0 +1,63 @@
+--- a/src/android.rs
++++ b/src/android.rs
+@@ -76,6 +76,9 @@
+     tx_submitted: u64,
+     tx_amsdu_mpdu: u64,
+     tx_amsdu_msdu: u64,
++    tx_amsdu_max_subframes: usize,
++    tx_amsdu_max_frame: usize,
++    tx_amsdu_above_ht: u64,
+ }
+ 
+ impl Monitor {
+@@ -141,6 +144,9 @@
+             tx_submitted: 0,
+             tx_amsdu_mpdu: 0,
+             tx_amsdu_msdu: 0,
++            tx_amsdu_max_subframes: 0,
++            tx_amsdu_max_frame: 0,
++            tx_amsdu_above_ht: 0,
+         })
+     }
+ }
+@@ -150,6 +156,9 @@
+         tracing::info!(air_rx_invalid = self.rx_invalid.0, air_tx_fatal = self.tx_fatal.0,
+                        air_tx_backpressure = self.tx_backpressure, air_tx_submitted = self.tx_submitted,
+                        air_tx_amsdu_mpdu = self.tx_amsdu_mpdu, air_tx_amsdu_msdu = self.tx_amsdu_msdu,
++                       air_tx_amsdu_max_subframes = self.tx_amsdu_max_subframes,
++                       air_tx_amsdu_max_frame = self.tx_amsdu_max_frame,
++                       air_tx_amsdu_above_ht = self.tx_amsdu_above_ht,
+                        "monitor totals");
+     }
+ }
+@@ -211,6 +220,9 @@
+                     {
+                         self.tx_amsdu_mpdu += 1;
+                         self.tx_amsdu_msdu += msdus.len() as u64;
++                        self.tx_amsdu_max_subframes = self.tx_amsdu_max_subframes.max(msdus.len());
++                        self.tx_amsdu_max_frame = self.tx_amsdu_max_frame.max(frame.bytes.len());
++                        self.tx_amsdu_above_ht += u64::from(body.len() > 3839);
+                     }
+                 }
+                 Ok(())
+@@ -376,6 +388,11 @@
+     cfg.no_ack = no_ack;
+     cfg.accept_addba = false;
+     cfg.amsdu = amsdu;
++    let vht_amsdu = std::env::var("HOUJI_OWLY_VHT_AMSDU").as_deref() == Ok("1");
++    if vht_amsdu && (!amsdu || no_ack) {
++        return Err(io::Error::other("VHT A-MSDU requires A-MSDU and ACK"));
++    }
++    cfg.vht_amsdu = vht_amsdu;
+     cfg.max_frame = if amsdu { 7935 } else { 2304 };
+     cfg.rssi_threshold = None;
+ 
+@@ -390,7 +407,7 @@
+     let mut failed = running.failed();
+     println!("OWLY_COALESCE_US={}", option_env!("HOUJI_OWLY_COALESCE_US").unwrap_or("0"));
+     println!(
+-        "OWLY_READY iface={TUN} addr={} peer={peer} channel=149 amsdu={amsdu} noack={no_ack} ba=false",
++        "OWLY_READY iface={TUN} addr={} peer={peer} channel=149 amsdu={amsdu} noack={no_ack} ba=false vht_amsdu={vht_amsdu}",
+         addr.link_local()
+     );
+     let result = loop {

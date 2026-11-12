@@ -1,0 +1,82 @@
+--- a/run-remote-peer.py
++++ b/run-remote-peer.py
+@@ -212,10 +212,11 @@
+    stamp=substr($0, RSTART, RLENGTH)
+    gsub(/[][[:space:]]/, "", stamp)
+    if (first == "") first=stamp
++   else if (stamp+0 < last+0) nonmonotonic=1
+    last=stamp
+  }
+  $0 ~ pattern {print}
+- END {if (first == "" || last == "") exit 2; print first, last}
++ END {if (first == "" || last == "" || nonmonotonic) exit 2; print first, last}
+ '
+ """).splitlines()
+     if (len(rows) < 2 or not re.fullmatch(r"[0-9a-f-]{36}", rows[0]) or
+@@ -228,15 +229,41 @@
+     return rows[0], rows[1:-1], first, last
+ 
+ 
++def write_kernel_log_snapshot(path, snapshot):
++    boot, rows, first, last = snapshot
++    path.write_text(json.dumps({"boot": boot, "rows": rows, "time_range": [first, last]},
++                               indent=2) + "\n")
++
++
+ def map_only_log_snapshot():
+     return bounded_kernel_log_snapshot(r"PT_REO_DMA_(FREE|ERROR) generation=")
++
++
++def kernel_log_timestamps(rows, first, last):
++    stamps = []
++    for row in rows:
++        match = re.match(r"^\[\s*(\d+\.\d+)\]", row)
++        if not match:
++            return None
++        stamp = float(match.group(1))
++        if not first <= stamp <= last or (stamps and stamp < stamps[-1]):
++            return None
++        stamps.append(stamp)
++    return stamps
+ 
+ 
+ def kernel_log_delta(before, after):
+     same_boot = after[0] == before[0]
+     old_rows, new_rows = Counter(before[1]), Counter(after[1])
+-    coverage = same_boot and after[2] <= before[3] <= after[3] and not (old_rows - new_rows)
+     rows = list((new_rows - old_rows).elements())
++    old_stamps = kernel_log_timestamps(before[1], before[2], before[3])
++    after_stamps = kernel_log_timestamps(after[1], after[2], after[3])
++    if old_stamps is None or after_stamps is None:
++        return same_boot, False, rows
++    retained = Counter(row for row, stamp in zip(before[1], old_stamps) if stamp >= after[2])
++    fresh_stamps = kernel_log_timestamps(rows, after[2], after[3])
++    coverage = (same_boot and after[2] <= before[3] <= after[3] and not (retained - new_rows)
++                and fresh_stamps is not None and all(stamp > before[3] for stamp in fresh_stamps))
+     return same_boot, coverage, rows
+ 
+ 
+@@ -307,6 +334,7 @@
+     return {"same_boot": same_boot, "kernel_log_coverage": coverage, "matching_load": owner,
+             "boot_before": before[0], "boot_after": after[0],
+             "dmesg_time_before": before[2:], "dmesg_time_after": after[2:],
++            "dmesg_matching_rows_before": before[1], "dmesg_matching_rows_after": after[1],
+             "observed": observed, "unexpected": unexpected, "new_lines": rows,
+             "verified": bool(verified)}
+ 
+@@ -638,6 +666,7 @@
+             reo_before = map_only_log_snapshot() if args.map_only else reo_log_snapshot()
+         if args.rx_capacity:
+             capacity_before = bounded_kernel_log_snapshot(r"PT_RX_CAPACITY ")
++            write_kernel_log_snapshot(args.results / "capacity-dmesg-before.json", capacity_before)
+         if current_awdl() != (peer, ifindex):
+             raise RuntimeError("live AWDL identity changed before launch")
+         if args.rx_capacity:
+@@ -741,6 +770,7 @@
+         if capacity_before and receipt.get("restored"):
+             try:
+                 capacity_after = bounded_kernel_log_snapshot(r"PT_RX_CAPACITY ")
++                write_kernel_log_snapshot(args.results / "capacity-dmesg-after.json", capacity_after)
+                 receipt["rx_capacity"] = rx_capacity_result(capacity_before, capacity_after, log, expected)
+             except Exception as error:
+                 receipt["rx_capacity_error"] = str(error)

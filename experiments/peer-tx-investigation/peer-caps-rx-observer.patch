@@ -1,0 +1,74 @@
+--- a/src/userspace/houji-runner/src/android.rs
++++ b/src/userspace/houji-runner/src/android.rs
+@@ -133,6 +133,8 @@
+     tx_fatal: DropCount,
+     tx_backpressure: u64,
+     tx_submitted: u64,
++    rx_psf_caps_reported: bool,
++    rx_mif_caps_reported: bool,
+     psf_reported: bool,
+     mif_reported: bool,
+     tx_addba_reported: bool,
+@@ -207,6 +209,8 @@
+             tx_fatal: DropCount::default(),
+             tx_backpressure: 0,
+             tx_submitted: 0,
++            rx_psf_caps_reported: false,
++            rx_mif_caps_reported: false,
+             psf_reported: false,
+             mif_reported: false,
+             tx_addba_reported: false,
+@@ -214,6 +218,45 @@
+             tx_amsdu_mpdu: 0,
+             tx_amsdu_msdu: 0,
+         })
++    }
++
++    fn report_first_peer_caps(&mut self, bytes: &[u8]) {
++        use owly_awdl::{frame, tlv};
++
++        if (self.rx_psf_caps_reported && self.rx_mif_caps_reported)
++            || bytes.get(10..16) != Some(self.peer.0.as_slice())
++        {
++            return;
++        }
++        let Ok(frame::Received::Action { subtype, tlvs, .. }) = frame::parse(bytes) else {
++            return;
++        };
++        let (label, reported) = match subtype {
++            frame::subtype::PSF if !self.rx_psf_caps_reported => ("PSF", &mut self.rx_psf_caps_reported),
++            frame::subtype::MIF if !self.rx_mif_caps_reported => ("MIF", &mut self.rx_mif_caps_reported),
++            _ => return,
++        };
++        let mut ht = None;
++        let mut container = None;
++        for entry in tlv::tlvs(tlvs) {
++            let Ok(entry) = entry else { return };
++            if entry.kind == tlv::kind::HT_CAPABILITIES {
++                if ht.replace(entry.value).is_some() { return; }
++            } else if entry.kind == tlv::kind::IEEE80211_CONTAINER {
++                if container.replace(entry.value).is_some() { return; }
++            }
++        }
++        let hex = |value: Option<&[u8]>| value.map_or_else(
++            || "absent".to_owned(),
++            |v| v.iter().map(|b| format!("{b:02x}")).collect::<String>(),
++        );
++        let unix_ms = std::time::SystemTime::now()
++            .duration_since(std::time::UNIX_EPOCH)
++            .map_or(0, |d| d.as_millis());
++        // CRC32 is a correlation label, not a privacy/anonymization guarantee.
++        let peer_crc32 = crc32fast::hash(&self.peer.0);
++        println!("OWLY_RX_PEER_CAPS subtype={label} unix_ms={unix_ms} peer_crc32={peer_crc32:08x} ht_tlv={} ieee80211_container={}", hex(ht), hex(container));
++        *reported = true;
+     }
+ 
+     fn report_first_tx_addba(&mut self, bytes: &[u8]) {
+@@ -351,6 +394,7 @@
+                     }
+                     let bytes = raw.to_vec();
+                     let rssi = received.rssi;
++                    self.report_first_peer_caps(&bytes);
+                     self.report_first_rx_addba_resp(&bytes);
+                     return Ok(Received { bytes, rssi });
+                 }

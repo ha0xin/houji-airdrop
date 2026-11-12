@@ -1,0 +1,46 @@
+--- a/radio-owly.sh
++++ b/radio-owly.sh
+@@ -247,8 +247,10 @@
+  sha256sum -c SHA256SUMS
+  check "$CANDIDATE" "$RADIO/amss20.bin"
+  check 9a8345d87ec1186a29b413935b4efdbd38566e7e22374e70a7a85510b2970e9a "$RADIO/houji_wonder_bridge.ko"
+- qca="$RADIO/qca_cld3_kiwi_v2.ko"
+- qca_sha=$RING_SHA
++ qca="$ROOT/qca_cld3_kiwi_v2-remote-peer.ko"
++ qca_sha=$(cat "$ROOT/remote-peer.sha")
++ test "${#qca_sha}" = 64
++ case "$qca_sha" in *[!0-9a-f]*) return 1;; esac
+  case "$ba_mode" in
+   off|on)
+    qca="$ROOT/qca_cld3_kiwi_v2-observer.ko"
+@@ -298,7 +300,9 @@
+   peer) set -- "$@" pt_ba_observe=1 "pt_ba_peer=$peer" ;;
+   caps) set -- "$@" pt_peer_caps_observe=1 ;;
+  esac
+- bounded insmod "$qca" "$@"
++ bounded insmod "$qca" "$@" pt_rx_capacity_4224=1
++ test "$(cat "$W/parameters/pt_rx_capacity_4224")" = Y
++ echo RX_CAPACITY_LOAD_READBACK=Y
+  case "$ba_mode" in
+   off) test "$(cat "$W/parameters/pt_ba_observe")" = N ;;
+   on|peer) test "$(cat "$W/parameters/pt_ba_observe")" = Y ;;
+@@ -504,7 +508,8 @@
+  job_lock
+  token=$1
+  for file in runner.log server.log before.txt after.txt; do rm -f "$STATE/$file"; done
+- rm -f "$STATE/stop-$token" "$STATE/result" "$STATE/candidate.sha"
++ rm -f "$STATE/stop-$token" "$STATE/result" "$STATE/candidate.sha" "$STATE/purpose"
++ printf 'capacity\n' > "$STATE/purpose"
+  echo "$token" > "$STATE/token"
+  state PREFLIGHT
+  trap finish_job EXIT
+@@ -522,7 +527,8 @@
+ case "${1:-}" in
+  run)
+   shift
+-  case "$#" in 10|11) ;; *) exit 2;; esac
++  test "$#" = 11
++  test "$2:$3:$4:$6:$7:$8:$9:${10}:${11}" = vht80-sgi:amsdu:ack:2:1048576:1160:500:reference:0
+   case "${11:-0}" in
+    0) ;;
+    1) test "$2:$3:$4:$8:$9:${10}" = vht80-sgi:amsdu:ack:1160:500:reference ;;

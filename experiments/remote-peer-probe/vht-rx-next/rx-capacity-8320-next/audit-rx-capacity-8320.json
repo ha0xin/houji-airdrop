@@ -1,0 +1,38 @@
+{
+  "baseline_module": "tested_wideband_ring",
+  "baseline_sha256": "481e3474ea6b42acab5bb5a35b5be7b5e291aa975d7422034ca4e750e857d71c",
+  "candidate_module": "out/qca_cld3_kiwi_v2-rx-capacity-8320.ko",
+  "candidate_sha256": "89cc24dccd930d5148e0bc50c1c6cf48a990cc3ccee03c7afa336558e861f042",
+  "abi": {
+    "modinfo_equal": false,
+    "modinfo_added": [
+      "parmtype=pt_rx_capacity_4224:bool"
+    ],
+    "modinfo_removed": [],
+    "versions_equal": true,
+    "versions_count": 567,
+    "ksymtab_equal": true,
+    "ksymtab_count": 0,
+    "params_added": [
+      "__param_pt_rx_capacity_4224",
+      "__param_pt_rx_phy_peer",
+      "__param_pt_rx_phy_stats",
+      "__param_str_pt_rx_capacity_4224",
+      "__param_str_pt_rx_phy_peer",
+      "__param_str_pt_rx_phy_stats"
+    ],
+    "params_removed": [],
+    "vermagic": [
+      "vermagic=6.1.68 SMP preempt mod_unload modversions aarch64"
+    ]
+  },
+  "checks": {
+    "versions_equal": true,
+    "ksymtab_equal": true,
+    "params_removed_empty": true,
+    "params_added_expected": true,
+    "modinfo_removed_empty": true,
+    "modinfo_added_expected": true,
+    "required_strings_present": true
+  }
+}

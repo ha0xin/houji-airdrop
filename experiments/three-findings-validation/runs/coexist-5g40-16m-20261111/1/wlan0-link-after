@@ -1,0 +1,8 @@
+Connected to 02:00:00:00:00:02 (on wlan0)
+	SSID: TEST_WIFI
+	freq: 5200
+	RX: 77277 bytes (258 packets)
+	TX: 44442 bytes (207 packets)
+	signal: -67 dBm
+	rx bitrate: 864.6 MBit/s 160MHz HE-MCS 4 HE-NSS 2 HE-GI 0 HE-DCM 0
+	tx bitrate: 864.6 MBit/s 160MHz HE-MCS 4 HE-NSS 2 HE-GI 0 HE-DCM 0
