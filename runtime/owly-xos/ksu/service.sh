@@ -22,7 +22,10 @@ done
 
 set_desc() {
   if [ -w "$MODDIR/module.prop" ]; then
-    sed "s|^description=.*|description=$1 ${BASE_DESC}|" "$MODDIR/module.prop" > "$MODDIR/module.prop.tmp" && \
+    awk -v pfx="$1" -v base="$BASE_DESC" '
+      /^description=/ { print "description=" pfx " " base; next }
+      { print }
+    ' "$MODDIR/module.prop" > "$MODDIR/module.prop.tmp" && \
       mv "$MODDIR/module.prop.tmp" "$MODDIR/module.prop"
   fi
 }
