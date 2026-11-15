@@ -2,16 +2,16 @@
 
 小米 14（houji）上的 AirDrop 实验实现。包括独立 App、WLAN 驱动移植与匿名化验证资料。
 
-**当前为研究源码仓库，不是可直接安装的发布包。** 独立构建已验证；当前开发主线聚焦 [`runtime/owly-xos/`](runtime/owly-xos/README.zh-CN.md)，为小米系统原版 `MIShare` 提供基于官方 `ezif-amss20.bin` 与免预绑定多对端硬件 TX A-MPDU 的高速 `xos0` 后端（16 MiB TCP 小米→Mac **64.08 MB/s**、Mac→小米 **9.55 MB/s**，原生互传收发 `157.80 MB` 视频端到端均通过，冷启动 **3.16–3.62 s**）；独立 App `Owly AirDrop` 在合入 `2.4 GHz` / 非 DFS `5 GHz` 普通 WLAN 共存后暂缓迭代。
+**当前为研究源码仓库，不是可直接安装的发布包。** 独立构建已验证；当前开发主线聚焦 [`runtime/owly-xos/`](runtime/owly-xos/README.zh-CN.md)，为小米系统原版 `MIShare` 提供基于官方 `ezif-amss20.bin` 与免预绑定多对端硬件 TX A-MPDU 的高速 `xos0` 后端；独立 App `Owly AirDrop` 在合入普通 WLAN 共存后暂缓迭代。
 
 本项目先后探索并对照了四条路线：
 
 1. **Google Quick Share / Mosey 路线**：使用从三星系统提取的 Mosey 服务提供 AWDL 链路，配合探针验证互操作；
-2. **小米 XOS（`libxos.so`）+ 小米互传路线**：使用小米闭源 `libxos.so` 建立无线链路（HT20 MCS3），由小米互传负责分享界面和文件传输；
-3. **基于 [t4t5/owly](https://github.com/t4t5/owly) 的独立 App 路线（`Owly AirDrop`，暂缓）**：由可修改的 Rust 协议栈和独立 Android App 完成收发；
-4. **小米原生互传 + Owly 高速后端路线（[`runtime/owly-xos`](runtime/owly-xos/README.zh-CN.md)，当前主线）**：**不使用小米 `libxos.so`**，而是通过自研 AIDL `XosBridge` 与 `owly-awdl` L2 TAP（`xos0`）+ 官方 `ezif-amss20.bin` 免预绑定多对端硬件 TX A-MPDU 底座接管无线链路，上层完整复用小米原版分享菜单、BLE 近场唤醒、超级岛弹窗与相册入库体验。
+2. **小米 XOS（`libxos.so`）+ 小米互传路线**：使用小米闭源 `libxos.so` 建立无线链路，由小米互传负责分享界面和文件传输；
+3. **基于 [t4t5/owly](https://github.com/t4t5/owly) 的独立 App 路线**：由可修改的 Rust 协议栈和独立 Android App 完成收发；
+4. **小米原生互传 + Owly 高速后端路线（[`runtime/owly-xos`](runtime/owly-xos/README.zh-CN.md)，当前主线）**：不使用小米 `libxos.so`，通过自研 AIDL `XosBridge`、`owly-awdl`（`xos0`）与适配驱动底座接管无线链路，上层完整复用小米原版分享菜单、BLE 近场唤醒、超级岛弹窗与相册入库体验。
 
-从符号、依赖等证据判断，小米 XOS 原厂的 `libxos.so` 使用了 [OWL](https://github.com/seemoo-lab/owl) 衍生实现（速率受限于 HT20 MCS3）；而本仓第四条路线 `owly-xos` 完全以自研 Rust `owly-awdl` + 适配驱动替代了 `libxos.so`。
+从符号、依赖等证据判断，小米 XOS 的 `libxos.so` 使用了 [OWL](https://github.com/seemoo-lab/owl) 衍生实现（速率受限于 HT20 MCS3）；第四条路线 `owly-xos` 完全以自研 Rust `owly-awdl` + 适配驱动替代了 `libxos.so`。
 
 ### 四条路线的能力对照
 
@@ -19,33 +19,33 @@
 
 #### 1. 用户态 AWDL 引擎层
 
-| 功能特性 | 小米 XOS（`libxos.so`） | Google / 三星（`Mosey`） | Owly 独立 App（暂缓） | 当前主线：Owly-XOS |
+| 功能特性 | 小米 XOS（`libxos.so`） | Google / 三星（`Mosey`） | Owly 独立 App | Owly-XOS（当前主线） |
 |---|---|---|---|---|
-| PSF / MIF 时钟同步与主节点选举 | ✅ 已实现（基于 `OWL` 改造） | ✅ 已实现（`mosey_server` 内置） | ✅ 已实现（`owly-awdl` 原生支持） | ✅ **已实现**（`owly-awdl` + `fast_discovery` 零延迟同步） |
-| 动态多信道调度（非固定 149） | ⚠️ 待确认（`houji` 测试曾改写到 6 信道） | ⚠️ 待确认（有调度模块，未在 `houji` 验切换） | ❌ 未实现（固定信道 149） | ❌ **未实现**（固定 5 GHz 信道 149 VHT80） |
-| 普通 Wi-Fi（STA）并发共存 | ❌ 未在 `houji` 实现（走独占切换） | ✅ 底座原生支持（`Mosey` 调度策略待确认） | ✅ 已实现（`2.4 GHz` 与非 DFS `5 GHz` 共存） | ❌ **未启用**（会话期 `pt_exclusive=1` 独占，退出约 3–5s 自动重连原 WLAN） |
-| 远端 Peer 与硬件 TX 聚合联动 | ❌ 未启用（HT20 MCS3，实测仅 `0.21–0.48 MB/s`） | ✅ 底座支持（`EZIF` + `wondertap` 原生支持） | ✅ 已实现（扫描用 `dzf2`，单对端重关联 `EZIF` + TX 聚合） | ✅ **已实现**（`EZIF` + `pt_remote_multi=1` 最多 8 槽位免预绑定动态硬件 TX A-MPDU + RX 窗口 256，16 MiB TCP 达 **64.08 MB/s**） |
-| 802.11 ↔ TUN/TAP + 邻居/路由映射 | ✅ 已实现（`xos0` + IPv6 邻居） | ✅ 已实现（`mosey0`） | ✅ 已实现（`owly0` L3 TUN + `10075` 策略路由） | ✅ **已实现**（`xos0` L2 TAP + 用户态 NDP + RFC 2464 组播修正 + `10074` 策略路由） |
-| mDNS ↔ AWDL 服务发现适配 | ✅ 已实现 | ✅ 已实现 | ✅ 已实现（内置 mDNS ↔ TLV 同步与绑定 socket） | ✅ **已实现**（`peer_up` 双向 mDNS 即时触发 + 入向单播 `QR=1` 转投 `ff02::fb` 避开 `NsdService` 抢占） |
+| PSF / MIF 时钟同步与主节点选举 | ✅ 已实现 | ✅ 已实现 | ✅ 已实现 | ✅ 已实现 |
+| 动态多信道调度（非固定 149） | ⚠️ 待确认 | ⚠️ 待确认 | ❌ 未实现 | ❌ 未实现 |
+| 普通 Wi-Fi（STA）并发共存 | ❌ 未实现 | ✅ 底座支持 | ✅ 已实现 | ❌ 未启用 |
+| 远端 Peer 与硬件 TX 聚合联动 | ❌ 未启用 | ✅ 底座支持 | ✅ 已实现（单对端） | ✅ 已实现（动态多对端） |
+| 802.11 ↔ TUN/TAP + 邻居/路由映射 | ✅ 已实现 | ✅ 已实现 | ✅ 已实现 | ✅ 已实现 |
+| mDNS ↔ AWDL 服务发现适配 | ✅ 已实现 | ✅ 已实现 | ✅ 已实现 | ✅ 已实现 |
 
 #### 2. 上层 AirDrop 传输协议层
 
-| 功能特性 | 小米 XOS + 原版 `MIShare` | Google / 三星（`Mosey` 探针） | Owly 独立 App（暂缓） | 当前主线：Owly-XOS |
+| 功能特性 | 小米 XOS + 原版 `MIShare` | Google / 三星（`Mosey` 探针） | Owly 独立 App | Owly-XOS（当前主线） |
 |---|---|---|---|---|
-| `_airdrop._tcp` mDNS 服务发现 | ✅ 已实现 | ✅ 已实现（`houji` 探针由 Java 辅助） | ✅ 已实现 | ✅ **已实现**（复用原版 `MIShare` `NsdAdvertiser` + `RawMdnsBrowser`） |
-| TLS + `/Discover` / `/Ask` / `/Upload` | ✅ 已实现（`sharop` 层负责） | ✅ 已实现（`houji` 探针由 Java 补齐） | ✅ 已实现（Rust 后端完整实现） | ✅ **已实现**（复用原版 `MIShare` `sharop` 协议栈） |
-| CPIO / DVZip / gzip 归档收发 | ✅ 已实现 | ✅ 已实现 | ✅ 已实现（已通过双向 SHA-256 校验） | ✅ **已实现**（复用原版 `MIShare` 流式归档收发，`157.80 MB` 视频双向实测通过） |
-| Live Photo（`.pvt`）解析 / 兼容 | ⚠️ 部分实现（测试应用收过 `.pvt`；原版仅验 JPG） | ⚠️ 部分实现（探针收过 `.pvt`，未导入相册） | ❌ 未专门适配（按普通文件/目录落盘导出） | ⚠️ **同原版 `MIShare`**（由上层 `MIShare` 负责入库） |
-| “仅限联系人”身份证书校验 | ❌ 未实现（走“所有人”模式） | ❌ 未实现（探针仅短时许可，无证书链校验） | ❌ 未实现（仅支持“所有人 10 分钟”） | ❌ **未实现**（走“所有人”模式） |
+| `_airdrop._tcp` mDNS 服务发现 | ✅ 已实现 | ✅ 已实现 | ✅ 已实现 | ✅ 已实现 |
+| TLS + `/Discover` / `/Ask` / `/Upload` | ✅ 已实现 | ✅ 已实现 | ✅ 已实现 | ✅ 已实现 |
+| CPIO / DVZip / gzip 归档收发 | ✅ 已实现 | ✅ 已实现 | ✅ 已实现 | ✅ 已实现 |
+| Live Photo（`.pvt`）解析 / 兼容 | ⚠️ 部分实现 | ⚠️ 部分实现 | ❌ 未适配 | ⚠️ 部分实现 |
+| “仅限联系人”身份证书校验 | ❌ 未实现 | ❌ 未实现 | ❌ 未实现 | ❌ 未实现 |
 
 #### 3. 系统体验与集成层
 
-| 功能特性 | 小米 XOS + 原版 `MIShare` | Google / 三星（`Mosey` 移植） | Owly 独立 App（暂缓） | 当前主线：Owly-XOS |
+| 功能特性 | 小米 XOS + 原版 `MIShare` | Google / 三星（`Mosey` 移植） | Owly 独立 App | Owly-XOS（当前主线） |
 |---|---|---|---|---|
-| BLE 近场唤醒（免对方常开界面） | ✅ 已实现 | ⚠️ 待确认（原版具备，提取件未在 `houji` 验证） | ❌ 未实现（需对端手动保持“所有人 10 分钟”界面） | ✅ **已验证**（发送广播唤醒对端、接收扫到 BLE 自动激活 `xos0`） |
-| 系统分享菜单（Share Sheet） | ✅ 已实现 | ❌ 未在小米系统实现 | ❌ 未实现（仅可在 App 内选文件发送） | ✅ **已实现**（系统相册/文件分享直达，含 LSPosed URI 授权兼容） |
-| 超级岛 / 系统接收弹窗与相册入库 | ✅ 已实现 | ❌ 未在小米系统实现 | ❌ 未实现（App 内确认，私有目录需手动导出） | ✅ **已实现**（超级岛弹窗 + 自动落盘 `/MiShare/AirDrop/` 入库相册） |
-| 后台常驻守护进程 + 开机自启 | ⚠️ 原版自带（`houji` 需手动拉起） | ❌ `houji` 上未完成开机自启 | ❌ 未实现（前台拉起临时脚本，退出恢复 Wi-Fi） | ✅ **已实现**（`XosBridge` 常驻守护 + KernelSU `service.sh` 开机自启与内核安全门禁） |
+| BLE 近场唤醒（免对方常开界面） | ✅ 已实现 | ⚠️ 待确认 | ❌ 未实现 | ✅ 已实现 |
+| 系统分享菜单（Share Sheet） | ✅ 已实现 | ❌ 未实现 | ❌ 未实现 | ✅ 已实现 |
+| 超级岛 / 系统接收弹窗与相册入库 | ✅ 已实现 | ❌ 未实现 | ❌ 未实现 | ✅ 已实现 |
+| 后台常驻守护进程 + 开机自启 | ⚠️ 需手动拉起 | ❌ 未实现 | ❌ 未实现 | ✅ 已实现 |
 
 ## 性能
 
@@ -62,18 +62,18 @@
 
 实验模块的 vermagic 前缀为 `6.1.68`，与手机运行内核不同；本项目通过 567 个导出符号 CRC/ABI 审计及实机装载验证兼容性。详见[驱动构建说明](docs/airdrop/06-driver-build.md)。
 
-### 最近一次测试：小米原生互传 + Owly-XOS 高速后端（Mac TCP 吞吐对比与 Apple 手机 157.80 MB 视频收发）
+### 最近一次测试：小米原生互传 + Owly-XOS 高速后端
 
-2026-11-15，[`runtime/owly-xos`](runtime/owly-xos/README.zh-CN.md) 通过 AIDL `XosBridge`（`com.domestic.xoscomm.IDomesticXOsComm/default`）+ `owly-awdl`（L2 TAP `xos0` + 用户态 NDP + 组播/单播 mDNS 投递修正）替代小米闭源低速 `libxos.so`，并通过内核 `pt_remote_multi=1`（`pt_remote_peer_ctl` 最多 8 个动态槽位）与用户态 `KernelPeerSync` 解锁官方 `ezif-amss20.bin` **免预绑定多对端硬件 TX A-MPDU** 与 `pt_remote_rx_window=256` REO MSDU-buffer RX。
+2026-11-15，[`runtime/owly-xos`](runtime/owly-xos/README.zh-CN.md) 通过 AIDL `XosBridge` + `owly-awdl`（L2 TAP `xos0`）替代小米闭源 `libxos.so`，并通过内核 `pt_remote_multi=1` 动态远端槽位与用户态 `KernelPeerSync` 解锁官方 `ezif-amss20.bin` **免预绑定多对端硬件 TX A-MPDU** 与 `pt_remote_rx_window=256` REO MSDU-buffer RX。
 
-#### 1. 裸链路 16 MiB TCP 吞吐对比（信道 149，`xos0` ↔ Mac `awdl0`，双向 SHA-256 全通过）
+#### 1. 裸链路 16 MiB TCP 吞吐对比（信道 149，`xos0` ↔ Mac `awdl0`）
 
-| 方向 | 小米 XOS 原厂 `libxos.so`（HT20 MCS3） | 旧 `dzf2.bin` 软件 A-MSDU（`xos0`） | 当前 `Owly-XOS`（`ezif.bin` + 多对端硬件 TX A-MPDU + RX 窗口 256） | 对比 `libxos.so` 提升 |
+| 方向 | 小米 XOS `libxos.so` | 旧 `dzf2.bin` 软件 A-MSDU | 当前 `Owly-XOS` | 对比 `libxos.so` 提升 |
 |---|---:|---:|---:|---:|
-| 小米 `xos0` → Mac `awdl0` | `0.21–0.29 MB/s` | `6.85 MB/s` | **64.08 MB/s**（`0.262s`，`max_ppdu_mpdus=31`） | **~220×–305×** |
-| Mac `awdl0` → 小米 `xos0` | `0.48 MB/s` | `9.95 MB/s` | **9.55 MB/s**（`1.757s`，`dropped=0`） | **~20×** |
+| 小米 `xos0` → Mac `awdl0` | `0.21–0.29 MB/s` | `6.85 MB/s` | **64.08 MB/s** | **~220×–305×** |
+| Mac `awdl0` → 小米 `xos0` | `0.48 MB/s` | `9.95 MB/s` | **9.55 MB/s** | **~20×** |
 
-单轮 16 MiB 发送期间，内核 `pt_rate_stats` 观测 `agg_ppdus +307`、`agg_mpdus +6103`，100% VHT80（80 MHz）2SS MCS9 SGI LDPC；接收期间 `pt_rx_msdu_stats` 记录 `seen=reaped=delivered=5928`（`peer_miss=0`、`bad_desc=0`、`dropped=0`），`OWLY_RX_GAPS` 记录 `matched=24298 missing=0 host_delayed=0`。
+双向 SHA-256 校验全部通过。单轮 16 MiB 发送期间，内核 `pt_rate_stats` 观测 `agg_ppdus +307`、`agg_mpdus +6103`（峰值 `max_ppdu_mpdus=31`），100% VHT80 2SS MCS9 SGI LDPC；接收期间 `pt_rx_msdu_stats` 记录 `seen=reaped=delivered=5928`（`peer_miss=0`、`bad_desc=0`、`dropped=0`），`OWLY_RX_GAPS` 记录 `matched=24298 missing=0 host_delayed=0`。
 
 #### 2. 原版 `MIShare.apk` 对 Apple 手机双向收发 `157.80 MB` 视频实测
 
