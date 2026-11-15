@@ -27,7 +27,9 @@
 #include "wma.h"
 #include "wma_api.h"
 #ifdef DRIVER_PASSTHRU_OWNER
+#include <linux/atomic.h>
 #include <linux/moduleparam.h>
+#include <linux/mutex.h>
 #include <linux/spinlock.h>
 #include <linux/delay.h>
 #include <qdf_pt_remote_peer.h>
@@ -2461,9 +2463,12 @@ QDF_STATUS wma_add_peer(tp_wma_handle wma,
 
 #ifdef DRIVER_PASSTHRU_OWNER
 #define WMA_PT_PEER_WAIT_MS 1800
+#define WMA_PT_MAX_PEERS 8
 #define WMA_WMI_SERVICE_PASSTHRU_AMPDU_SUPPORT 338
 
 struct wma_pt_peer_state {
+	u64 peer_seq;
+	u8 slot_idx;
 	tp_wma_handle wma;
 	const void *psoc;
 	u64 generation;
@@ -2507,38 +2512,117 @@ struct wma_pt_peer_state {
 	int teardown_rc;
 };
 
-static DEFINE_SPINLOCK(wma_pt_peer_lock);
-static struct wma_pt_peer_state wma_pt_peer_live;
-static struct wma_pt_peer_state wma_pt_peer_last;
+struct wma_pt_peer_summary_row {
+	u64 peer_seq;
+	u16 peer_id;
+	u16 ast_idx;
+	u16 ast_hash;
+	u8 slot_idx;
+	u8 vdev_id;
+	bool active;
+	bool ast_valid;
+	bool tx_ready;
+	int setup_rc;
+	int teardown_rc;
+};
 
-static bool wma_pt_peer_key_matches(tp_wma_handle wma, u32 vdev_id,
-				    const u8 *mac)
+static DEFINE_MUTEX(wma_pt_peer_ops_lock);
+static DEFINE_SPINLOCK(wma_pt_peer_lock);
+static struct wma_pt_peer_state wma_pt_peers[WMA_PT_MAX_PEERS];
+static struct wma_pt_peer_state wma_pt_peer_last;
+static u64 wma_pt_peer_seq;
+static atomic_t wma_pt_tx_ready_count = ATOMIC_INIT(0);
+static u32 pt_reo_mode;
+static bool pt_fw_addba;
+module_param(pt_fw_addba, bool, 0400);
+static int pt_fw_addba_rc;
+module_param(pt_fw_addba_rc, int, 0400);
+static bool pt_fw_addba_sent;
+module_param(pt_fw_addba_sent, bool, 0400);
+
+static void wma_pt_set_tx_ready_locked(struct wma_pt_peer_state *slot,
+				       bool ready)
 {
-	return wma_pt_peer_live.generation && wma_pt_peer_live.wma == wma &&
-	       wma_pt_peer_live.vdev_id == vdev_id &&
-	       !memcmp(wma_pt_peer_live.mac, mac, QDF_MAC_ADDR_SIZE);
+	if (slot->tx_ready == ready)
+		return;
+	WRITE_ONCE(slot->tx_ready, ready);
+	if (ready)
+		atomic_inc(&wma_pt_tx_ready_count);
+	else
+		atomic_dec(&wma_pt_tx_ready_count);
 }
 
-static bool wma_pt_peer_dp_key_matches(const void *psoc, u8 vdev_id,
-				       const u8 *mac)
+static void wma_pt_clear_slot_locked(struct wma_pt_peer_state *slot)
 {
-	return wma_pt_peer_live.generation && wma_pt_peer_live.psoc == psoc &&
-	       wma_pt_peer_live.vdev_id == vdev_id &&
-	       !memcmp(wma_pt_peer_live.mac, mac, QDF_MAC_ADDR_SIZE);
+	wma_pt_set_tx_ready_locked(slot, false);
+	slot->active = false;
+	wma_pt_peer_last = *slot;
+	memset(slot, 0, sizeof(*slot));
+}
+
+static struct wma_pt_peer_state *
+wma_pt_find_slot_wma(tp_wma_handle wma, u32 vdev_id, const u8 *mac)
+{
+	int i;
+
+	for (i = 0; i < WMA_PT_MAX_PEERS; i++) {
+		struct wma_pt_peer_state *s = &wma_pt_peers[i];
+
+		if (s->peer_seq && s->generation && s->wma == wma &&
+		    s->vdev_id == vdev_id &&
+		    !memcmp(s->mac, mac, QDF_MAC_ADDR_SIZE))
+			return s;
+	}
+	return NULL;
+}
+
+static struct wma_pt_peer_state *
+wma_pt_find_slot_dp(const void *psoc, u8 vdev_id, const u8 *mac)
+{
+	int i;
+
+	for (i = 0; i < WMA_PT_MAX_PEERS; i++) {
+		struct wma_pt_peer_state *s = &wma_pt_peers[i];
+
+		if (s->peer_seq && s->generation && s->psoc == psoc &&
+		    s->vdev_id == vdev_id &&
+		    !memcmp(s->mac, mac, QDF_MAC_ADDR_SIZE))
+			return s;
+	}
+	return NULL;
+}
+
+static struct wma_pt_peer_state *wma_pt_find_slot_seq(u64 peer_seq)
+{
+	int i;
+
+	if (!peer_seq)
+		return NULL;
+	for (i = 0; i < WMA_PT_MAX_PEERS; i++) {
+		if (wma_pt_peers[i].peer_seq == peer_seq)
+			return &wma_pt_peers[i];
+	}
+	return NULL;
 }
 
 static bool wma_pt_peer_create_event(tp_wma_handle wma, u32 vdev_id,
 				     const u8 *mac, u32 status)
 {
+	struct wma_pt_peer_state *slot;
 	unsigned long flags;
-	bool matched;
+	bool matched = false;
+
+	if (!READ_ONCE(wma_pt_peer_seq))
+		return false;
 
 	spin_lock_irqsave(&wma_pt_peer_lock, flags);
-	matched = wma_pt_peer_live.create_issued &&
-		  wma_pt_peer_key_matches(wma, vdev_id, mac);
-	if (matched && !wma_pt_peer_live.create_confirmed) {
-		wma_pt_peer_live.create_status = status;
-		wma_pt_peer_live.create_confirmed = true;
+	slot = wma_pt_find_slot_wma(wma, vdev_id, mac);
+	if (slot && slot->create_issued) {
+		matched = true;
+		if (!slot->create_confirmed) {
+			slot->create_status = status;
+			slot->create_confirmed = true;
+		}
 	}
 	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
 	return matched;
@@ -2547,78 +2631,111 @@ static bool wma_pt_peer_create_event(tp_wma_handle wma, u32 vdev_id,
 static bool wma_pt_peer_assoc_event(tp_wma_handle wma, u32 vdev_id,
 				    const u8 *mac, u32 status)
 {
+	struct wma_pt_peer_state *slot;
 	unsigned long flags;
-	bool matched;
+	bool matched = false;
+
+	if (!READ_ONCE(wma_pt_peer_seq))
+		return false;
 
 	spin_lock_irqsave(&wma_pt_peer_lock, flags);
-	matched = wma_pt_peer_live.assoc_issued &&
-		  wma_pt_peer_key_matches(wma, vdev_id, mac);
-	if (matched && !wma_pt_peer_live.assoc_confirmed) {
-		wma_pt_peer_live.assoc_status = status;
-		wma_pt_peer_live.assoc_confirmed = true;
+	slot = wma_pt_find_slot_wma(wma, vdev_id, mac);
+	if (slot && slot->assoc_issued) {
+		matched = true;
+		if (!slot->assoc_confirmed) {
+			slot->assoc_status = status;
+			slot->assoc_confirmed = true;
+		}
 	}
 	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
 	return matched;
 }
 
 static bool wma_pt_peer_delete_event(tp_wma_handle wma, u32 vdev_id,
-				     const u8 *mac, bool *first)
+				     const u8 *mac, bool *first, u64 *peer_seq)
 {
+	struct wma_pt_peer_state *slot;
 	unsigned long flags;
-	bool matched;
+	bool matched = false;
+
+	*first = false;
+	*peer_seq = 0;
+	if (!READ_ONCE(wma_pt_peer_seq))
+		return false;
 
 	spin_lock_irqsave(&wma_pt_peer_lock, flags);
-	matched = wma_pt_peer_live.delete_issued &&
-		  wma_pt_peer_key_matches(wma, vdev_id, mac);
-	*first = matched && !wma_pt_peer_live.delete_claimed;
-	if (*first)
-		wma_pt_peer_live.delete_claimed = true;
+	slot = wma_pt_find_slot_wma(wma, vdev_id, mac);
+	if (slot && slot->delete_issued) {
+		matched = true;
+		if (!slot->delete_claimed) {
+			slot->delete_claimed = true;
+			*first = true;
+			*peer_seq = slot->peer_seq;
+		}
+	}
 	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
 	return matched;
+}
+
+static void wma_pt_peer_delete_confirm(u64 peer_seq)
+{
+	struct wma_pt_peer_state *slot;
+	unsigned long flags;
+
+	if (!peer_seq)
+		return;
+
+	spin_lock_irqsave(&wma_pt_peer_lock, flags);
+	slot = wma_pt_find_slot_seq(peer_seq);
+	if (slot)
+		slot->delete_confirmed = true;
+	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
 }
 
 void pt_remote_peer_dp_event(const void *psoc, u8 vdev_id, const u8 *mac,
 			     u16 peer_id, enum pt_remote_peer_event event)
 {
+	struct wma_pt_peer_state *slot;
 	unsigned long flags;
 
-	if (!READ_ONCE(wma_pt_peer_live.generation))
+	if (!READ_ONCE(wma_pt_peer_seq))
 		return;
 
 	spin_lock_irqsave(&wma_pt_peer_lock, flags);
-	if (!wma_pt_peer_dp_key_matches(psoc, vdev_id, mac))
+	slot = wma_pt_find_slot_dp(psoc, vdev_id, mac);
+	if (!slot)
 		goto unlock;
 
-	if (!wma_pt_peer_live.create_issued || peer_id == U16_MAX ||
-	    (wma_pt_peer_live.htt_map && wma_pt_peer_live.peer_id != peer_id)) {
-		wma_pt_peer_live.dp_conflict = true;
+	if (!slot->create_issued || peer_id == U16_MAX ||
+	    (slot->htt_map && slot->peer_id != peer_id)) {
+		slot->dp_conflict = true;
 		goto unlock;
 	}
 
 	switch (event) {
 	case PT_REMOTE_HTT_MAP:
-		if (wma_pt_peer_live.htt_unmap || wma_pt_peer_live.slot_removed)
-			wma_pt_peer_live.dp_conflict = true;
-		wma_pt_peer_live.htt_map = true;
-		wma_pt_peer_live.peer_id = peer_id;
+		if (slot->htt_unmap || slot->slot_removed)
+			slot->dp_conflict = true;
+		slot->htt_map = true;
+		slot->peer_id = peer_id;
 		break;
 	case PT_REMOTE_SLOT_INSTALL:
-		if (!wma_pt_peer_live.htt_map || wma_pt_peer_live.htt_unmap)
-			wma_pt_peer_live.dp_conflict = true;
+		if (!slot->htt_map || slot->htt_unmap)
+			slot->dp_conflict = true;
 		else
-			wma_pt_peer_live.slot_installed = true;
+			slot->slot_installed = true;
 		break;
 	case PT_REMOTE_HTT_UNMAP:
-		if (!wma_pt_peer_live.delete_issued || !wma_pt_peer_live.slot_installed)
-			wma_pt_peer_live.dp_conflict = true;
+		if (!slot->delete_issued || !slot->slot_installed)
+			slot->dp_conflict = true;
 		else
-			wma_pt_peer_live.htt_unmap = true;
+			slot->htt_unmap = true;
 		break;
 	case PT_REMOTE_SLOT_REMOVE:
-		if (!wma_pt_peer_live.delete_issued || !wma_pt_peer_live.slot_installed)
-			wma_pt_peer_live.dp_conflict = true;
+		if (!slot->delete_issued || !slot->slot_installed)
+			slot->dp_conflict = true;
 		else
-			wma_pt_peer_live.slot_removed = true;
+			slot->slot_removed = true;
 		break;
 	}
 unlock:
@@ -2628,18 +2745,19 @@ unlock:
 void pt_remote_peer_set_ast(const void *psoc, u8 vdev_id, const u8 *mac,
 			    u16 peer_id, u16 ast_idx, u16 ast_hash)
 {
+	struct wma_pt_peer_state *slot;
 	unsigned long flags;
 
-	if (!READ_ONCE(wma_pt_peer_live.generation))
+	if (!READ_ONCE(wma_pt_peer_seq))
 		return;
 
 	spin_lock_irqsave(&wma_pt_peer_lock, flags);
-	if (wma_pt_peer_dp_key_matches(psoc, vdev_id, mac) &&
-	    peer_id != U16_MAX && ast_idx != U16_MAX) {
-		wma_pt_peer_live.peer_id = peer_id;
-		wma_pt_peer_live.ast_idx = ast_idx;
-		wma_pt_peer_live.ast_hash = ast_hash;
-		wma_pt_peer_live.ast_valid = true;
+	slot = wma_pt_find_slot_dp(psoc, vdev_id, mac);
+	if (slot && peer_id != U16_MAX && ast_idx != U16_MAX) {
+		slot->peer_id = peer_id;
+		slot->ast_idx = ast_idx;
+		slot->ast_hash = ast_hash;
+		slot->ast_valid = true;
 	}
 	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
 }
@@ -2649,18 +2767,23 @@ bool pt_remote_peer_lookup_ast(const void *psoc, u8 vdev_id, const u8 *ra_mac,
 {
 	unsigned long flags;
 	bool ok = false;
+	int i;
 
-	if (!READ_ONCE(wma_pt_peer_live.tx_ready))
+	if (atomic_read(&wma_pt_tx_ready_count) <= 0)
 		return false;
 
 	spin_lock_irqsave(&wma_pt_peer_lock, flags);
-	if (wma_pt_peer_live.tx_ready && wma_pt_peer_live.ast_valid &&
-	    wma_pt_peer_live.psoc == psoc &&
-	    wma_pt_peer_live.vdev_id == vdev_id &&
-	    !memcmp(wma_pt_peer_live.mac, ra_mac, QDF_MAC_ADDR_SIZE)) {
-		*ast_idx = wma_pt_peer_live.ast_idx;
-		*ast_hash = wma_pt_peer_live.ast_hash;
-		ok = true;
+	for (i = 0; i < WMA_PT_MAX_PEERS; i++) {
+		struct wma_pt_peer_state *s = &wma_pt_peers[i];
+
+		if (s->peer_seq && s->tx_ready && s->ast_valid &&
+		    s->psoc == psoc && s->vdev_id == vdev_id &&
+		    !memcmp(s->mac, ra_mac, QDF_MAC_ADDR_SIZE)) {
+			*ast_idx = s->ast_idx;
+			*ast_hash = s->ast_hash;
+			ok = true;
+			break;
+		}
 	}
 	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
 	return ok;
@@ -2668,41 +2791,80 @@ bool pt_remote_peer_lookup_ast(const void *psoc, u8 vdev_id, const u8 *ra_mac,
 
 u16 pt_remote_peer_active_id(void)
 {
-	if (!READ_ONCE(wma_pt_peer_live.tx_ready))
+	unsigned long flags;
+	u16 id = U16_MAX;
+	int i;
+
+	if (atomic_read(&wma_pt_tx_ready_count) <= 0)
 		return U16_MAX;
-	return READ_ONCE(wma_pt_peer_live.peer_id);
+
+	spin_lock_irqsave(&wma_pt_peer_lock, flags);
+	for (i = 0; i < WMA_PT_MAX_PEERS; i++) {
+		if (wma_pt_peers[i].peer_seq && wma_pt_peers[i].tx_ready &&
+		    wma_pt_peers[i].peer_id != U16_MAX) {
+			id = wma_pt_peers[i].peer_id;
+			break;
+		}
+	}
+	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
+	return id;
+}
+
+bool pt_remote_peer_is_active_id(u16 peer_id)
+{
+	unsigned long flags;
+	bool active = false;
+	int i;
+
+	if (peer_id == U16_MAX || atomic_read(&wma_pt_tx_ready_count) <= 0)
+		return false;
+
+	spin_lock_irqsave(&wma_pt_peer_lock, flags);
+	for (i = 0; i < WMA_PT_MAX_PEERS; i++) {
+		if (wma_pt_peers[i].peer_seq && wma_pt_peers[i].tx_ready &&
+		    wma_pt_peers[i].peer_id == peer_id) {
+			active = true;
+			break;
+		}
+	}
+	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
+	return active;
 }
 
 u64 pt_remote_peer_release_key(const void *psoc, u8 vdev_id, const u8 *mac)
 {
+	struct wma_pt_peer_state *slot;
 	unsigned long flags;
-	u64 generation = 0;
+	u64 peer_seq = 0;
 
-	if (!READ_ONCE(wma_pt_peer_live.generation))
+	if (!READ_ONCE(wma_pt_peer_seq))
 		return 0;
 
 	spin_lock_irqsave(&wma_pt_peer_lock, flags);
-	if (wma_pt_peer_dp_key_matches(psoc, vdev_id, mac))
-		generation = wma_pt_peer_live.generation;
+	slot = wma_pt_find_slot_dp(psoc, vdev_id, mac);
+	if (slot)
+		peer_seq = slot->peer_seq;
 	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
-	return generation;
+	return peer_seq;
 }
 
-void pt_remote_peer_released(u64 generation, enum pt_remote_peer_object obj)
+void pt_remote_peer_released(u64 peer_seq, enum pt_remote_peer_object obj)
 {
+	struct wma_pt_peer_state *slot;
 	unsigned long flags;
 
-	if (!generation)
+	if (!peer_seq)
 		return;
 
 	spin_lock_irqsave(&wma_pt_peer_lock, flags);
-	if (generation == wma_pt_peer_live.generation) {
-		if (wma_pt_peer_live.create_issued && !wma_pt_peer_live.delete_issued)
-			wma_pt_peer_live.dp_conflict = true;
+	slot = wma_pt_find_slot_seq(peer_seq);
+	if (slot) {
+		if (slot->create_issued && !slot->delete_issued)
+			slot->dp_conflict = true;
 		if (obj == PT_REMOTE_DP_OBJECT)
-			wma_pt_peer_live.dp_released = true;
+			slot->dp_released = true;
 		else
-			wma_pt_peer_live.obj_released = true;
+			slot->obj_released = true;
 	}
 	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
 }
@@ -2710,57 +2872,70 @@ void pt_remote_peer_released(u64 generation, enum pt_remote_peer_object obj)
 static void wma_pt_peer_snapshot(struct wma_pt_peer_state *out)
 {
 	unsigned long flags;
+	bool found = false;
+	int i;
 
 	spin_lock_irqsave(&wma_pt_peer_lock, flags);
-	*out = wma_pt_peer_live.generation ? wma_pt_peer_live : wma_pt_peer_last;
+	for (i = 0; i < WMA_PT_MAX_PEERS; i++) {
+		if (wma_pt_peers[i].peer_seq) {
+			*out = wma_pt_peers[i];
+			found = true;
+			break;
+		}
+	}
+	if (!found)
+		*out = wma_pt_peer_last;
 	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
 }
 
-int wma_pt_remote_peer_teardown(struct wlan_objmgr_vdev *vdev, u64 generation)
+/* Caller holds wma_pt_peer_ops_lock. */
+static int wma_pt_remote_peer_del_slot_locked(tp_wma_handle wma,
+					      struct wlan_objmgr_vdev *vdev,
+					      struct wma_pt_peer_state *slot)
 {
-	tp_wma_handle wma = cds_get_context(QDF_MODULE_ID_WMA);
 	struct wma_pt_peer_state snap;
 	u8 remote_mac[QDF_MAC_ADDR_SIZE];
 	unsigned long flags, deadline;
 	QDF_STATUS status;
+	u64 peer_seq;
 	u8 vdev_id;
+	bool no_fw_del;
+	bool done;
 	int rc = -ETIMEDOUT;
 
-	if (!generation)
-		return 0;
-
 	spin_lock_irqsave(&wma_pt_peer_lock, flags);
-	if (wma_pt_peer_live.generation != generation) {
+	if (!slot->peer_seq) {
 		spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
 		return 0;
 	}
-	WRITE_ONCE(wma_pt_peer_live.tx_ready, false);
-	vdev_id = wma_pt_peer_live.vdev_id;
-	memcpy(remote_mac, wma_pt_peer_live.mac, QDF_MAC_ADDR_SIZE);
-	if (!wma_pt_peer_live.create_issued) {
-		wma_pt_peer_live.active = false;
-		wma_pt_peer_live.teardown_rc = 0;
-		wma_pt_peer_last = wma_pt_peer_live;
-		memset(&wma_pt_peer_live, 0, sizeof(wma_pt_peer_live));
+	wma_pt_set_tx_ready_locked(slot, false);
+	peer_seq = slot->peer_seq;
+	vdev_id = slot->vdev_id;
+	memcpy(remote_mac, slot->mac, QDF_MAC_ADDR_SIZE);
+	if (!slot->create_issued) {
+		slot->teardown_rc = 0;
+		wma_pt_clear_slot_locked(slot);
 		spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
 		return 0;
 	}
 	if (!wma || !vdev || vdev_id >= wma->max_bssid ||
 	    wma->interfaces[vdev_id].vdev != vdev ||
-	    wma_pt_peer_live.delete_issued) {
-		wma_pt_peer_live.teardown_rc = -EINVAL;
-		wma_pt_peer_last = wma_pt_peer_live;
+	    slot->delete_issued) {
+		slot->teardown_rc = -EINVAL;
+		wma_pt_peer_last = *slot;
 		spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
 		return -EINVAL;
 	}
-	wma_pt_peer_live.delete_issued = true;
+	no_fw_del = QDF_IS_STATUS_ERROR(slot->create_submit) ||
+		    (slot->create_confirmed && slot->create_status != 0);
+	slot->delete_issued = true;
 	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
 	smp_mb();
 
-	status = wma_remove_peer(wma, remote_mac, vdev_id, false);
+	status = wma_remove_peer(wma, remote_mac, vdev_id, no_fw_del);
 	spin_lock_irqsave(&wma_pt_peer_lock, flags);
-	wma_pt_peer_live.delete_submit = status;
-	wma_pt_peer_live.delete_returned = true;
+	slot->delete_submit = status;
+	slot->delete_returned = true;
 	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
 	if (QDF_IS_STATUS_ERROR(status)) {
 		rc = qdf_status_to_os_return(status);
@@ -2769,18 +2944,28 @@ int wma_pt_remote_peer_teardown(struct wlan_objmgr_vdev *vdev, u64 generation)
 
 	deadline = jiffies + msecs_to_jiffies(WMA_PT_PEER_WAIT_MS);
 	do {
-		spin_lock_irqsave(&wma_pt_peer_lock, flags);
-		snap = wma_pt_peer_live;
-		spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
-		if (snap.delete_confirmed && snap.htt_unmap &&
-		    snap.slot_removed && snap.dp_released &&
-		    snap.obj_released && !snap.dp_conflict &&
-		    wma->interfaces[vdev_id].peer_count == 1) {
-			rc = 0;
+		if (cds_is_driver_recovering()) {
+			rc = -ESHUTDOWN;
 			break;
 		}
+		spin_lock_irqsave(&wma_pt_peer_lock, flags);
+		snap = *slot;
+		spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
 		if (snap.dp_conflict) {
 			rc = -EIO;
+			break;
+		}
+		if (snap.slot_installed)
+			done = snap.delete_confirmed && snap.htt_unmap &&
+			       snap.slot_removed && snap.dp_released &&
+			       snap.obj_released;
+		else if (no_fw_del)
+			done = snap.dp_released && snap.obj_released;
+		else
+			done = snap.delete_confirmed && snap.dp_released &&
+			       snap.obj_released;
+		if (done) {
+			rc = 0;
 			break;
 		}
 		usleep_range(2000, 4000);
@@ -2788,48 +2973,191 @@ int wma_pt_remote_peer_teardown(struct wlan_objmgr_vdev *vdev, u64 generation)
 
 out:
 	spin_lock_irqsave(&wma_pt_peer_lock, flags);
-	wma_pt_peer_live.active = (rc != 0);
-	wma_pt_peer_live.teardown_rc = rc;
-	wma_pt_peer_last = wma_pt_peer_live;
-	if (rc == 0)
-		memset(&wma_pt_peer_live, 0, sizeof(wma_pt_peer_live));
+	slot = wma_pt_find_slot_seq(peer_seq);
+	if (slot) {
+		slot->teardown_rc = rc;
+		if (rc == 0) {
+			wma_pt_clear_slot_locked(slot);
+		} else {
+			slot->active = true;
+			wma_pt_peer_last = *slot;
+		}
+	}
 	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
 	return rc;
 }
 
-static u32 pt_reo_mode;
-static bool pt_fw_addba;
-module_param(pt_fw_addba, bool, 0400);
-static int pt_fw_addba_rc;
-module_param(pt_fw_addba_rc, int, 0400);
-static bool pt_fw_addba_sent;
-module_param(pt_fw_addba_sent, bool, 0400);
+static int wma_pt_remote_peer_clear_locked(struct wlan_objmgr_vdev *vdev,
+					   u64 generation, bool reset_reo)
+{
+	tp_wma_handle wma = cds_get_context(QDF_MODULE_ID_WMA);
+	unsigned long flags;
+	int i, ret, rc = 0;
+	u8 vdev_id = WLAN_INVALID_VDEV_ID;
+	bool had_slot = false;
+
+	if (!generation) {
+		if (reset_reo)
+			WRITE_ONCE(pt_reo_mode, 0);
+		return 0;
+	}
+
+	for (i = 0; i < WMA_PT_MAX_PEERS; i++) {
+		bool match;
+
+		spin_lock_irqsave(&wma_pt_peer_lock, flags);
+		match = wma_pt_peers[i].peer_seq &&
+			wma_pt_peers[i].generation == generation;
+		if (match && vdev_id == WLAN_INVALID_VDEV_ID)
+			vdev_id = wma_pt_peers[i].vdev_id;
+		spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
+		if (!match)
+			continue;
+
+		had_slot = true;
+		ret = wma_pt_remote_peer_del_slot_locked(wma, vdev,
+							 &wma_pt_peers[i]);
+		if (ret && !rc)
+			rc = ret;
+	}
+
+	if (reset_reo) {
+		if (!rc && had_slot && wma && vdev_id < wma->max_bssid &&
+		    wma->interfaces[vdev_id].peer_count != 1)
+			rc = -EIO;
+		if (!rc)
+			WRITE_ONCE(pt_reo_mode, 0);
+	}
+	return rc;
+}
+
+int wma_pt_remote_peer_clear(struct wlan_objmgr_vdev *vdev, u64 generation)
+{
+	int rc;
+
+	mutex_lock(&wma_pt_peer_ops_lock);
+	rc = wma_pt_remote_peer_clear_locked(vdev, generation, false);
+	mutex_unlock(&wma_pt_peer_ops_lock);
+	return rc;
+}
+
+int wma_pt_remote_peer_teardown(struct wlan_objmgr_vdev *vdev, u64 generation)
+{
+	int rc;
+
+	mutex_lock(&wma_pt_peer_ops_lock);
+	rc = wma_pt_remote_peer_clear_locked(vdev, generation, true);
+	mutex_unlock(&wma_pt_peer_ops_lock);
+	return rc;
+}
+
+int wma_pt_remote_peer_del(struct wlan_objmgr_vdev *vdev, u64 generation,
+			   const u8 *remote_mac)
+{
+	tp_wma_handle wma = cds_get_context(QDF_MODULE_ID_WMA);
+	struct wma_pt_peer_state *slot = NULL;
+	unsigned long flags;
+	u8 vdev_id;
+	int i, rc = 0;
+
+	if (!generation || !vdev || !wma_is_passthru_vdev(vdev) || !remote_mac)
+		return -EINVAL;
+
+	vdev_id = wlan_vdev_get_id(vdev);
+
+	mutex_lock(&wma_pt_peer_ops_lock);
+	spin_lock_irqsave(&wma_pt_peer_lock, flags);
+	for (i = 0; i < WMA_PT_MAX_PEERS; i++) {
+		struct wma_pt_peer_state *s = &wma_pt_peers[i];
+
+		if (s->peer_seq && s->generation == generation &&
+		    s->vdev_id == vdev_id &&
+		    !memcmp(s->mac, remote_mac, QDF_MAC_ADDR_SIZE)) {
+			slot = s;
+			break;
+		}
+	}
+	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
+	if (slot)
+		rc = wma_pt_remote_peer_del_slot_locked(wma, vdev, slot);
+	mutex_unlock(&wma_pt_peer_ops_lock);
+	return rc;
+}
 
 u32 pt_remote_peer_reo_mode(void)
 {
 	return READ_ONCE(pt_reo_mode);
 }
 
-int wma_pt_remote_peer_setup(struct wlan_objmgr_vdev *vdev, u64 generation,
-			     const u8 *remote_mac, u32 enable_reo, bool is_2ss)
+void pt_remote_peer_set_reo_mode(u32 mode)
+{
+	WRITE_ONCE(pt_reo_mode, mode);
+}
+
+static void wma_pt_fill_assoc_params(struct peer_assoc_params *assoc,
+				     const u8 *remote_mac, u8 vdev_id,
+				     u8 slot_idx, bool is_2ss)
 {
 	static const u8 legacy_11a[8] = {12, 18, 24, 36, 48, 72, 96, 108};
+	int i;
+
+	memset(assoc, 0, sizeof(*assoc));
+	memcpy(assoc->peer_mac, remote_mac, QDF_MAC_ADDR_SIZE);
+	assoc->vdev_id = vdev_id;
+	assoc->peer_new_assoc = 1;
+	assoc->peer_associd = slot_idx + 1;
+	assoc->peer_caps = 0x0421;
+	assoc->peer_listen_intval = 1;
+	assoc->is_wme_set = 1;
+	assoc->qos_flag = 1;
+	assoc->auth_flag = 1;
+	assoc->ht_flag = 1;
+	assoc->vht_flag = 1;
+	assoc->vht_capable = 1;
+	assoc->bw_40 = 1;
+	assoc->bw_80 = 1;
+	assoc->ldpc_flag = 1;
+	assoc->spatial_mux_flag = is_2ss ? 1 : 0;
+	assoc->peer_rate_caps = WMI_RC_HT_FLAG | WMI_RC_CW40_FLAG |
+				WMI_RC_SGI_FLAG |
+				(is_2ss ? WMI_RC_DS_FLAG : 0);
+	assoc->peer_ht_caps = is_2ss ? 0x01ef : 0x01ce;
+	assoc->peer_max_mpdu = 65535;
+	assoc->peer_mpdu_density = 0;
+	assoc->peer_nss = is_2ss ? 2 : 1;
+	assoc->peer_vht_caps = 0x03800030;
+	assoc->peer_phymode = WMI_HOST_MODE_11AC_VHT80;
+	assoc->rx_max_rate = is_2ss ? 867 : 433;
+	assoc->rx_mcs_set = is_2ss ? 0xfffa : 0xfffc;
+	assoc->tx_max_rate = is_2ss ? 867 : 433;
+	assoc->tx_mcs_set = is_2ss ? 0xfffa : 0xfffc;
+	assoc->peer_legacy_rates.num_rates = sizeof(legacy_11a);
+	memcpy(assoc->peer_legacy_rates.rates, legacy_11a, sizeof(legacy_11a));
+	assoc->peer_ht_rates.num_rates = is_2ss ? 16 : 8;
+	for (i = 0; i < assoc->peer_ht_rates.num_rates; i++)
+		assoc->peer_ht_rates.rates[i] = i;
+}
+
+int wma_pt_remote_peer_add(struct wlan_objmgr_vdev *vdev, u64 generation,
+			   const u8 *remote_mac, u32 enable_reo, bool is_2ss)
+{
 	tp_wma_handle wma = cds_get_context(QDF_MODULE_ID_WMA);
 	void *soc = cds_get_context(QDF_MODULE_ID_SOC);
 	struct peer_create_params cparam = {0};
-	struct peer_assoc_params assoc = {0};
+	struct peer_assoc_params assoc;
 	struct qdf_mac_addr remote = {0};
 	struct wlan_objmgr_peer *obj_peer, *self;
+	struct wma_pt_peer_state *slot = NULL;
 	struct wma_pt_peer_state snap;
 	target_resource_config *cfg;
 	unsigned long flags, deadline;
 	QDF_STATUS status;
 	u8 remote_copy[QDF_MAC_ADDR_SIZE];
 	u8 vdev_id;
-	int i, rc;
+	int i, free_idx = -1, rc;
 
 	if (!generation || !wma || !wma->psoc || !wma->wmi_handle || !soc ||
-	    !wma_is_passthru_vdev(vdev) || !remote_mac)
+	    !wma_is_passthru_vdev(vdev) || !remote_mac || enable_reo > 2)
 		return -EINVAL;
 
 	memcpy(remote.bytes, remote_mac, QDF_MAC_ADDR_SIZE);
@@ -2838,8 +3166,7 @@ int wma_pt_remote_peer_setup(struct wlan_objmgr_vdev *vdev, u64 generation,
 		return -EINVAL;
 
 	vdev_id = wlan_vdev_get_id(vdev);
-	if (vdev_id >= wma->max_bssid || wma->interfaces[vdev_id].vdev != vdev ||
-	    wma->interfaces[vdev_id].peer_count != 1 ||
+	if (vdev_id >= wma->max_bssid ||
 	    !wmi_service_enabled(wma->wmi_handle, wmi_service_peer_create_conf) ||
 	    !wmi_service_enabled(wma->wmi_handle, wmi_service_sync_delete_cmds))
 		return -EINVAL;
@@ -2853,22 +3180,55 @@ int wma_pt_remote_peer_setup(struct wlan_objmgr_vdev *vdev, u64 generation,
 	    !memcmp(wlan_peer_get_macaddr(self), remote_copy, QDF_MAC_ADDR_SIZE))
 		return -EINVAL;
 
-	spin_lock_irqsave(&wma_pt_peer_lock, flags);
-	if (wma_pt_peer_live.generation) {
-		spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
-		return -EBUSY;
+	mutex_lock(&wma_pt_peer_ops_lock);
+	if (wma->interfaces[vdev_id].vdev != vdev ||
+	    wma->interfaces[vdev_id].peer_count < 1) {
+		rc = -EINVAL;
+		goto unlock_ops;
 	}
-	memset(&wma_pt_peer_live, 0, sizeof(wma_pt_peer_live));
-	wma_pt_peer_live.wma = wma;
-	wma_pt_peer_live.psoc = wma->psoc;
-	wma_pt_peer_live.generation = generation;
-	wma_pt_peer_live.vdev_id = vdev_id;
-	memcpy(wma_pt_peer_live.mac, remote_copy, QDF_MAC_ADDR_SIZE);
-	wma_pt_peer_live.active = true;
-	wma_pt_peer_live.reo_enabled = enable_reo;
-	wma_pt_peer_live.is_2ss = is_2ss;
-	wma_pt_peer_live.peer_id = U16_MAX;
-	wma_pt_peer_live.ast_idx = U16_MAX;
+	if (wma->interfaces[vdev_id].peer_count >= cfg->num_peers) {
+		rc = -ENOSPC;
+		goto unlock_ops;
+	}
+
+	spin_lock_irqsave(&wma_pt_peer_lock, flags);
+	for (i = 0; i < WMA_PT_MAX_PEERS; i++) {
+		struct wma_pt_peer_state *s = &wma_pt_peers[i];
+
+		if (s->peer_seq) {
+			if (!memcmp(s->mac, remote_copy, QDF_MAC_ADDR_SIZE)) {
+				rc = (s->generation == generation &&
+				      s->vdev_id == vdev_id && s->tx_ready) ?
+				     0 : -EBUSY;
+				spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
+				goto unlock_ops;
+			}
+		} else if (free_idx < 0) {
+			free_idx = i;
+		}
+	}
+	if (free_idx < 0) {
+		spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
+		rc = -ENOSPC;
+		goto unlock_ops;
+	}
+
+	slot = &wma_pt_peers[free_idx];
+	memset(slot, 0, sizeof(*slot));
+	if (++wma_pt_peer_seq == 0)
+		++wma_pt_peer_seq;
+	slot->peer_seq = wma_pt_peer_seq;
+	slot->slot_idx = free_idx;
+	slot->wma = wma;
+	slot->psoc = wma->psoc;
+	slot->generation = generation;
+	slot->vdev_id = vdev_id;
+	memcpy(slot->mac, remote_copy, QDF_MAC_ADDR_SIZE);
+	slot->active = true;
+	slot->reo_enabled = enable_reo;
+	slot->is_2ss = is_2ss;
+	slot->peer_id = U16_MAX;
+	slot->ast_idx = U16_MAX;
 	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
 
 	obj_peer = wma_create_objmgr_peer_typed(wma, vdev_id, remote_copy,
@@ -2879,7 +3239,7 @@ int wma_pt_remote_peer_setup(struct wlan_objmgr_vdev *vdev, u64 generation,
 		goto fail_early;
 	}
 	spin_lock_irqsave(&wma_pt_peer_lock, flags);
-	wma_pt_peer_live.obj_created = true;
+	slot->obj_created = true;
 	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
 
 	status = wlan_objmgr_peer_try_get_ref(obj_peer, WLAN_LEGACY_WMA_ID);
@@ -2902,14 +3262,14 @@ int wma_pt_remote_peer_setup(struct wlan_objmgr_vdev *vdev, u64 generation,
 	cparam.peer_addr = remote_copy;
 	cparam.peer_type = WMI_PEER_TYPE_DEFAULT;
 	spin_lock_irqsave(&wma_pt_peer_lock, flags);
-	wma_pt_peer_live.dp_created = true;
-	wma_pt_peer_live.create_issued = true;
+	slot->dp_created = true;
+	slot->create_issued = true;
 	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
 
 	status = wmi_unified_peer_create_send(wma->wmi_handle, &cparam);
 	spin_lock_irqsave(&wma_pt_peer_lock, flags);
-	wma_pt_peer_live.create_submit = status;
-	wma_pt_peer_live.create_returned = true;
+	slot->create_submit = status;
+	slot->create_returned = true;
 	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
 	if (QDF_IS_STATUS_ERROR(status)) {
 		rc = qdf_status_to_os_return(status);
@@ -2919,8 +3279,12 @@ int wma_pt_remote_peer_setup(struct wlan_objmgr_vdev *vdev, u64 generation,
 	deadline = jiffies + msecs_to_jiffies(WMA_PT_PEER_WAIT_MS);
 	rc = -ETIMEDOUT;
 	do {
+		if (cds_is_driver_recovering()) {
+			rc = -ESHUTDOWN;
+			break;
+		}
 		spin_lock_irqsave(&wma_pt_peer_lock, flags);
-		snap = wma_pt_peer_live;
+		snap = *slot;
 		spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
 		if (snap.dp_conflict) {
 			rc = -EIO;
@@ -2941,16 +3305,12 @@ int wma_pt_remote_peer_setup(struct wlan_objmgr_vdev *vdev, u64 generation,
 	if (rc)
 		goto rollback;
 
-	if (enable_reo > 2) {
-		rc = -EINVAL;
-		goto rollback;
-	}
 	WRITE_ONCE(pt_reo_mode, enable_reo);
 	if (enable_reo) {
 		status = cdp_peer_setup(soc, vdev_id, remote_copy, NULL);
 		spin_lock_irqsave(&wma_pt_peer_lock, flags);
-		wma_pt_peer_live.reo_setup = true;
-		wma_pt_peer_live.reo_status = status;
+		slot->reo_setup = true;
+		slot->reo_status = status;
 		spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
 		if (QDF_IS_STATUS_ERROR(status)) {
 			rc = qdf_status_to_os_return(status);
@@ -2958,50 +3318,18 @@ int wma_pt_remote_peer_setup(struct wlan_objmgr_vdev *vdev, u64 generation,
 		}
 	}
 
-	memcpy(assoc.peer_mac, remote_copy, QDF_MAC_ADDR_SIZE);
+	wma_pt_fill_assoc_params(&assoc, remote_copy, vdev_id, free_idx, is_2ss);
 	wma_objmgr_set_peer_mlme_phymode(wma, assoc.peer_mac,
 					 WLAN_PHYMODE_11AC_VHT80);
-	assoc.vdev_id = vdev_id;
-	assoc.peer_new_assoc = 1;
-	assoc.peer_associd = 1;
-	assoc.peer_caps = 0x0421;
-	assoc.peer_listen_intval = 1;
-	assoc.is_wme_set = 1;
-	assoc.qos_flag = 1;
-	assoc.auth_flag = 1;
-	assoc.ht_flag = 1;
-	assoc.vht_flag = 1;
-	assoc.vht_capable = 1;
-	assoc.bw_40 = 1;
-	assoc.bw_80 = 1;
-	assoc.ldpc_flag = 1;
-	assoc.spatial_mux_flag = is_2ss ? 1 : 0;
-	assoc.peer_rate_caps = WMI_RC_HT_FLAG | WMI_RC_CW40_FLAG |
-			       WMI_RC_SGI_FLAG | (is_2ss ? WMI_RC_DS_FLAG : 0);
-	assoc.peer_ht_caps = is_2ss ? 0x01ef : 0x01ce;
-	assoc.peer_max_mpdu = 65535;
-	assoc.peer_mpdu_density = 0;
-	assoc.peer_nss = is_2ss ? 2 : 1;
-	assoc.peer_vht_caps = 0x03800030;
-	assoc.peer_phymode = WMI_HOST_MODE_11AC_VHT80;
-	assoc.rx_max_rate = is_2ss ? 867 : 433;
-	assoc.rx_mcs_set = is_2ss ? 0xfffa : 0xfffc;
-	assoc.tx_max_rate = is_2ss ? 867 : 433;
-	assoc.tx_mcs_set = is_2ss ? 0xfffa : 0xfffc;
-	assoc.peer_legacy_rates.num_rates = sizeof(legacy_11a);
-	memcpy(assoc.peer_legacy_rates.rates, legacy_11a, sizeof(legacy_11a));
-	assoc.peer_ht_rates.num_rates = is_2ss ? 16 : 8;
-	for (i = 0; i < assoc.peer_ht_rates.num_rates; i++)
-		assoc.peer_ht_rates.rates[i] = i;
 
 	spin_lock_irqsave(&wma_pt_peer_lock, flags);
-	wma_pt_peer_live.assoc_issued = true;
+	slot->assoc_issued = true;
 	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
 
 	status = wmi_unified_peer_assoc_send(wma->wmi_handle, &assoc);
 	spin_lock_irqsave(&wma_pt_peer_lock, flags);
-	wma_pt_peer_live.assoc_submit = status;
-	wma_pt_peer_live.assoc_returned = true;
+	slot->assoc_submit = status;
+	slot->assoc_returned = true;
 	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
 	if (QDF_IS_STATUS_ERROR(status)) {
 		rc = qdf_status_to_os_return(status);
@@ -3011,8 +3339,12 @@ int wma_pt_remote_peer_setup(struct wlan_objmgr_vdev *vdev, u64 generation,
 	deadline = jiffies + msecs_to_jiffies(WMA_PT_PEER_WAIT_MS);
 	rc = -ETIMEDOUT;
 	do {
+		if (cds_is_driver_recovering()) {
+			rc = -ESHUTDOWN;
+			break;
+		}
 		spin_lock_irqsave(&wma_pt_peer_lock, flags);
-		snap = wma_pt_peer_live;
+		snap = *slot;
 		spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
 		if (snap.dp_conflict) {
 			rc = -EIO;
@@ -3043,27 +3375,90 @@ int wma_pt_remote_peer_setup(struct wlan_objmgr_vdev *vdev, u64 generation,
 	}
 
 	spin_lock_irqsave(&wma_pt_peer_lock, flags);
-	wma_pt_peer_live.setup_rc = 0;
-	WRITE_ONCE(wma_pt_peer_live.tx_ready, true);
-	wma_pt_peer_last = wma_pt_peer_live;
+	slot->setup_rc = 0;
+	wma_pt_set_tx_ready_locked(slot, true);
+	wma_pt_peer_last = *slot;
 	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
+	mutex_unlock(&wma_pt_peer_ops_lock);
 	return 0;
 
 fail_early:
 	spin_lock_irqsave(&wma_pt_peer_lock, flags);
-	wma_pt_peer_live.active = false;
-	wma_pt_peer_live.setup_rc = rc;
-	wma_pt_peer_last = wma_pt_peer_live;
-	memset(&wma_pt_peer_live, 0, sizeof(wma_pt_peer_live));
+	slot->setup_rc = rc;
+	wma_pt_clear_slot_locked(slot);
 	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
+	mutex_unlock(&wma_pt_peer_ops_lock);
 	return rc;
 
 rollback:
 	spin_lock_irqsave(&wma_pt_peer_lock, flags);
-	wma_pt_peer_live.setup_rc = rc;
+	slot->setup_rc = rc;
 	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
-	(void)wma_pt_remote_peer_teardown(vdev, generation);
+	(void)wma_pt_remote_peer_del_slot_locked(wma, vdev, slot);
+unlock_ops:
+	mutex_unlock(&wma_pt_peer_ops_lock);
 	return rc;
+}
+
+int wma_pt_remote_peer_setup(struct wlan_objmgr_vdev *vdev, u64 generation,
+			     const u8 *remote_mac, u32 enable_reo, bool is_2ss)
+{
+	return wma_pt_remote_peer_add(vdev, generation, remote_mac, enable_reo,
+				      is_2ss);
+}
+
+int wma_pt_remote_peer_summary(char *buf, size_t size)
+{
+	struct wma_pt_peer_summary_row rows[WMA_PT_MAX_PEERS];
+	unsigned long flags;
+	u32 reo_mode;
+	int i, active = 0, ready = 0, count = 0, n = 0;
+
+	if (!buf || !size)
+		return 0;
+
+	spin_lock_irqsave(&wma_pt_peer_lock, flags);
+	reo_mode = READ_ONCE(pt_reo_mode);
+	for (i = 0; i < WMA_PT_MAX_PEERS; i++) {
+		struct wma_pt_peer_state *s = &wma_pt_peers[i];
+
+		if (!s->peer_seq)
+			continue;
+		rows[count].peer_seq = s->peer_seq;
+		rows[count].peer_id = s->peer_id;
+		rows[count].ast_idx = s->ast_idx;
+		rows[count].ast_hash = s->ast_hash;
+		rows[count].slot_idx = s->slot_idx;
+		rows[count].vdev_id = s->vdev_id;
+		rows[count].active = s->active;
+		rows[count].ast_valid = s->ast_valid;
+		rows[count].tx_ready = s->tx_ready;
+		rows[count].setup_rc = s->setup_rc;
+		rows[count].teardown_rc = s->teardown_rc;
+		if (s->active)
+			active++;
+		if (s->tx_ready)
+			ready++;
+		count++;
+	}
+	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
+
+	n += scnprintf(buf + n, size - n,
+		       "active=%d tx_ready=%d max=%d reo_mode=%u\n",
+		       active, ready, WMA_PT_MAX_PEERS, reo_mode);
+	for (i = 0; i < count && (size_t)n < size - 1; i++) {
+		n += scnprintf(buf + n, size - n,
+			       "slot=%u seq=%llu vdev=%u peer_id=%u aid=%u "
+			       "ast_valid=%u ast_idx=%u ast_hash=%u "
+			       "tx_ready=%u setup_rc=%d teardown_rc=%d\n",
+			       rows[i].slot_idx, rows[i].peer_seq,
+			       rows[i].vdev_id, rows[i].peer_id,
+			       rows[i].slot_idx + 1, rows[i].ast_valid,
+			       rows[i].ast_idx, rows[i].ast_hash,
+			       rows[i].tx_ready, rows[i].setup_rc,
+			       rows[i].teardown_rc);
+	}
+	return n;
 }
 
 static int wma_pt_fw_caps_get(char *buf, const struct kernel_param *kp)
@@ -4666,16 +5061,15 @@ int wma_peer_delete_handler(void *handle, uint8_t *cmd_param_info,
 			    DEBUG_INVALID_PEER_ID, macaddr, NULL, 0, 0);
 #ifdef DRIVER_PASSTHRU_OWNER
 	{
-		unsigned long flags;
-		bool first;
+		bool first = false;
+		u64 peer_seq = 0;
 
-		if (wma_pt_peer_delete_event(wma, event->vdev_id, macaddr, &first)) {
+		if (wma_pt_peer_delete_event(wma, event->vdev_id, macaddr,
+					     &first, &peer_seq)) {
 			if (first) {
 				wma_cdp_cp_peer_del_response(wma->psoc, macaddr,
 							     event->vdev_id);
-				spin_lock_irqsave(&wma_pt_peer_lock, flags);
-				wma_pt_peer_live.delete_confirmed = true;
-				spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
+				wma_pt_peer_delete_confirm(peer_seq);
 			}
 			return 0;
 		}

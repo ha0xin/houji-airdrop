@@ -41,6 +41,8 @@ new_params = (
     "pt_fw_caps",
     "pt_remote_peer_stats",
     "pt_ampdu_peak",
+    "pt_remote_multi",
+    "pt_remote_peer_ctl",
 )
 default_off_flags = (
     ("pt_rx_msdu_buf", 1),
@@ -57,6 +59,7 @@ default_off_flags = (
     ("pt_tx_ampdu", 1),
     ("pt_dynamic_rate", 1),
     ("pt_sta_coexist", 1),
+    ("pt_remote_multi", 1),
 )
 
 
@@ -157,6 +160,7 @@ expected_flags["pt_remote_hash_override"] = "01"
 expected_flags["pt_remote_rx_window"] = "40000000"
 expected_params = dict.fromkeys(new_params, "0o400")
 expected_params["pt_rx_msdu_stats"] = "0o444"
+expected_params["pt_remote_peer_ctl"] = "0o600"
 checks = {
     "all_567_imports": len(new["versions"]) == 567,
     "plt_got_matches_references": all(new["plt_got"] == ref["plt_got"]

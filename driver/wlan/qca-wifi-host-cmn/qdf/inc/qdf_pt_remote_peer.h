@@ -23,7 +23,9 @@ void pt_remote_peer_set_ast(const void *psoc, u8 vdev_id, const u8 *mac,
 bool pt_remote_peer_lookup_ast(const void *psoc, u8 vdev_id, const u8 *ra_mac,
 			       u16 *ast_idx, u16 *ast_hash);
 u16 pt_remote_peer_active_id(void);
+bool pt_remote_peer_is_active_id(u16 peer_id);
 u32 pt_remote_peer_reo_mode(void);
+void pt_remote_peer_set_reo_mode(u32 mode);
 u64 pt_remote_peer_release_key(const void *psoc, u8 vdev_id, const u8 *mac);
 void pt_remote_peer_released(u64 generation, enum pt_remote_peer_object obj);
 

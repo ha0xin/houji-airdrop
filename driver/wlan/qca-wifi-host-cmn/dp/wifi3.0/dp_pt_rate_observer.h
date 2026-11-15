@@ -17,6 +17,7 @@ struct pt_rate_counts {
  u64 bw[8], mcs[16], pkt[16], gi[4], status[17], tx_ring[8], ppdu_bin[6];
  bool have_ppdu;
  u32 last_ppdu_id;
+ u16 last_ppdu_peer_id;
  u32 cur_ppdu_cnt;
  u32 max_ppdu_mpdus;
  u16 last_peer_id;
@@ -61,9 +62,6 @@ static inline unsigned int dp_pt_ppdu_bucket(u32 cnt)
 static void dp_pt_rate_end(const struct hal_tx_completion_status *ts)
 {
  unsigned long flags;
-#ifdef DRIVER_PASSTHRU_OWNER
- u16 active_peer;
-#endif
  if (!pt_rate_observe || !ts)
   return;
  spin_lock_irqsave(&pt_rate_lock, flags);
@@ -72,8 +70,7 @@ static void dp_pt_rate_end(const struct hal_tx_completion_status *ts)
  pt_rates.status[ts->status < 16 ? ts->status : 16]++;
  pt_rates.last_peer_id = ts->peer_id;
 #ifdef DRIVER_PASSTHRU_OWNER
- active_peer = pt_remote_peer_active_id();
- if (active_peer != U16_MAX && ts->peer_id == active_peer)
+ if (pt_remote_peer_is_active_id(ts->peer_id))
   pt_rates.remote_peer_compl++;
 #endif
  if (ts->valid) {
@@ -84,11 +81,13 @@ static void dp_pt_rate_end(const struct hal_tx_completion_status *ts)
   pt_rates.gi[ts->sgi]++;
   pt_rates.amsdu += ts->msdu_part_of_amsdu;
   pt_rates.ldpc += ts->ldpc;
-  if (!pt_rates.have_ppdu || ts->ppdu_id != pt_rates.last_ppdu_id) {
+  if (!pt_rates.have_ppdu || ts->ppdu_id != pt_rates.last_ppdu_id ||
+      ts->peer_id != pt_rates.last_ppdu_peer_id) {
    if (pt_rates.have_ppdu)
     pt_rates.ppdu_bin[dp_pt_ppdu_bucket(pt_rates.cur_ppdu_cnt)]++;
    pt_rates.have_ppdu = true;
    pt_rates.last_ppdu_id = ts->ppdu_id;
+   pt_rates.last_ppdu_peer_id = ts->peer_id;
    pt_rates.cur_ppdu_cnt = 1;
    pt_rates.ppdus++;
    if (pt_rates.max_ppdu_mpdus < 1)

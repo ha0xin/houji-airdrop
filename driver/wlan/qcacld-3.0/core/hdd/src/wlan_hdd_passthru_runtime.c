@@ -22,6 +22,7 @@
 #include "wlan_hdd_passthru_runtime.h"
 #include "wlan_hdd_passthru_iface.h"
 #include "wlan_hdd_passthru_control.h"
+#include "wma_api.h"
 #endif
 
 #define HDD_PT_POLL_MS 20
@@ -1168,4 +1169,119 @@ static const struct kernel_param_ops hdd_pt_activate_ops = {
 };
 module_param_cb(pt_activate, &hdd_pt_activate_ops, NULL, 0600);
 MODULE_PARM_DESC(pt_activate, "Write 1 after LIVE to publish PT; broker release then reload to reset");
+
+enum hdd_pt_peer_ctl_op {
+	HDD_PT_PEER_CTL_ADD = 1,
+	HDD_PT_PEER_CTL_DEL = 2,
+	HDD_PT_PEER_CTL_CLEAR = 3,
+};
+
+struct hdd_pt_peer_ctl_req {
+	enum hdd_pt_peer_ctl_op op;
+	u8 mac[ETH_ALEN];
+	u32 enable_reo;
+	bool is_2ss;
+};
+
+static const char *hdd_pt_skip_ws(const char *s)
+{
+	while (*s == ' ' || *s == '\t' || *s == '\n' || *s == '\r')
+		s++;
+	return s;
+}
+
+static int hdd_pt_parse_peer_ctl(const char *val,
+				 struct hdd_pt_peer_ctl_req *req)
+{
+	const char *p;
+
+	if (!val)
+		return -EINVAL;
+	memset(req, 0, sizeof(*req));
+	p = hdd_pt_skip_ws(val);
+	if (!strncmp(p, "clear", 5)) {
+		p = hdd_pt_skip_ws(p + 5);
+		return *p ? -EINVAL : ((req->op = HDD_PT_PEER_CTL_CLEAR), 0);
+	}
+	if (!strncmp(p, "add", 3) && (p[3] == ' ' || p[3] == '\t')) {
+		req->op = HDD_PT_PEER_CTL_ADD;
+		p = hdd_pt_skip_ws(p + 3);
+	} else if (!strncmp(p, "del", 3) && (p[3] == ' ' || p[3] == '\t')) {
+		req->op = HDD_PT_PEER_CTL_DEL;
+		p = hdd_pt_skip_ws(p + 3);
+	} else {
+		return -EINVAL;
+	}
+	/* mac_pton requires 17-char colon-separated Ethernet MAC. */
+	if (strnlen(p, 18) < 17 || !mac_pton(p, req->mac) ||
+	    !is_valid_ether_addr(req->mac))
+		return -EINVAL;
+	p = hdd_pt_skip_ws(p + 17);
+	return *p ? -EINVAL : 0;
+}
+
+static int hdd_pt_remote_peer_op_cb(struct wlan_objmgr_vdev *vdev,
+				    u64 generation, void *context)
+{
+	struct hdd_pt_peer_ctl_req *req = context;
+
+	switch (req->op) {
+	case HDD_PT_PEER_CTL_ADD:
+		return wma_pt_remote_peer_add(vdev, generation, req->mac,
+					      req->enable_reo, req->is_2ss);
+	case HDD_PT_PEER_CTL_DEL:
+		return wma_pt_remote_peer_del(vdev, generation, req->mac);
+	case HDD_PT_PEER_CTL_CLEAR:
+		return wma_pt_remote_peer_clear(vdev, generation);
+	default:
+		return -EINVAL;
+	}
+}
+
+static int hdd_pt_remote_peer_ctl_set(const char *val,
+				      const struct kernel_param *kp)
+{
+	struct hdd_pt_peer_ctl_req req;
+	struct hdd_pt_runtime *rt;
+	int ret;
+
+	(void)kp;
+	if (!hdd_pt_enabled_mode() || !hdd_pt_control_remote_multi_enabled())
+		return -EPERM;
+	/* insmod pt_remote_peer_ctl=... is intentionally rejected. */
+	if (THIS_MODULE && READ_ONCE(THIS_MODULE->state) != MODULE_STATE_LIVE)
+		return -EBUSY;
+	ret = hdd_pt_parse_peer_ctl(val, &req);
+	if (ret)
+		return ret;
+
+	mutex_lock(&hdd_pt_lifecycle_lock);
+	rt = hdd_pt_current;
+	if (!rt || atomic_read(&rt->closing) || atomic_read(&rt->recovering) ||
+	    READ_ONCE(rt->phase) != HDD_PT_RT_READY ||
+	    !READ_ONCE(rt->handle_published)) {
+		ret = -ESHUTDOWN;
+		goto out;
+	}
+	req.enable_reo = hdd_pt_control_remote_reo_mode();
+	req.is_2ss = hdd_pt_control_params_is_2ss(&rt->params);
+	ret = hdd_pt_with_active(&rt->registry, rt->registry.generation,
+				 hdd_pt_remote_peer_op_cb, &req);
+out:
+	mutex_unlock(&hdd_pt_lifecycle_lock);
+	return ret;
+}
+
+static int hdd_pt_remote_peer_ctl_get(char *buf, const struct kernel_param *kp)
+{
+	(void)kp;
+	return wma_pt_remote_peer_summary(buf, PAGE_SIZE);
+}
+
+static const struct kernel_param_ops hdd_pt_peer_ctl_ops = {
+	.set = hdd_pt_remote_peer_ctl_set,
+	.get = hdd_pt_remote_peer_ctl_get,
+};
+module_param_cb(pt_remote_peer_ctl, &hdd_pt_peer_ctl_ops, NULL, 0600);
+MODULE_PARM_DESC(pt_remote_peer_ctl, "Dynamic PASSTHRU remote peer control: add/del <mac> or clear");
 #endif

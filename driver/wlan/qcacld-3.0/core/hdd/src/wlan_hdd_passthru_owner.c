@@ -673,7 +673,6 @@ release:
 	return ret;
 }
 
-
 int hdd_pt_status(struct hdd_pt_registry *registry, u64 generation,
 		  struct hdd_pt_status *status)
 {
@@ -808,6 +807,39 @@ int hdd_pt_with_channel(struct hdd_pt_registry *registry, u64 generation,
 unlock:
 	mutex_unlock(&owner->control);
 release:
+	hdd_pt_release(registry);
+	return ret;
+}
+
+int hdd_pt_with_active(struct hdd_pt_registry *registry, u64 generation,
+		       int (*operation)(struct wlan_objmgr_vdev *vdev,
+					u64 generation, void *context),
+		       void *context)
+{
+	struct hdd_pt_owner *owner;
+	struct hdd_wh_ticket ticket = {0};
+	struct wlan_objmgr_vdev *vdev = NULL;
+	int ret;
+
+	if (!operation || !generation)
+		return -EINVAL;
+	owner = hdd_pt_acquire(registry, generation);
+	if (!owner)
+		return -ENOENT;
+	mutex_lock(&owner->control);
+	if (owner->phase != HDD_PT_ACTIVE || !owner->vdev ||
+	    owner->channel_busy || atomic_read(&owner->closing)) {
+		ret = -ESHUTDOWN;
+	} else {
+		ret = hdd_wh_enter(&owner->gate, generation, &ticket);
+		if (!ret)
+			vdev = owner->vdev;
+	}
+	mutex_unlock(&owner->control);
+	if (!ret) {
+		ret = operation(vdev, generation, context);
+		hdd_wh_leave(&ticket);
+	}
 	hdd_pt_release(registry);
 	return ret;
 }

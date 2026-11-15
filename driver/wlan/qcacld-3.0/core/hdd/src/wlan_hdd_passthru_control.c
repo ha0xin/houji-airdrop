@@ -21,6 +21,7 @@
 #include "wma_api.h"
 #include <linux/kernel.h>
 #include <linux/moduleparam.h>
+#include <qdf_pt_remote_peer.h>
 
 /* Load-time opt-in, restricted to the tested non-DFS 149-161 block.
  * Retain HT20 as the default and retain single-MPDU TX throughout.
@@ -36,6 +37,10 @@ MODULE_PARM_DESC(pt_vht80_2ss, "Experimental VHT80 NSS1-2 MCS0-9 LDPC on primary
 static bool pt_remote_assoc;
 module_param(pt_remote_assoc, bool, 0400);
 MODULE_PARM_DESC(pt_remote_assoc, "Associate explicit remote peer on PASSTHRU vdev");
+
+static bool pt_remote_multi;
+module_param(pt_remote_multi, bool, 0400);
+MODULE_PARM_DESC(pt_remote_multi, "Allow dynamic multi-peer association on PASSTHRU vdev");
 
 static unsigned int pt_remote_reo;
 module_param(pt_remote_reo, uint, 0400);
@@ -86,6 +91,21 @@ static bool hdd_pt_vht80(const struct wondertap_init_params *p)
 static bool hdd_pt_vht80_2ss(const struct wondertap_init_params *p)
 {
     return pt_vht80_2ss && hdd_pt_vht80(p);
+}
+
+bool hdd_pt_control_remote_multi_enabled(void)
+{
+	return READ_ONCE(pt_remote_multi);
+}
+
+u32 hdd_pt_control_remote_reo_mode(void)
+{
+	return READ_ONCE(pt_remote_reo);
+}
+
+bool hdd_pt_control_params_is_2ss(const struct wondertap_init_params *params)
+{
+	return hdd_pt_vht80_2ss(params);
 }
 
 
@@ -527,6 +547,11 @@ int hdd_pt_control_finish_start(struct hdd_pt_iface *iface,
 			return qdf_status_to_os_return(status);
 		iface->policy_registered = true;
 		hdd_info("PT coexist session registered vdev %u", vdev_id);
+	}
+	if (pt_remote_multi) {
+		if (pt_remote_reo > 2)
+			return -EINVAL;
+		pt_remote_peer_set_reo_mode(pt_remote_reo);
 	}
 	if (pt_remote_assoc) {
 		vdev = hdd_objmgr_get_vdev_by_user(adapter->deflink,

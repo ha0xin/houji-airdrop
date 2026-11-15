@@ -954,6 +954,12 @@ QDF_STATUS wma_passthru_reap_failed_deletes(void);
 #ifdef DRIVER_PASSTHRU_OWNER
 int wma_pt_remote_peer_setup(struct wlan_objmgr_vdev *vdev, u64 generation,
 			     const u8 *remote_mac, u32 enable_reo, bool is_2ss);
+int wma_pt_remote_peer_add(struct wlan_objmgr_vdev *vdev, u64 generation,
+			   const u8 *remote_mac, u32 enable_reo, bool is_2ss);
+int wma_pt_remote_peer_del(struct wlan_objmgr_vdev *vdev, u64 generation,
+			   const u8 *remote_mac);
+int wma_pt_remote_peer_clear(struct wlan_objmgr_vdev *vdev, u64 generation);
+int wma_pt_remote_peer_summary(char *buf, size_t size);
 int wma_pt_remote_peer_teardown(struct wlan_objmgr_vdev *vdev, u64 generation);
 #endif
 /* Post-fence serialized snapshot: an exact blocked parameter still owns the

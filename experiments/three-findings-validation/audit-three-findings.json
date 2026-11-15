@@ -36,7 +36,7 @@
     "tested_wideband_ring": "481e3474ea6b42acab5bb5a35b5be7b5e291aa975d7422034ca4e750e857d71c",
     "capacity_source_tree_module": "f31d2cb27de391d74df4d5541bbecdcc917e2f51decfe7535118ca6b09dd7b2c"
   },
-  "candidate_sha256": "dc6b21e494bda8df9f920e4b2d74f74aa077ae1c6fba41c13e1dd361151e8ec2",
+  "candidate_sha256": "e81c4a90fd2f5d6e40cef5f2e282b3cad095c79a3e9a03dad1788f92306f4262",
   "candidate_vermagic": [
     "6.1.68 SMP preempt mod_unload modversions aarch64"
   ],
@@ -70,7 +70,9 @@
     "pt_sta_coexist": "0o400",
     "pt_fw_caps": "0o400",
     "pt_remote_peer_stats": "0o400",
-    "pt_ampdu_peak": "0o400"
+    "pt_ampdu_peak": "0o400",
+    "pt_remote_multi": "0o400",
+    "pt_remote_peer_ctl": "0o600"
   },
   "candidate_initial_flags": {
     "pt_rx_msdu_buf": "00",
@@ -87,6 +89,7 @@
     "pt_tx_ampdu": "00",
     "pt_dynamic_rate": "00",
     "pt_sta_coexist": "00",
+    "pt_remote_multi": "00",
     "pt_remote_ast_override": "01",
     "pt_remote_hash_override": "01"
   }
