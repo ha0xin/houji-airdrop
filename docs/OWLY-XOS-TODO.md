@@ -20,9 +20,9 @@
 |---|---|---|
 | **`dp_rx_tid.c` 初始 RX REO 窗口 `64 → 256`** | ✅ **已完成** | [`dp_rx_tid.c`](../driver/wlan/qca-wifi-host-cmn/dp/wifi3.0/dp_rx_tid.c) 新增模块参数 `pt_remote_rx_window`（`1 / 64 / 256`），在 `wlan_op_mode_passthru` + `pt_remote_reo=2` 下将 TID 0 初始硬件 REO 窗口设为 `dp_pt_initial_rx_window(soc)`；[`radio.sh`](../runtime/owly-xos/radio.sh) `insmod` 已显式传入并校验 `pt_remote_rx_window=256`。 |
 | **独占无线电期间保持 `MIShare` 发现态与热重入兼容** | ✅ **已完成** | [`Hook.java`](../runtime/owly-xos/compat/src/org/houji/xoscompat/Hook.java) 在 `sys.xos.exclusive=1` 期间保持 `isWifiEnabled()=true` / `WIFI_STATE_ENABLED`，拦截反向 `setWifiEnabled(true)` 与桥接切频产生的 `WIFI_STATE_CHANGED` 广播，修复分享面板掉回 `state=1` 丢失设备列表问题。 |
-| **出向 `HOUJI_OWLY_TX_ADDBA` 窗口 `64 → 256`** | ⚠️ **代码已支持，运行时尚未开启** | [`android.rs`](../clients/owly-app/native/houji-runner/src/android.rs) 的 `tx_addba_mode()` 已支持 `HOUJI_OWLY_TX_ADDBA=2`（`initiate_addba_window = 256`），但 [`radio.sh`](../runtime/owly-xos/radio.sh) `start_xos()` 当前仍配置为 `HOUJI_OWLY_TX_ADDBA=1`（窗口 `64`）。 |
-| **反向纯 TCP ACK 跳过 `OWLY_COALESCE_US` 立即发送** | ⬜ **待实现（当前逻辑相反）** | [`node.rs`](../clients/owly-app/native/owly/crates/owly-awdl/src/node.rs) 的 `should_coalesce()` 在 `packet.pure_tcp_ack().is_some()` 且距 EAW 关窗大于 `1000 µs` 时返回 **`true`**，强制纯 TCP ACK 在队列中等待 `1 ms` 合包窗口（沿用自早期无硬件 TX A-MPDU 的 `dzf2` 阶段）。 |
-| **`xos0` TAP 启用 `IFF_VNET_HDR` / GRO 或批量 I/O** | ⬜ **待实现** | [`android.rs`](../clients/owly-app/native/houji-runner/src/android.rs) 仅以 `IFF_TAP \| IFF_NO_PI \| IFF_TUN_EXCL` 打开 `xos0`，未启用 `IFF_VNET_HDR` / `TUNSETOFFLOAD`；TAP 与 `wonder0` `AF_PACKET` 两侧均为逐包单次 `read()`/`write()`/`recv()` 系统调用及每包 `Vec<u8>` 堆分配。 |
+| **出向 `HOUJI_OWLY_TX_ADDBA` 窗口 `64 → 256`** | ⚠️ **代码已支持，运行时尚未开启** | [`android.rs`](../native/houji-runner/src/android.rs) 的 `tx_addba_mode()` 已支持 `HOUJI_OWLY_TX_ADDBA=2`（`initiate_addba_window = 256`），但 [`radio.sh`](../runtime/owly-xos/radio.sh) `start_xos()` 当前仍配置为 `HOUJI_OWLY_TX_ADDBA=1`（窗口 `64`）。 |
+| **反向纯 TCP ACK 跳过 `OWLY_COALESCE_US` 立即发送** | ⬜ **待实现（当前逻辑相反）** | [`node.rs`](../native/owly/crates/owly-awdl/src/node.rs) 的 `should_coalesce()` 在 `packet.pure_tcp_ack().is_some()` 且距 EAW 关窗大于 `1000 µs` 时返回 **`true`**，强制纯 TCP ACK 在队列中等待 `1 ms` 合包窗口（沿用自早期无硬件 TX A-MPDU 的 `dzf2` 阶段）。 |
+| **`xos0` TAP 启用 `IFF_VNET_HDR` / GRO 或批量 I/O** | ⬜ **待实现** | [`android.rs`](../native/houji-runner/src/android.rs) 仅以 `IFF_TAP \| IFF_NO_PI \| IFF_TUN_EXCL` 打开 `xos0`，未启用 `IFF_VNET_HDR` / `TUNSETOFFLOAD`；TAP 与 `wonder0` `AF_PACKET` 两侧均为逐包单次 `read()`/`write()`/`recv()` 系统调用及每包 `Vec<u8>` 堆分配。 |
 
 ---
 
@@ -32,7 +32,7 @@
 
 - [ ] **1. 反向纯 TCP ACK 零等待直发（保留队列积压时的原地折叠）**
   - **现状问题**：在 `ezif` 硬件 TX A-MPDU（`pt_tx_ampdu=1`）路径下，硬件自身可零额外开销聚合多帧；接收大文件时，将首个反向纯 TCP ACK 强行截留 `OWLY_COALESCE_US=1000` 微秒会直接抬高双向 RTT，在空口突发末尾只剩单个尾随 ACK 时白等 `1 ms`，延缓对端拥塞窗口爬升与双包 A-MSDU 激活。
-  - **方案**：在 [`node.rs`](../clients/owly-app/native/owly/crates/owly-awdl/src/node.rs) 的 `should_coalesce()` 中移除 `packet.pure_tcp_ack().is_some()` 分支，仅对 `packet.data.len() >= AMSDU_COALESCE_MIN_BYTES` 执行软件 A-MSDU 凑包等待；保留入队路径 `PureTcpAck::supersedes()` 原地覆盖，使非活跃 EAW 槽位或队列积压期间的旧 ACK 仍自动折叠。
+  - **方案**：在 [`node.rs`](../native/owly/crates/owly-awdl/src/node.rs) 的 `should_coalesce()` 中移除 `packet.pure_tcp_ack().is_some()` 分支，仅对 `packet.data.len() >= AMSDU_COALESCE_MIN_BYTES` 执行软件 A-MSDU 凑包等待；保留入队路径 `PureTcpAck::supersedes()` 原地覆盖，使非活跃 EAW 槽位或队列积压期间的旧 ACK 仍自动折叠。
 
 - [ ] **2. 切换出向 `HOUJI_OWLY_TX_ADDBA=2`（发送侧 256 窗口）**
   - **现状问题**：对 Mac 4 MiB 套接字窗口实测 `max_ppdu_mpdus=31`（`64.08 MB/s`），而对手机发送视频时 PPDU 聚合深度主要集中在 `[9..=16]`。
@@ -54,7 +54,7 @@
 
 - [ ] **5. `wonder0` `AF_PACKET` 批量收发与固定缓冲池**
   - **方案**：
-    - 在 [`android.rs`](../clients/owly-app/native/houji-runner/src/android.rs) `Monitor` 与 `Tap` 的每次 `AsyncFd` 可读事件中，使用非阻塞循环一次性排空当前就绪批次（或采用 `recvmmsg` / `sendmmsg` / `TPACKET_V2` 环形缓冲区），统一推进 `Node::handle` 后批量写出，减少 `tokio` 调度与用户态/内核态上下文切换次数；
+    - 在 [`android.rs`](../native/houji-runner/src/android.rs) `Monitor` 与 `Tap` 的每次 `AsyncFd` 可读事件中，使用非阻塞循环一次性排空当前就绪批次（或采用 `recvmmsg` / `sendmmsg` / `TPACKET_V2` 环形缓冲区），统一推进 `Node::handle` 后批量写出，减少 `tokio` 调度与用户态/内核态上下文切换次数；
     - 用预分配帧池或切片复用替代 `Monitor::recv()` 中的每包 `raw.to_vec()` 与 `Ipv6Packet::to_ethernet()` 分配。
 
 ---
@@ -62,7 +62,7 @@
 ### P2：建连首包时延、收尾延迟与多信道体验
 
 - [ ] **6. 消除首次 `/Discover` 的 `~1.76 s` TCP `SYN` 重传等待**
-  - **现状问题**：实测发现对端后首次 `/Discover` TCP 建连耗时 `1.761 s`，而 3 秒后正式 `/Upload` 建连仅 `8 ms`（详见 [`34-owly-xos-validation.md`](airdrop/34-owly-xos-validation.md)）。[`android.rs`](../clients/owly-app/native/houji-runner/src/android.rs) 在 `Tap::peer_up` 中通过派生外部进程 `/system/bin/ip -6 neigh replace` 写入邻居项，存在子进程启动开销及首包跨越 EAW 关窗触发内核 `1 s` `SYN` 退避的概率。
+  - **现状问题**：实测发现对端后首次 `/Discover` TCP 建连耗时 `1.761 s`，而 3 秒后正式 `/Upload` 建连仅 `8 ms`（详见 [`34-owly-xos-validation.md`](airdrop/34-owly-xos-validation.md)）。[`android.rs`](../native/houji-runner/src/android.rs) 在 `Tap::peer_up` 中通过派生外部进程 `/system/bin/ip -6 neigh replace` 写入邻居项，存在子进程启动开销及首包跨越 EAW 关窗触发内核 `1 s` `SYN` 退避的概率。
   - **方案**：用直接的 `NETLINK_ROUTE`（`RTM_NEWNEIGH` / `RTM_NEWADDR` / `RTM_NEWLINK`）套接字调用替代 `Tap::open` 与 `Tap::peer_up` 中的多次 `/system/bin/ip` 子进程派生，确保邻居项在注入 mDNS 报文前同步就绪。
 
 - [ ] **7. 收敛接收端流结束后的 `~2.0 s` 尾部等待**

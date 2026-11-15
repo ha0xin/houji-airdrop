@@ -1,5 +1,5 @@
-# 客户端
+# 客户端（`clients/`）
 
-[owly-app](owly-app/README.zh-CN.md) 是已实现的独立 Android App，`app/` 为界面，`native/houji-runner/` 为 Android 后端，`native/owly/` 为它实际使用的协议栈。
+[owly-app](owly-app/README.zh-CN.md) 是暂缓维护的独立 Android 测试 App（`app/` 为 Java 界面，`native/` 为独立 App 专属上层协议封装，底层共享 [`../../native/houji-runner/`](../native/houji-runner/) 与 [`../../native/owly/`](../native/owly/)）。
 
-目标是让独立 App 与小米互传 Hook 共用守护进程。当前尚未抽离统一 daemon/IPC，也未实现互传 Hook；不创建空模块冒充已实现功能。实验目录中的其他 Owly 副本保留用于对照，不能直接覆盖 App 使用的版本。
+当前主线为 [`runtime/owly-xos/`](../runtime/owly-xos/README.zh-CN.md)（直接赋能系统原版小米互传 `MIShare.apk`），其构建与打包流程完全不依赖本目录。

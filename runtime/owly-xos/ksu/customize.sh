@@ -162,10 +162,11 @@ ui_print "- 正在部署 owly-xos 高速后端运行时与预暂存固件..."
 mkdir -p "$NATIVE_DIR" "$RUNTIME_DIR/state" "$RUNTIME_DIR/radio" "$RUNTIME_DIR/firmware"
 chmod 700 "$NATIVE_DIR" "$RUNTIME_DIR" "$RUNTIME_DIR/state"
 
+rm -f "$RUNTIME_DIR/houji-owly-app"
 cp "$MODPATH/payload/xos-bridge.zip" "$RUNTIME_DIR/xos-bridge.zip"
 cp "$MODPATH/payload/bridge-supervisor.sh" "$RUNTIME_DIR/bridge-supervisor.sh"
 cp "$MODPATH/payload/radio.sh" "$RUNTIME_DIR/radio.sh"
-cp "$MODPATH/payload/houji-owly-app" "$RUNTIME_DIR/houji-owly-app"
+cp "$MODPATH/payload/owly-xosd" "$RUNTIME_DIR/owly-xosd"
 cp "$MODPATH/payload/wonder-init" "$RUNTIME_DIR/wonder-init"
 cp "$MODPATH/payload/qca_cld3_kiwi_v2-three-findings.ko" "$RUNTIME_DIR/qca_cld3_kiwi_v2-three-findings.ko"
 cp "$MODPATH/payload/firmware/ezif.bin" "$RUNTIME_DIR/firmware/ezif.bin"
@@ -175,7 +176,7 @@ cp "$MODPATH/payload/installation.sha256" "$RUNTIME_DIR/installation.sha256"
 cp "$MODPATH/payload/installation.sha256" "$RUNTIME_DIR/SHA256SUMS"
 
 chmod 644 "$RUNTIME_DIR/xos-bridge.zip"
-chmod 700 "$RUNTIME_DIR/bridge-supervisor.sh" "$RUNTIME_DIR/radio.sh" "$RUNTIME_DIR/houji-owly-app" "$RUNTIME_DIR/wonder-init"
+chmod 700 "$RUNTIME_DIR/bridge-supervisor.sh" "$RUNTIME_DIR/radio.sh" "$RUNTIME_DIR/owly-xosd" "$RUNTIME_DIR/wonder-init"
 chmod 600 "$RUNTIME_DIR/qca_cld3_kiwi_v2-three-findings.ko" "$RUNTIME_DIR/firmware/ezif.bin" \
   "$RUNTIME_DIR/radio/houji_wonder_bridge.ko" "$RUNTIME_DIR/radio/wonder.ko" \
   "$RUNTIME_DIR/installation.sha256" "$RUNTIME_DIR/SHA256SUMS"

@@ -2,7 +2,7 @@
  * Reuse the existing audited netlink transport. Expose only fixed-channel
  * 149 setup, with no probe-frame transmit or arbitrary frequency command.
  */
-#include "../../../../third_party/upstream/native/wonder-probe/probe.c"
+#include "../../../../native/wonder-init/probe.c"
 
 static void initialise(u32 width, u32 gi, u8 nss, u8 mcs, const char *country)
 {

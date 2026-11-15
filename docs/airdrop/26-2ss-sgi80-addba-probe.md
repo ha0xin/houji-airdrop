@@ -1,7 +1,7 @@
 # 小米 14 2×2 MIMO + SGI80 + 安全 ADDBA（A-MPDU + A-MSDU）实机突破报告
 
-日期：2026-11-11  
-测试设备：Mac（`awdl0`，**零修改**）↔ 小米 14（`houji`，ADB `DEVICE_SERIAL`，149 信道 `PASSTHRU` `self-peer` 安全模式，实验后已恢复 `STOCK_RESTORED`）
+- 日期：2026-11-11
+- 测试设备：Mac（`awdl0`，**零修改**）↔ 小米 14（`houji`，ADB `DEVICE_SERIAL`，149 信道 `PASSTHRU` `self-peer` 安全模式，实验后已恢复 `STOCK_RESTORED`）
 
 ---
 

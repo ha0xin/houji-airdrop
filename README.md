@@ -140,19 +140,17 @@ A-MSDU 将多个数据单元装入一个 MPDU；A-MPDU 则由硬件将多个 MPD
 **BYOB（自行提供外部输入）**：驱动编译需要 MiCode 原始 kernel/WLAN 源码归档和 Android Clang；用户态与 App 需要 Rust、NDK、SDK/JDK。手机运行另需自行提取三星 `ezif` 固件（主线 `owly-xos` 打包还需提供原厂平台签名 `MIShare.apk`），详见 [BYOB 清单](docs/guides/byob.md)。闭源系统包不随源码提供。
 
 ```sh
-# 1. 在 Linux 上配置 BYOB 源码和 Clang 后构建三个驱动模块
+# 1. 在 Linux x86_64 上配置 BYOB 源码归档和 Clang 后构建三个驱动模块（直接基于 driver/，无 third_party 依赖）
 bash scripts/build-driver.sh
-# 2. 配置 Rust/NDK 后构建用户态原生程序（houji-owly-app、wonder-init）
-bash scripts/build-userspace.sh
 
-# 3a. 构建主线 Owly-XOS 桥接 DEX、LSPosed 兼容模块并打包 KernelSU 模块
-ANDROID_HOME=/path/to/android-sdk BUILD_TOOLS=/path/to/android-sdk/build-tools/35.0.0 \
-  bash runtime/owly-xos/build.sh
-ANDROID_HOME=/path/to/android-sdk BUILD_TOOLS=/path/to/android-sdk/build-tools/35.0.0 \
-  bash runtime/owly-xos/compat/build.sh
-python3 runtime/owly-xos/package-ksu.py --mishare-apk /path/to/MIShare.apk
+# 2a. 一键构建主线 Owly-XOS（owly-xosd、wonder-init、xos-bridge.zip、Owly-XOS-Compat.apk，零独立 App 依赖）并打包 KernelSU 模块
+ANDROID_NDK_HOME=/path/to/android-ndk \
+ANDROID_HOME=/path/to/android-sdk \
+BUILD_TOOLS=/path/to/android-sdk/build-tools/35.0.0 \
+  bash scripts/build-xos.sh --mishare-apk /path/to/MIShare.apk
 
-# 3b. （可选）构建暂缓的独立 Owly AirDrop APK
+# 2b. （可选）构建暂缓的独立 Owly AirDrop App
+bash clients/owly-app/build-native.sh
 bash scripts/build-app.sh
 python3 runtime/owly-app/build-radio.py
 ```
@@ -196,17 +194,17 @@ python3 runtime/owly-app/build-radio.py
 
 ```text
 houji-airdrop/
-├── clients/owly-app/     独立 App、Android 后端与所用 Owly 协议栈
-├── driver/wlan/          当前驱动修改文件覆盖层
-├── runtime/owly-app/     App 路线 root 会话与无线恢复脚本
-├── runtime/owly-xos/  小米互传原生前端的高速 xos0 桥接与无线后端
-├── scripts/             构建入口和构建环境配方
-├── third_party/upstream/ 上游基础组件、配方与许可证
+├── driver/              自包含驱动源码与配置（单一合并 wlan/、bridge/、wonder/、configs/、sources.json）
+├── native/              公共原生协议栈与无线守护（owly/、houji-runner/ -> owly-xosd、wonder-init/）
+├── runtime/owly-xos/    小米互传原生前端的高速 xos0 桥接、LSPosed 兼容模块与 KSU 打包器（主线）
+├── runtime/owly-app/    独立 App 路线 root 会话与无线恢复脚本（暂缓）
+├── clients/owly-app/    独立 Owly AirDrop App 界面与专属上层协议封装（暂缓）
+├── scripts/             顶层构建入口（build-driver.sh、build-xos.sh、build-userspace.sh、build-app.sh）
 ├── experiments/         实验分支、测试工具和匿名化汇总
 ├── tests/device/        实机验证入口导航
-├── blobs/               外部固件材料入口
-├── docs/                当前状态、交接、架构、构建说明与历史调查
-└── archive/import/      首次导入记录的隐私清理说明
+├── blobs/               外部固件与模块材料入口（blobs/local/ 被 git 忽略）
+├── docs/                当前状态、交接、架构、构建说明、TODO 与历史调查
+└── archive/             首次导入清理说明与早期构建归档参考
 ```
 
 `install.py` 安装入口现通过 `clients/owly-app/runtime-manifest.json` 校验哈希并从 `blobs/local/`（或环境变量）解析闭源输入，与构建脚本解耦。

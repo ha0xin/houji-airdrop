@@ -1,6 +1,6 @@
 # 149 信道 VHT 接收容量审计
 
-远端 peer 活流先冻结。仅 create/map 的对照保留了 self AST，115 次真实 enqueue 仍没有 TQM 完成，而同 worker 和暂停重开的 self-only 对照完成了 31 次。源码中，WMA 使用同一 PASSTHRU vdev 发送 `WMI_PEER_TYPE_DEFAULT` 和远端 MAC，宿主对象类型为 `WLAN_PEER_STA`，未在该入口更改 vdev 或安全模式。HTT map 同时保留远端自己的槽和 `bss_peer` 标志，旧 PASSTHRU 分支还会覆盖 vdev TX AST 缓存。保护缓存后，raw TX 仍用原 vdev 引用和 `HTT_INVALID_PEER`，没有指定远端 peer。现有回执不能区分固件建 peer 的副作用、HTT map 副作用或它们与 PASSTHRU 的交互。 [实机对照与恢复](22-passthru-rx-reo-probe.md#拆分暂停与-peer-setup) · [远端对象差分](../../experiments/remote-peer-probe/remote-peer-wma-stage1.patch) · [raw TX 入口](../../third_party/upstream/kernel/wlan-overlay/qca-wifi-host-cmn/dp/wifi3.0/dp_tx.c#L3210)
+远端 peer 活流先冻结。仅 create/map 的对照保留了 self AST，115 次真实 enqueue 仍没有 TQM 完成，而同 worker 和暂停重开的 self-only 对照完成了 31 次。源码中，WMA 使用同一 PASSTHRU vdev 发送 `WMI_PEER_TYPE_DEFAULT` 和远端 MAC，宿主对象类型为 `WLAN_PEER_STA`，未在该入口更改 vdev 或安全模式。HTT map 同时保留远端自己的槽和 `bss_peer` 标志，旧 PASSTHRU 分支还会覆盖 vdev TX AST 缓存。保护缓存后，raw TX 仍用原 vdev 引用和 `HTT_INVALID_PEER`，没有指定远端 peer。现有回执不能区分固件建 peer 的副作用、HTT map 副作用或它们与 PASSTHRU 的交互。 [实机对照与恢复](22-passthru-rx-reo-probe.md#拆分暂停与-peer-setup) · [远端对象差分](../../experiments/remote-peer-probe/remote-peer-wma-stage1.patch) · [raw TX 入口](../../driver/wlan/qca-wifi-host-cmn/dp/wifi3.0/dp_tx.c#L3210)
 
 ## 单缓冲尺寸
 

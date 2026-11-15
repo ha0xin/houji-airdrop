@@ -1,0 +1,3 @@
+*.symvers text eol=lf -whitespace
+*.patch text eol=lf -whitespace
+*.trace text eol=lf -whitespace

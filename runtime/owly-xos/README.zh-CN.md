@@ -22,7 +22,7 @@ radio.sh (enter / restore + 退出快照 & Wi-Fi 重连恢复 + 独占锁，实�
     │ 绑定已预部署的 ezif-amss20.bin + qca_cld3_kiwi_v2 (pt_exclusive=1, pt_remote_multi=1,
     │ pt_tx_ampdu=1, pt_rx_msdu_buf=1, pt_rx_ezif_marked=1, pt_remote_reo=2 win=256)
     ▼
-houji-owly-app xos0 amsdu ack (HOUJI_OWLY_TX_ADDBA=1, max_peers=8, fast_discovery=true)
+owly-xosd xos0 amsdu ack (纯 L2 守护，零独立 App 依赖；HOUJI_OWLY_TX_ADDBA=1, max_peers=8, fast_discovery=true)
     ├── owly-awdl fast_discovery（启动即发 PSF+MIF，遇未知/未确认对端立即触发受限频次 MIF）
     ├── KernelPeerSync 异步写 sysfs pt_remote_peer_ctl (add/del/clear，不阻塞定时器)
     ├── PeerUp 双向 mDNS 触发（立即外发 QU _airdrop._tcp PTR 查询 + 定时向 xos0 注入入向 PTR 提示）
@@ -94,21 +94,18 @@ houji-owly-app xos0 amsdu ack (HOUJI_OWLY_TX_ADDBA=1, max_peers=8, fast_discover
 
 ## 构建、直连部署与 KernelSU 模块打包
 
-需按 [BYOB 输入清单](../../docs/guides/byob.md) 与 [独立构建指南](../../docs/guides/building.md) 准备好原生构建产出（`houji-owly-app`、`wonder-init`）及 `blobs/local/`（或环境变量指定的驱动与固件）。
+`owly-xos` 构建过程完全自包含，**不依赖 `clients/owly-app`（独立 App）**；原生守护 `owly-xosd` 直接从 [`native/houji-runner/`](../../native/houji-runner/) 构建（仅链接 L2 `owly-awdl`，体积约 `1.6 MB`），清单由本目录 [`runtime-manifest.json`](runtime-manifest.json) 独立定义。需按 [BYOB 输入说明](../../docs/guides/byob.md) 与 [构建说明](../../docs/guides/building.md) 准备好工具链及 `blobs/local/`。
 
 ```sh
-# 1. 构建用户态原生可执行文件（产出位于 clients/owly-app/dist/）
-bash scripts/build-userspace.sh
+# 1. 一键构建 owly-xosd、wonder-init、xos-bridge.zip 与 Owly-XOS-Compat.apk（全部输出至 runtime/owly-xos/dist/）
+ANDROID_NDK_HOME=/path/to/android-ndk \
+ANDROID_HOME=/path/to/android-sdk \
+BUILD_TOOLS=/path/to/android-sdk/build-tools/35.0.0 \
+  bash scripts/build-xos.sh
 
-# 2. 构建 AIDL 桥接 DEX 与 LSPosed 兼容模块 APK（需 Android SDK stub 与 build-tools）
-ANDROID_HOME=/path/to/android-sdk BUILD_TOOLS=/path/to/android-sdk/build-tools/35.0.0 \
-  bash runtime/owly-xos/build.sh
-ANDROID_HOME=/path/to/android-sdk BUILD_TOOLS=/path/to/android-sdk/build-tools/35.0.0 \
-  bash runtime/owly-xos/compat/build.sh
-
-# 3a. 开发调试：通过 ADB 直接部署并拉起守护
+# 2a. 开发调试：通过 ADB 直接部署并拉起守护
 ANDROID_SERIAL=<serial> python3 runtime/owly-xos/install.py
 
-# 3b. 打包单文件 KernelSU / APatch / Magisk 刷机包（输出至 runtime/owly-xos/dist/，已被 git 忽略）
+# 2b. 打包单文件 KernelSU / APatch / Magisk 刷机包（输出至 runtime/owly-xos/dist/，已被 git 忽略）
 python3 runtime/owly-xos/package-ksu.py --mishare-apk /path/to/MIShare.apk
 ```

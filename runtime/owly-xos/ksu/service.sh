@@ -69,10 +69,11 @@ fi
 sync_runtime() {
   mkdir -p "$NATIVE_DIR" "$RUNTIME_DIR/state" "$RUNTIME_DIR/radio" "$RUNTIME_DIR/firmware"
   chmod 700 "$NATIVE_DIR" "$RUNTIME_DIR" "$RUNTIME_DIR/state"
+  rm -f "$RUNTIME_DIR/houji-owly-app"
   cp "$MODDIR/payload/xos-bridge.zip" "$RUNTIME_DIR/xos-bridge.zip"
   cp "$MODDIR/payload/bridge-supervisor.sh" "$RUNTIME_DIR/bridge-supervisor.sh"
   cp "$MODDIR/payload/radio.sh" "$RUNTIME_DIR/radio.sh"
-  cp "$MODDIR/payload/houji-owly-app" "$RUNTIME_DIR/houji-owly-app"
+  cp "$MODDIR/payload/owly-xosd" "$RUNTIME_DIR/owly-xosd"
   cp "$MODDIR/payload/wonder-init" "$RUNTIME_DIR/wonder-init"
   cp "$MODDIR/payload/qca_cld3_kiwi_v2-three-findings.ko" "$RUNTIME_DIR/qca_cld3_kiwi_v2-three-findings.ko"
   cp "$MODDIR/payload/firmware/ezif.bin" "$RUNTIME_DIR/firmware/ezif.bin"
@@ -81,7 +82,7 @@ sync_runtime() {
   cp "$MODDIR/payload/installation.sha256" "$RUNTIME_DIR/installation.sha256"
   cp "$MODDIR/payload/installation.sha256" "$RUNTIME_DIR/SHA256SUMS"
   chmod 644 "$RUNTIME_DIR/xos-bridge.zip"
-  chmod 700 "$RUNTIME_DIR/bridge-supervisor.sh" "$RUNTIME_DIR/radio.sh" "$RUNTIME_DIR/houji-owly-app" "$RUNTIME_DIR/wonder-init"
+  chmod 700 "$RUNTIME_DIR/bridge-supervisor.sh" "$RUNTIME_DIR/radio.sh" "$RUNTIME_DIR/owly-xosd" "$RUNTIME_DIR/wonder-init"
   chmod 600 "$RUNTIME_DIR/qca_cld3_kiwi_v2-three-findings.ko" "$RUNTIME_DIR/firmware/ezif.bin" \
     "$RUNTIME_DIR/radio/houji_wonder_bridge.ko" "$RUNTIME_DIR/radio/wonder.ko" \
     "$RUNTIME_DIR/installation.sha256" "$RUNTIME_DIR/SHA256SUMS"

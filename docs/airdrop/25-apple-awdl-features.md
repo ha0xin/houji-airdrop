@@ -141,14 +141,14 @@ Mac 端无需做任何修改——`IO80211AWDLPeerManager`、`AppleBCMWLANCore` 
 
 1. **`2×2 MIMO + SGI80` 的源码阻塞点完全清楚且非常浅**：
    - 接收方向（`Mac → 小米`）：[stock wiphy 预检](22-passthru-rx-reo-probe.md) 已证实小米 14 硬件在 5 GHz 149 信道原生支持 2×2 VHT MCS 0–9（866.7 Mbps）。此前 Mac 只发 `1SS MCS7 LGI`，纯粹是因为 [`owly-outgoing-vht.patch`](../../experiments/remote-peer-probe/vht-rx-next/outgoing-advert/owly-outgoing-vht.patch) 保守填了 `0xfffc`（1SS）与 `cap=0`。修改 `owly` 出站 `TLV 7/17`（必要时在 PASSTHRU vdev 补一行 `wmi_vdev_param_nss = 2`），即可用现有的 [`qca_cld3_kiwi_v2-rx-phy.ko`](24-owly-houji-handoff.md) 直接读取硬件描述符验收 Mac 是否切到 `2SS MCS 8/9 SGI80`。
-   - 发送方向（`小米 → Mac`）：查阅 [`wlan_hdd_passthru_control.c`](../../third_party/upstream/kernel/wlan-overlay/qcacld-3.0/core/hdd/src/wlan_hdd_passthru_control.c#L329-L340) 与 [`wideband/control.patch`](../../experiments/wideband/control.patch#L37-L106) 可见，当前驱动有两处人工硬编码限制：
+   - 发送方向（`小米 → Mac`）：查阅 [`wlan_hdd_passthru_control.c`](../../driver/wlan/qcacld-3.0/core/hdd/src/wlan_hdd_passthru_control.c#L329-L340) 与 [`wideband/control.patch`](../../experiments/wideband/control.patch#L37-L106) 可见，当前驱动有两处人工硬编码限制：
      - `hdd_pt_control_validate()` 限制了 `params->tx_rate.nss != 1 || params->tx_rate.mcs > 7`；
      - `hdd_pt_control_finish_start()` 调用 `hdd_assemble_rate_code(..., 0, params->tx_rate.mcs)` 把空间流索引硬编码成了 `0`（即 1SS），而 `wmi_vdev_param_sgi` 其实早已接通。
      - 将这两处改为按 `params->tx_rate.nss`（`1..2`）和 `mcs`（`0..9`）下发并同步设置 `wmi_vdev_param_nss`，不涉及任何 peer 表、REO 队列或 DMA 生命周期变更，编译与实机验证成本极低。
 
 2. **`ADDBA BlockAck` 的物理硬约束与未知边界**：
    - **物理硬约束**：802.11 Immediate BlockAck 要求接收端在收到 A-MPDU / `BAR` 后的 **`SIFS = 16 µs`** 内由射频硬件微码立即发出 `BlockAck` 控制帧；Linux 用户态 `AF_PACKET` 接收再注入的延迟在 `200~1,000 µs` 量级，**绝无可能由 `owly` 在用户态软件伪造实时 `BlockAck`**。
-   - **值得花 10 分钟先做 Stage 3A（纯用户态开启 `accept_addba`）的线索**：在 `Xiaomi14-PixelOS-Airdrop` 移植仓的 clean-room 适配文件 [`wlan_hdd_passthru_control.c:275-298`](../../third_party/upstream/kernel/wlan-overlay/qcacld-3.0/core/hdd/src/wlan_hdd_passthru_control.c#L275-L298) 中（注：后续核查证实该文件为第三方移植作者编写的最小胶水层，三星 S24 Ultra 原厂对应实现为高通官方 `wlan_hdd_wondertap.c`，详见 [27-firmware-ba-passthru-verification.md](27-firmware-ba-passthru-verification.md)），曾留下如下设置：
+   - **值得花 10 分钟先做 Stage 3A（纯用户态开启 `accept_addba`）的线索**：在 `Xiaomi14-PixelOS-Airdrop` 移植仓的 clean-room 适配文件 [`wlan_hdd_passthru_control.c:275-298`](../../driver/wlan/qcacld-3.0/core/hdd/src/wlan_hdd_passthru_control.c#L275-L298) 中（注：后续核查证实该文件为第三方移植作者编写的最小胶水层，三星 S24 Ultra 原厂对应实现为高通官方 `wlan_hdd_wondertap.c`，详见 [27-firmware-ba-passthru-verification.md](27-firmware-ba-passthru-verification.md)），曾留下如下设置：
      ```c
      /* The documented maximum is one MPDU/MSDU. Leave RX BA limits untouched.
       * This prevents combining TX packets; firmware application has no ACK here. */
@@ -159,7 +159,7 @@ Mac 端无需做任何修改——`IO80211AWDLPeerManager`、`AppleBCMWLANCore` 
      - 若 Mac 日志显示 `txAMPDU` 发出后 `rxBACK = 0`、`txNoAck` 暴增，则说明无远端 peer 时不会硬件回 `BlockAck`。
    - **关于 Stage 3B（固件级远端 Peer + 双向硬件 BA/REO）的修订说明（重要勘误）**：
      - 此前 [22-passthru-rx-reo-probe.md](22-passthru-rx-reo-probe.md) 观察到在 `PASSTHRU` vdev 上仅执行 `WMI_PEER_CREATE` + `HTT map` 会导致 raw TX 停滞（`115` 次入环、`0` 次 TQM 完成），当时曾初步怀疑存在“固件内部互斥”。
-     - **2026-11-11 补充核查勘误（见 [27-firmware-ba-passthru-verification.md](27-firmware-ba-passthru-verification.md)）**：交叉核对公开 Qualcomm WMI/DP 规范与三星 S24 Ultra 原厂 `qca_cld3_kiwi_v2.ko` 反汇编后已证实，**`amss20.bin` 固件内部根本不存在所谓“PASSTHRU 与远端 Peer / BA 互斥”**！原厂 `wondertap` 不仅原生支持最多 7 个关联远端 peer，还通过 `wmi_service 338`（`passthru_ampdu_support`）原生支持逐包 TX A-MPDU 与 QoS TID 硬件聚合。此前 TX 卡死的真实根因是移植仓主机驱动：① 只发了 `WMI_PEER_CREATE_CMDID` 而漏发 `WMI_PEER_ASSOC_CMDID`（导致硬件 AST 命中了未关联暂停的固件 peer 队列）；② [`dp_peer.c`](../../third_party/upstream/kernel/wlan-overlay/qca-wifi-host-cmn/dp/wifi3.0/dp_peer.c#L2936-L2952) 将 `bss_peer` 的 MAC 比较条件写反了 180°；③ 缺失原厂 `dp_start_xmit_passthru` → `dp_tx_hw_enqueue_be` 的按关联状态覆写 TCL `search_index` 逻辑。
+     - **2026-11-11 补充核查勘误（见 [27-firmware-ba-passthru-verification.md](27-firmware-ba-passthru-verification.md)）**：交叉核对公开 Qualcomm WMI/DP 规范与三星 S24 Ultra 原厂 `qca_cld3_kiwi_v2.ko` 反汇编后已证实，**`amss20.bin` 固件内部根本不存在所谓“PASSTHRU 与远端 Peer / BA 互斥”**！原厂 `wondertap` 不仅原生支持最多 7 个关联远端 peer，还通过 `wmi_service 338`（`passthru_ampdu_support`）原生支持逐包 TX A-MPDU 与 QoS TID 硬件聚合。此前 TX 卡死的真实根因是移植仓主机驱动：① 只发了 `WMI_PEER_CREATE_CMDID` 而漏发 `WMI_PEER_ASSOC_CMDID`（导致硬件 AST 命中了未关联暂停的固件 peer 队列）；② [`dp_peer.c`](../../driver/wlan/qca-wifi-host-cmn/dp/wifi3.0/dp_peer.c#L2936-L2952) 将 `bss_peer` 的 MAC 比较条件写反了 180°；③ 缺失原厂 `dp_start_xmit_passthru` → `dp_tx_hw_enqueue_be` 的按关联状态覆写 TCL `search_index` 逻辑。
 
 ---
 

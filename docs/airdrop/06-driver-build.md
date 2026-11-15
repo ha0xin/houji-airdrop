@@ -6,7 +6,7 @@
 
 此前没有在本项目任一机器编译过 houji 内核驱动。设备使用上游 [Xiaomi14-PixelOS-Airdrop](https://github.com/YoWenhow/Xiaomi14-PixelOS-Airdrop) 的预编译 `open-runtime-v0.5.1-preview.1.zip`，本地位于 `downloads/oneui9-houji-analysis/reference-runtime/`。
 
-2026-11-09 已把 `/tmp/work` 复制到项目内[持久化源码配方目录](../../third_party/upstream)，避免临时目录清理。这里包含重建配方、覆盖层及bridge/wonder源码，**不是已经准备好的完整Linux内核工作树**。
+2026-11-09 已把 `/tmp/work` 复制到项目内[持久化源码配方目录](../../driver)，避免临时目录清理。这里包含重建配方、覆盖层及bridge/wonder源码，**不是已经准备好的完整Linux内核工作树**。
 
 2026-11-10 已在 `ssh build-host` 部署并验证构建环境，独立磁盘目录 `/work/houji-build`（约4.9GiB），构建临时目录为其下的 `tmp/`。主机为 Debian 13、x86_64、6CPU、23GiB内存。Android Clang 17.0.2（r487747c，build 10087095）、LLD 17.0.2、pahole 1.30 及构建依赖已就绪。AArch64 编译/链接、实际 BTF 生成、内核 `olddefconfig` 和 `modules_prepare` 均通过；**三个模块的基线编译及下述静态对照已完成，手机装载验收未进行**。备用pku未使用。
 

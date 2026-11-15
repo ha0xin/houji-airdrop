@@ -1,0 +1,21 @@
+[package]
+name = "houji-runner"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+name = "houji_runner"
+path = "src/lib.rs"
+
+[[bin]]
+name = "owly-xosd"
+path = "src/main.rs"
+
+[dependencies]
+owly-awdl = { path = "../owly/crates/owly-awdl", features = ["driver"] }
+crc32fast = "1"
+libc = "0.2"
+tokio = { version = "1", features = ["io-util", "macros", "net", "rt", "signal", "sync"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt"] }

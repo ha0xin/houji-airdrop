@@ -11,7 +11,6 @@ import zipfile
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
-OWLY_DIR = REPO / "clients/owly-app"
 KSU_DIR = HERE / "ksu"
 DIST_DIR = HERE / "dist"
 
@@ -33,7 +32,7 @@ def sha256_file(path: Path) -> str:
 
 
 def load_manifest() -> dict:
-    manifest = json.loads((OWLY_DIR / "runtime-manifest.json").read_text())
+    manifest = json.loads((HERE / "runtime-manifest.json").read_text())
     audit = json.loads((REPO / manifest["audit_file"]).read_text())
     if manifest["blobs"]["qca_cld3_kiwi_v2"]["sha256"] != audit["candidate_sha256"]:
         raise SystemExit("Manifest/audit candidate_sha256 mismatch")
@@ -168,11 +167,11 @@ def main() -> None:
     bridge_ko = resolve_blob(manifest, blobs_dir, "houji_wonder_bridge")
     wonder_ko = resolve_blob(manifest, blobs_dir, "wonder")
 
-    owly_bin = OWLY_DIR / "dist/houji-owly-app"
-    wonder_init_bin = OWLY_DIR / "dist/wonder-init"
+    xosd_bin = DIST_DIR / "owly-xosd"
+    wonder_init_bin = DIST_DIR / "wonder-init"
     xos_bridge_zip = DIST_DIR / "xos-bridge.zip"
 
-    verify_elf_aarch64(owly_bin, "houji-owly-app")
+    verify_elf_aarch64(xosd_bin, "owly-xosd")
     verify_elf_aarch64(wonder_init_bin, "wonder-init")
     verify_zip_entries(xos_bridge_zip, "xos-bridge.zip", ("classes.dex",))
     verify_zip_entries(
@@ -186,7 +185,7 @@ def main() -> None:
         "xos-bridge.zip": (xos_bridge_zip, 0o644, False),
         "bridge-supervisor.sh": (HERE / "bridge-supervisor.sh", 0o755, True),
         "radio.sh": (HERE / "radio.sh", 0o755, True),
-        "houji-owly-app": (owly_bin, 0o755, True),
+        "owly-xosd": (xosd_bin, 0o755, True),
         "wonder-init": (wonder_init_bin, 0o755, True),
         "qca_cld3_kiwi_v2-three-findings.ko": (qca_ko, 0o644, True),
         "firmware/ezif.bin": (ezif_bin, 0o644, True),

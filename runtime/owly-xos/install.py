@@ -1,25 +1,85 @@
 #!/usr/bin/env python3
-"""Deploy audited xos0 VHT80 2SS backend and AIDL XosBridge for stock MIShare."""
+"""Deploy audited xos0 VHT80 2SS backend (owly-xosd) and AIDL XosBridge for stock MIShare."""
+from __future__ import annotations
+
+import hashlib
 import json
 import os
 from pathlib import Path
 import shlex
-import sys
+import subprocess
 import time
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
-OWLY_DIR = REPO / "clients/owly-app"
-sys.path.insert(0, str(OWLY_DIR))
+DIST_DIR = HERE / "dist"
 
-from device import adb, digest, ensure_stock_idle, root  # noqa: E402
+STOCK_AMSS_SHA = "4db7b0e1aa7e4ec071708359c9d0db8d3d7872390cd8e88ffa0bbb30d560bcc8"
+STOCK_NOTE_SHA = "a3e9bd62646444e1ecbe0f421c95ec46e6caf69a78323efb2f6ebe00e6b2bd8b"
 
-MANIFEST = json.loads((OWLY_DIR / "runtime-manifest.json").read_text())
+MANIFEST = json.loads((HERE / "runtime-manifest.json").read_text())
 AUDIT = json.loads((REPO / MANIFEST["audit_file"]).read_text())
 BLOBS_DIR = Path(os.environ.get("HOUJI_BLOBS_DIR", str(REPO / "blobs/local")))
 
 assert MANIFEST["blobs"]["qca_cld3_kiwi_v2"]["sha256"] == AUDIT["candidate_sha256"]
 assert int(MANIFEST["audit_import_count"]) == int(AUDIT["candidate_import_count"]) == 567
+
+
+def resolve_serial() -> str:
+    env_serial = os.environ.get("ANDROID_SERIAL", "").strip()
+    if env_serial:
+        return env_serial
+    out = subprocess.check_output(["adb", "devices"], text=True, timeout=15)
+    devices = [
+        parts[0]
+        for line in out.splitlines()[1:]
+        if len(parts := line.split()) >= 2 and parts[1] == "device"
+    ]
+    if len(devices) == 1:
+        return devices[0]
+    if not devices:
+        raise SystemExit("No authorized ADB device found; connect the phone or set ANDROID_SERIAL.")
+    raise SystemExit(f"Multiple ADB devices found ({', '.join(devices)}); set ANDROID_SERIAL.")
+
+
+def adb(*args: str, timeout: int = 30) -> str:
+    return subprocess.check_output(
+        ["adb", "-s", resolve_serial(), *args],
+        text=True,
+        stderr=subprocess.STDOUT,
+        timeout=timeout,
+    )
+
+
+def root(command: str, timeout: int = 30) -> str:
+    return adb("shell", f"su -c {shlex.quote(command)}", timeout=timeout)
+
+
+def digest(path: Path) -> str:
+    checksum = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            checksum.update(block)
+    return checksum.hexdigest()
+
+
+def ensure_stock_idle() -> str:
+    return root(
+        f"""set -e
+test ! -e /sys/module/houji_wonder_bridge
+test ! -e /sys/module/wonder
+test ! -e /sys/class/net/owly0
+test ! -e /sys/class/net/wonder0
+test ! -e /sys/class/net/xos0
+test ! -e /data/local/tmp/owly-app/state/saved.env
+test ! -e /data/local/tmp/xos/native/saved.env
+test ! -e /data/local/tmp/xos/owly/state/saved.env
+test "$(getprop sys.xos.exclusive)" = 0
+echo '{STOCK_NOTE_SHA}  /sys/module/qca_cld3_kiwi_v2/notes/.note.gnu.build-id' | sha256sum -c -
+echo '{STOCK_AMSS_SHA}  /vendor/firmware_mnt/image/kiwi/amss20.bin' | sha256sum -c -
+! ip -6 rule show | grep -qE '^1087[012]:'
+echo STOCK_IDLE_VERIFIED"""
+    ).strip()
 
 
 def resolve_blob(key: str) -> Path:
@@ -40,11 +100,11 @@ def resolve_blob(key: str) -> Path:
 
 
 files = {
-    "xos-bridge.zip": HERE / "dist/xos-bridge.zip",
+    "xos-bridge.zip": DIST_DIR / "xos-bridge.zip",
     "bridge-supervisor.sh": HERE / "bridge-supervisor.sh",
     "radio.sh": HERE / "radio.sh",
-    "houji-owly-app": OWLY_DIR / "dist/houji-owly-app",
-    "wonder-init": OWLY_DIR / "dist/wonder-init",
+    "owly-xosd": DIST_DIR / "owly-xosd",
+    "wonder-init": DIST_DIR / "wonder-init",
     "qca_cld3_kiwi_v2-three-findings.ko": resolve_blob("qca_cld3_kiwi_v2"),
     "firmware/ezif.bin": resolve_blob("ezif"),
     "radio/houji_wonder_bridge.ko": resolve_blob("houji_wonder_bridge"),
@@ -52,7 +112,9 @@ files = {
 }
 for name, path in files.items():
     if not path.is_file():
-        raise SystemExit(f"Missing build output {name}: {path}. Build on host first; no device changes made.")
+        raise SystemExit(
+            f"Missing build output {name}: {path}. Run `bash scripts/build-xos.sh` on build host first; no device changes made."
+        )
 
 ensure_stock_idle()
 
@@ -90,7 +152,8 @@ exit 1"""
 print(ensure_stock_idle())
 root(
     f"mkdir -p {native} {remote}/state {remote}/radio {remote}/firmware && "
-    f"chmod 700 {native} {remote} {remote}/state"
+    f"chmod 700 {native} {remote} {remote}/state && "
+    f"rm -f {remote}/houji-owly-app"
 )
 
 hashes = {}

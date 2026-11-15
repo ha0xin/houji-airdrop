@@ -121,7 +121,7 @@ runner_alive() {
  pid=$(cat "$STATE/runner.pid" 2>/dev/null || true)
  case "$pid" in ''|*[!0-9]*) return 1 ;; esac
  if ! kill -0 "$pid" 2>/dev/null; then return 1; fi
- tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null | grep -q "houji-owly-app $IFACE "
+ tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null | grep -q "owly-xosd $IFACE "
 }
 
 stop_runner() {
@@ -129,7 +129,7 @@ stop_runner() {
  case "$pid" in
   ''|*[!0-9]*) ;;
   *)
-   if kill -0 "$pid" 2>/dev/null && tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null | grep -q "houji-owly-app $IFACE "; then
+   if kill -0 "$pid" 2>/dev/null && tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null | grep -qE "(owly-xosd|houji-owly-app) $IFACE "; then
     kill -TERM "$pid" 2>/dev/null || true
     for i in $(seq 1 15); do
      if ! kill -0 "$pid" 2>/dev/null; then break; fi
@@ -320,7 +320,7 @@ start_xos() {
    HOUJI_OWLY_ACCEPT_ADDBA=2 \
    HOUJI_OWLY_TX_ADDBA=1 \
    OWLY_COALESCE_US=1000 \
-   "$R/houji-owly-app" "$IFACE" amsdu ack </dev/null >"$STATE/runner.log" 2>&1
+   "$R/owly-xosd" "$IFACE" amsdu ack </dev/null >"$STATE/runner.log" 2>&1
  ) &
  echo $! > "$STATE/runner.pid"
  ready=0

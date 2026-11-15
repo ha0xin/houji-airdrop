@@ -6,4 +6,4 @@
 - [当前状态](../docs/STATUS.md)
 - [实机测试入口](../tests/device/README.md)
 
-App、主机配方、上游组件、当前 WLAN 覆盖层分别位于 `clients/`、`scripts/`、`third_party/`、`driver/`；所有旧路径兼容链接均已删除。历史日志保留原文和当时的路径，不应直接视为当前执行命令。
+App、构建入口、公共原生协议栈、完整内核驱动分别位于 `clients/`、`scripts/`、`native/`、`driver/`（已彻底脱离旧 `third_party/` 目录）。历史日志保留原文和当时的路径，不应直接视为当前执行命令。

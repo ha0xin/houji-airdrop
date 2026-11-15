@@ -21,7 +21,7 @@
 - Java App 使用自己的私有文件队列与状态文件；每条命令绑定本次会话 ID，避免旧确认作用于下一次会话。
 - root生成的状态与收件继承App私有目录的SELinux类别标签；收件完成后交给App UID。后端退出会终止无线会话并恢复，避免仅剩界面旧状态。
 - 发布本机服务与浏览对方服务共用一个mDNS socket，并通过 `SO_BINDTOIFINDEX` 绑定接口索引，避免在共存多宿主接口与复用 5353 端口的 socket 间分走单播响应。
-- 原生后端由独立 `native/houji-runner` 构建，协议依赖在独立复制的 `native/owly` 中，保留上游许可证。
+- 原生后端由本目录 `native/` 组合顶层公共无线库 [`../../native/houji-runner`](../../native/houji-runner) 与协议工作区 [`../../native/owly`](../../native/owly) 构建，保留上游许可证。
 - 根权限运行目录 `/data/local/tmp/owly-app`，App 数据 `/data/user/0/org.houji.owly/files`。
 - 扫描用已验证的DZF2路径、不创建固定远端peer；连接后使用官方EZIF、接收适配gate、remote_reo=2、初始窗口64、1ms软件合包、2SS/MCS9/SGI和TX聚合（`2.4 GHz` / 非 DFS `5 GHz` 下同时保持 STA 共存，否则回落 `pt_exclusive=1`）。沿用原RX优先调度，没有采用尚未证明单向收益的公平调度候选。
 - 加载前通过 `runtime-manifest.json` 核对安装清单哈希；`install.py` 从 `blobs/local/`（或环境变量）解析闭源输入并已与构建目录解耦。生命周期复用已有审核过的锁、模块释放和恢复函数。运行时会暂停原生 XOS 或 [`runtime/owly-xos`](../../runtime/owly-xos/README.zh-CN.md) 提供的 `IDomesticXOsComm/default`（`XosBridge`）服务，停止恢复后再重新拉起，避免无线所有权冲突。

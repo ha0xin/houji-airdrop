@@ -1,2 +1,0 @@
-LIBBINDER_NDK31 { global: AServiceManager_registerLazyService; local: *; };
-LIBC { global: send; sendto; recv; recvfrom; recvmsg; };

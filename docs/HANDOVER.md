@@ -22,9 +22,10 @@
 用户要求大致按分层 Monorepo 方向整理，**暂不增加任何版本锁定和 SHA**。本轮进行了独立构建验证，没有上机、部署、暂存或提交；既有校验逻辑和历史 SHA 记录保留。检查时发现 README 已有暂存内容，本轮保留该索引状态，没有覆盖或撤销用户暂存。
 
 - 独立 App：`clients/owly-app/`。
-- 当前驱动修改覆盖层：`driver/wlan/`。
-- App root 运行脚本：`runtime/owly-app/`。
-- 构建入口：`scripts/`；基础组件：`third_party/upstream/`。
+- 自包含驱动目录：`driver/`（单一合并 `wlan/`、`bridge/`、`wonder/`、`configs/`、`sources.json`）。
+- 公共原生协议栈与守护：`native/`（`owly/`、`houji-runner/`、`wonder-init/`）。
+- App root 运行脚本：`runtime/owly-app/`；主线互传后端：`runtime/owly-xos/`。
+- 构建入口：`scripts/`（已彻底脱离 `third_party/` 与独立 App 交叉依赖）。
 - 实验工具与记录：`experiments/`；实机测试导航：`tests/device/`。
 - 首次导入证据：`archive/import/`；旧 `review/` 与 `downloads/airdrop-driver-work` 及所有兼容链接已删除。
 
