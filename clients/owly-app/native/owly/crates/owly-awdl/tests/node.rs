@@ -872,3 +872,63 @@ fn tx_addba_response_validation_controls_retry() {
         assert_eq!(node.stats().tx_addba_req, if accepted { 1 } else { 2 }, "{name}");
     }
 }
+
+#[test]
+fn fast_discovery_emits_startup_psf_and_reactive_mif() {
+    let radio = RadioConstraints {
+        channel: Channel(149),
+        presence: Presence::Fixed,
+    };
+    let mut cfg = Config::new(US, "owly", radio);
+    cfg.fast_discovery = true;
+    let mut node = Node::new(cfg, START);
+
+    // Startup immediately emits both PSF and MIF without waiting 110 TU for the first PSF.
+    let initial = tick(&mut node, START);
+    let initial_subtypes: Vec<u8> = transmits(&initial)
+        .into_iter()
+        .filter_map(|f| match frame::parse(&f.bytes) {
+            Ok(frame::Received::Action { subtype, .. }) => Some(subtype),
+            _ => None,
+        })
+        .collect();
+    assert!(initial_subtypes.contains(&subtype::PSF));
+    assert!(initial_subtypes.contains(&subtype::MIF));
+
+    // A scanning peer sending a PSF 10 ms into the slot (well before the ~65 ms next_mif)
+    // triggers an immediate reactive MIF.
+    let t1 = START.plus(10_000);
+    let rx1 = feed(&mut node, t1, &phone_frame(subtype::PSF, &seq([149; SLOTS]), 400, 64));
+    let rx1_subtypes: Vec<u8> = transmits(&rx1)
+        .into_iter()
+        .filter_map(|f| match frame::parse(&f.bytes) {
+            Ok(frame::Received::Action { subtype, .. }) => Some(subtype),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(rx1_subtypes, [subtype::MIF]);
+
+    // Cooldown prevents flooding MIFs on back-to-back PSFs within 20 ms.
+    let peer2 = MacAddr([0x86, 0x08, 0x04, 0x8a, 0x2b, 0xf5]);
+    let rx2 = feed(
+        &mut node,
+        t1.plus(5_000),
+        &frame_from(peer2, subtype::PSF, &seq([149; SLOTS]), 400, 64),
+    );
+    assert!(transmits(&rx2).is_empty());
+
+    // Once the 20 ms cooldown expires, another unvalidated peer PSF triggers a MIF again.
+    let rx3 = feed(
+        &mut node,
+        t1.plus(20_000),
+        &frame_from(peer2, subtype::PSF, &seq([149; SLOTS]), 400, 64),
+    );
+    let rx3_subtypes: Vec<u8> = transmits(&rx3)
+        .into_iter()
+        .filter_map(|f| match frame::parse(&f.bytes) {
+            Ok(frame::Received::Action { subtype, .. }) => Some(subtype),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(rx3_subtypes, [subtype::MIF]);
+}

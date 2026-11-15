@@ -36,8 +36,17 @@ impl Ipv6Packet {
     }
 
     pub fn to_ethernet(&self) -> Vec<u8> {
+        // Apple AWDL multicast frames carry 802.11 broadcast addr1, which
+        // Linux ip6_rcv_core drops unless mapped to RFC 2464 Ethernet multicast.
+        let dst = match self.addrs() {
+            Some((_, dst)) if dst.is_multicast() => {
+                let o = dst.octets();
+                MacAddr([0x33, 0x33, o[12], o[13], o[14], o[15]])
+            }
+            _ => self.dst,
+        };
         let mut out = Vec::with_capacity(14 + self.data.len());
-        out.extend_from_slice(&self.dst.0);
+        out.extend_from_slice(&dst.0);
         out.extend_from_slice(&self.src.0);
         out.extend_from_slice(&ETHERTYPE_IPV6);
         out.extend_from_slice(&self.data);
@@ -318,5 +327,14 @@ mod tests {
         mdns[24..40].copy_from_slice(&"ff02::fb".parse::<Ipv6Addr>().unwrap().octets());
         let m = Ipv6Packet::from_ip(mdns).unwrap();
         assert_eq!(m.dst, MacAddr([0x33, 0x33, 0, 0, 0, 0xfb]));
+        let broadcast_mcast = Ipv6Packet {
+            dst: MacAddr::BROADCAST,
+            src: m.src,
+            data: m.data.clone(),
+        };
+        assert_eq!(
+            broadcast_mcast.to_ethernet()[0..6],
+            [0x33, 0x33, 0, 0, 0, 0xfb]
+        );
     }
 }

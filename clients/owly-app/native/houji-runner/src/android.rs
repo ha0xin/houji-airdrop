@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::ffi::CStr;
 use std::fs::{self, OpenOptions};
 use std::io;
@@ -5,19 +6,21 @@ use std::mem::{size_of, zeroed};
 use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
 use std::os::unix::fs::OpenOptionsExt;
 use std::process::{Command, Stdio};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use owly_awdl::driver::{self, Air, Netif, Received};
 use owly_awdl::frame::Frame;
 use owly_awdl::{Channel, Config, Ipv6Packet, MacAddr, Presence, RadioConstraints};
 use tokio::io::unix::AsyncFd;
 use tokio::signal::unix::{SignalKind, signal};
-use tokio::sync::watch;
+use tokio::sync::{mpsc, watch};
+use tokio::task::JoinHandle;
 
-use crate::{radiotap, rx_gap::RxGaps};
+use crate::{peer_ctl::KernelPeerSync, radiotap, rx_gap::RxGaps};
 
 const MONITOR: &CStr = c"wonder0";
 const TUN: &str = "owly0";
+const TAP: &str = "xos0";
 const PACKET_BUFFER: usize = 16 * 1024;
 const ETH_P_ALL: u16 = 3;
 const PACKET_STATISTICS: libc::c_int = 6; // linux/if_packet.h
@@ -135,8 +138,8 @@ struct Monitor {
     tx_submitted: u64,
     psf_reported: bool,
     mif_reported: bool,
-    tx_addba_reported: bool,
-    rx_addba_resp_reported: bool,
+    tx_addba_reported: u8,
+    rx_addba_resp_reported: u8,
     tx_amsdu_mpdu: u64,
     tx_amsdu_msdu: u64,
 }
@@ -209,15 +212,15 @@ impl Monitor {
             tx_submitted: 0,
             psf_reported: false,
             mif_reported: false,
-            tx_addba_reported: false,
-            rx_addba_resp_reported: false,
+            tx_addba_reported: 0,
+            rx_addba_resp_reported: 0,
             tx_amsdu_mpdu: 0,
             tx_amsdu_msdu: 0,
         })
     }
 
     fn report_first_tx_addba(&mut self, bytes: &[u8]) {
-        if self.tx_addba_reported || bytes.len() < 33 || bytes[0] != 0xd0 {
+        if self.tx_addba_reported >= 8 || bytes.len() < 33 || bytes[0] != 0xd0 {
             return;
         }
         if bytes[24] == 3 && bytes[25] == 0 {
@@ -225,12 +228,12 @@ impl Monitor {
             let params = u16::from_le_bytes([bytes[27], bytes[28]]);
             let ssn = u16::from_le_bytes([bytes[31], bytes[32]]) >> 4;
             println!("OWLY_TX_ADDBA_REQ_SENT token={token} params=0x{params:04x} ssn={ssn}");
-            self.tx_addba_reported = true;
+            self.tx_addba_reported = self.tx_addba_reported.saturating_add(1);
         }
     }
 
     fn report_first_rx_addba_resp(&mut self, bytes: &[u8]) {
-        if self.rx_addba_resp_reported || bytes.len() < 33 || bytes[0] != 0xd0 {
+        if self.rx_addba_resp_reported >= 8 || bytes.len() < 33 || bytes[0] != 0xd0 {
             return;
         }
         if bytes[24] == 3 && bytes[25] == 1 {
@@ -241,7 +244,7 @@ impl Monitor {
             println!(
                 "OWLY_TX_ADDBA_RESP_RCVD token={token} status={status} params=0x{params:04x} win={win}"
             );
-            self.rx_addba_resp_reported = true;
+            self.rx_addba_resp_reported = self.rx_addba_resp_reported.saturating_add(1);
         }
     }
 
@@ -395,6 +398,38 @@ impl Air for Monitor {
     }
 }
 
+fn open_netif_fd(name: &str, flags: libc::c_short) -> io::Result<OwnedFd> {
+    let file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .custom_flags(libc::O_NONBLOCK | libc::O_CLOEXEC)
+        .open("/dev/net/tun")?;
+    // ifreq is a C wire struct. TUNSETIFF consumes the name and flags.
+    let mut request: libc::ifreq = unsafe { zeroed() };
+    for (slot, byte) in request.ifr_name.iter_mut().zip(name.bytes()) {
+        *slot = byte as _;
+    }
+    request.ifr_ifru.ifru_flags = flags;
+    syscall(unsafe { libc::ioctl(file.as_raw_fd(), libc::TUNSETIFF as _, &mut request) } as libc::ssize_t)?;
+    Ok(file.into())
+}
+
+async fn read_netif_frame(fd: &AsyncFd<OwnedFd>, buf: &mut [u8]) -> io::Result<usize> {
+    loop {
+        let mut ready = fd.readable().await?;
+        let read = ready.try_io(|fd| {
+            // The fd stays open and the RX buffer is valid for its full length.
+            syscall(unsafe { libc::read(fd.get_ref().as_raw_fd(), buf.as_mut_ptr().cast(), buf.len()) })
+        });
+        match read {
+            Ok(Ok(0)) => return Err(io::ErrorKind::UnexpectedEof.into()),
+            Ok(Ok(n)) => return Ok(n),
+            Ok(Err(e)) if e.kind() != io::ErrorKind::Interrupted => return Err(e),
+            _ => {}
+        }
+    }
+}
+
 struct Tun {
     fd: AsyncFd<OwnedFd>,
     rx: Vec<u8>,
@@ -404,46 +439,238 @@ struct Tun {
 
 impl Tun {
     fn open(addr: MacAddr) -> io::Result<Self> {
-        let file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .custom_flags(libc::O_NONBLOCK | libc::O_CLOEXEC)
-            .open("/dev/net/tun")?;
-        // ifreq is a C wire struct. TUNSETIFF consumes the name and flags.
-        let mut request: libc::ifreq = unsafe { zeroed() };
-        for (slot, byte) in request.ifr_name.iter_mut().zip(TUN.bytes()) {
-            *slot = byte as _;
-        }
-        request.ifr_ifru.ifru_flags = (libc::IFF_TUN | libc::IFF_NO_PI | libc::IFF_TUN_EXCL) as _;
-        syscall(
-            unsafe { libc::ioctl(file.as_raw_fd(), libc::TUNSETIFF as _, &mut request) } as libc::ssize_t,
-        )?;
-
-        ip(&[
-            "link",
-            "set",
-            "dev",
+        let fd = open_netif_fd(
             TUN,
-            "mtu",
-            "1450",
-            "addrgenmode",
-            "none",
-        ])?;
+            (libc::IFF_TUN | libc::IFF_NO_PI | libc::IFF_TUN_EXCL) as _,
+        )?;
+        ip(&["link", "set", "dev", TUN, "mtu", "1450", "addrgenmode", "none"])?;
         let address = format!("{}/64", addr.link_local());
         ip(&["-6", "addr", "add", &address, "dev", TUN, "nodad"])?;
         ip(&["link", "set", "dev", TUN, "up"])?;
         Ok(Self {
-            fd: register(file.into())?,
+            fd: register(fd)?,
             rx: vec![0; PACKET_BUFFER],
             rx_invalid: DropCount::default(),
             delivery_drops: DropCount::default(),
         })
     }
+
+    async fn recv(&mut self) -> io::Result<Ipv6Packet> {
+        loop {
+            let n = read_netif_frame(&self.fd, &mut self.rx).await?;
+            if let Some(packet) = Ipv6Packet::from_ip(self.rx[..n].to_vec()) {
+                return Ok(packet);
+            }
+            self.rx_invalid
+                .record("tun rx", &"packet has no AWDL IPv6 addresses");
+        }
+    }
+
+    fn deliver(&mut self, packet: Ipv6Packet) {
+        if let Err(e) = write_packet(self.fd.get_ref(), &packet.data) {
+            self.delivery_drops.record("tun deliver", &e);
+        }
+    }
 }
 
 impl Drop for Tun {
     fn drop(&mut self) {
-        tracing::info!(tun_rx_invalid = self.rx_invalid.0, tun_delivery_drops = self.delivery_drops.0, "tun totals");
+        tracing::info!(
+            tun_rx_invalid = self.rx_invalid.0,
+            tun_delivery_drops = self.delivery_drops.0,
+            "tun totals"
+        );
+    }
+}
+
+enum TapInject {
+    Outbound(Ipv6Packet),
+    InboundTap(Vec<u8>),
+}
+
+/// L2 Ethernet TAP interface (`xos0`) for native MIShare compatibility.
+struct Tap {
+    fd: AsyncFd<OwnedFd>,
+    rx: Vec<u8>,
+    own: MacAddr,
+    rx_invalid: DropCount,
+    delivery_drops: DropCount,
+    peer_sync: KernelPeerSync,
+    inject_tx: mpsc::UnboundedSender<TapInject>,
+    inject_rx: mpsc::UnboundedReceiver<TapInject>,
+    discovery_tasks: BTreeMap<MacAddr, JoinHandle<()>>,
+}
+
+impl Tap {
+    fn open(addr: MacAddr, peer_sync: KernelPeerSync) -> io::Result<Self> {
+        let fd = open_netif_fd(
+            TAP,
+            (libc::IFF_TAP | libc::IFF_NO_PI | libc::IFF_TUN_EXCL) as _,
+        )?;
+        let mac = addr.to_string();
+        ip(&[
+            "link",
+            "set",
+            "dev",
+            TAP,
+            "address",
+            &mac,
+            "mtu",
+            "1450",
+            "txqueuelen",
+            "8192",
+            "addrgenmode",
+            "none",
+        ])?;
+        let address = format!("{}/64", addr.link_local());
+        ip(&["-6", "addr", "add", &address, "dev", TAP, "nodad"])?;
+        ip(&["link", "set", "dev", TAP, "up"])?;
+        let (inject_tx, inject_rx) = mpsc::unbounded_channel();
+        Ok(Self {
+            fd: register(fd)?,
+            rx: vec![0; PACKET_BUFFER],
+            own: addr,
+            rx_invalid: DropCount::default(),
+            delivery_drops: DropCount::default(),
+            peer_sync,
+            inject_tx,
+            inject_rx,
+            discovery_tasks: BTreeMap::new(),
+        })
+    }
+
+    async fn recv(&mut self) -> io::Result<Ipv6Packet> {
+        loop {
+            tokio::select! {
+                biased;
+                maybe = self.inject_rx.recv() => {
+                    let Some(injected) = maybe else {
+                        return Err(io::ErrorKind::BrokenPipe.into());
+                    };
+                    match injected {
+                        TapInject::Outbound(packet) => return Ok(packet),
+                        TapInject::InboundTap(eth) => {
+                            if let Err(e) = write_packet(self.fd.get_ref(), &eth) {
+                                self.delivery_drops.record("tap mdns prompt", &e);
+                            }
+                        }
+                    }
+                }
+                res = read_netif_frame(&self.fd, &mut self.rx) => {
+                    let n = res?;
+                    let frame = &self.rx[..n];
+                    let Some(packet) = Ipv6Packet::from_ethernet(frame) else {
+                        if frame.get(12..14) == Some(&[0x86, 0xdd]) {
+                            self.rx_invalid.record("tap rx", &"truncated IPv6 ethernet frame");
+                        }
+                        continue;
+                    };
+                    if let Some(na_eth) = crate::ndp::synthesize_na_for_ns(&packet, self.own) {
+                        if let Err(e) = write_packet(self.fd.get_ref(), &na_eth) {
+                            self.delivery_drops.record("tap ndp reply", &e);
+                        }
+                        continue;
+                    }
+                    return Ok(packet);
+                }
+            }
+        }
+    }
+
+    fn deliver(&mut self, mut packet: Ipv6Packet) {
+        crate::ndp::fanout_unicast_mdns_response(&mut packet, self.own);
+        let frame = packet.to_ethernet();
+        if let Err(e) = write_packet(self.fd.get_ref(), &frame) {
+            self.delivery_drops.record("tap deliver", &e);
+        }
+    }
+
+    fn peer_up(&mut self, mac: MacAddr) {
+        let ll = mac.link_local().to_string();
+        let lladdr = mac.to_string();
+        if let Err(e) = ip(&["-6", "neigh", "replace", &ll, "lladdr", &lladdr, "dev", TAP, "nud", "permanent"]) {
+            tracing::warn!(%mac, error = %e, "tap neigh replace failed");
+        }
+        self.peer_sync.peer_up(mac);
+        if let Some(prev) = self.discovery_tasks.remove(&mac) {
+            prev.abort();
+        }
+        let _ = self.inject_tx.send(TapInject::Outbound(
+            crate::ndp::build_airdrop_mdns_ptr_query(self.own, true),
+        ));
+        let tx = self.inject_tx.clone();
+        let own = self.own;
+        let handle = tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_millis(50)).await;
+            let _ = tx.send(TapInject::InboundTap(
+                crate::ndp::build_airdrop_mdns_ptr_query(mac, false).to_ethernet(),
+            ));
+            tokio::time::sleep(Duration::from_millis(200)).await;
+            let _ = tx.send(TapInject::Outbound(
+                crate::ndp::build_airdrop_mdns_ptr_query(own, true),
+            ));
+            tokio::time::sleep(Duration::from_millis(650)).await;
+            let _ = tx.send(TapInject::InboundTap(
+                crate::ndp::build_airdrop_mdns_ptr_query(mac, false).to_ethernet(),
+            ));
+        });
+        self.discovery_tasks.insert(mac, handle);
+    }
+
+    fn peer_down(&mut self, mac: MacAddr) {
+        if let Some(task) = self.discovery_tasks.remove(&mac) {
+            task.abort();
+        }
+        self.peer_sync.peer_down(mac);
+        let ll = mac.link_local().to_string();
+        let _ = ip(&["-6", "neigh", "del", &ll, "dev", TAP]);
+    }
+}
+
+impl Drop for Tap {
+    fn drop(&mut self) {
+        for task in self.discovery_tasks.values() {
+            task.abort();
+        }
+        self.discovery_tasks.clear();
+        tracing::info!(
+            tap_rx_invalid = self.rx_invalid.0,
+            tap_delivery_drops = self.delivery_drops.0,
+            "tap totals"
+        );
+    }
+}
+
+enum HostNetif {
+    Tun(Tun),
+    Tap(Tap),
+}
+
+impl Netif for HostNetif {
+    async fn recv(&mut self) -> io::Result<Ipv6Packet> {
+        match self {
+            Self::Tun(tun) => tun.recv().await,
+            Self::Tap(tap) => tap.recv().await,
+        }
+    }
+
+    fn deliver(&mut self, packet: Ipv6Packet) {
+        match self {
+            Self::Tun(tun) => tun.deliver(packet),
+            Self::Tap(tap) => tap.deliver(packet),
+        }
+    }
+
+    fn peer_up(&mut self, mac: MacAddr) {
+        if let Self::Tap(tap) = self {
+            tap.peer_up(mac);
+        }
+    }
+
+    fn peer_down(&mut self, mac: MacAddr) {
+        if let Self::Tap(tap) = self {
+            tap.peer_down(mac);
+        }
     }
 }
 
@@ -458,42 +685,6 @@ fn ip(args: &[&str]) -> io::Result<()> {
         Err(io::Error::other(format!(
             "ip {args:?} exited with {status}"
         )))
-    }
-}
-
-impl Netif for Tun {
-    async fn recv(&mut self) -> io::Result<Ipv6Packet> {
-        loop {
-            let mut ready = self.fd.readable().await?;
-            let read = ready.try_io(|fd| {
-                // The fd stays open and the RX buffer is valid for its full length.
-                syscall(unsafe {
-                    libc::read(
-                        fd.get_ref().as_raw_fd(),
-                        self.rx.as_mut_ptr().cast(),
-                        self.rx.len(),
-                    )
-                })
-            });
-            match read {
-                Ok(Ok(0)) => return Err(io::ErrorKind::UnexpectedEof.into()),
-                Ok(Ok(n)) => {
-                    if let Some(packet) = Ipv6Packet::from_ip(self.rx[..n].to_vec()) {
-                        return Ok(packet);
-                    }
-                    self.rx_invalid
-                        .record("tun rx", &"packet has no AWDL IPv6 addresses");
-                }
-                Ok(Err(e)) if e.kind() != io::ErrorKind::Interrupted => return Err(e),
-                _ => {}
-            }
-        }
-    }
-
-    fn deliver(&mut self, packet: Ipv6Packet) {
-        if let Err(e) = write_packet(self.fd.get_ref(), &packet.data) {
-            self.delivery_drops.record("tun deliver", &e);
-        }
     }
 }
 
@@ -561,12 +752,23 @@ fn outgoing_vht_profile(accept_addba: bool) -> io::Result<(u8, owly_awdl::VhtPro
 #[tokio::main(flavor = "current_thread")]
 pub async fn run() -> io::Result<()> {
     let args: Vec<_> = std::env::args().skip(1).collect();
-    let [peer, aggregation, ack] = args.as_slice() else {
+    let [peer_arg, aggregation, ack] = args.as_slice() else {
         return Err(io::Error::other(
-            "usage: houji-owly MAC single|amsdu ack|noack",
+            "usage: houji-owly MAC|scan|xos0 single|amsdu ack|noack",
         ));
     };
-    let peer = if peer == "scan" { MacAddr([0; 6]) } else { parse_mac(peer)? };
+    let tap_mode = peer_arg == "xos0";
+    let iface_name = if tap_mode { TAP } else { TUN };
+    let peer = if peer_arg == "scan" || tap_mode {
+        MacAddr([0; 6])
+    } else {
+        parse_mac(peer_arg)?
+    };
+    let node_name = match std::env::var("HOUJI_OWLY_NAME") {
+        Ok(value) if !value.trim().is_empty() => value,
+        _ if tap_mode => "Xiaomi 14".to_owned(),
+        _ => "Xiaomi 14 Owly".to_owned(),
+    };
     let coalesce_us = match std::env::var("OWLY_COALESCE_US") {
         Ok(raw) => raw.parse::<u64>()
             .ok().filter(|v| *v <= 4_000)
@@ -598,7 +800,7 @@ pub async fn run() -> io::Result<()> {
     }
     let mut cfg = Config::new(
         addr,
-        "Xiaomi 14 Owly",
+        &node_name,
         RadioConstraints {
             channel: Channel(149),
             presence: Presence::Fixed,
@@ -619,17 +821,36 @@ pub async fn run() -> io::Result<()> {
     cfg.amsdu_coalesce_us = coalesce_us;
     cfg.max_frame = if amsdu { 7935 } else { 2304 };
     cfg.rssi_threshold = None;
+    cfg.fast_discovery = true;
+
+    let peer_sync = if tap_mode {
+        KernelPeerSync::from_sysfs()
+    } else {
+        KernelPeerSync::disabled()
+    };
+    let dynamic_peers = peer_sync.is_enabled();
+    if dynamic_peers {
+        cfg.max_peers = 8;
+    }
 
     let mut terminate = signal(SignalKind::terminate())?;
     let mut interrupt = signal(SignalKind::interrupt())?;
     let (peers, mut observed) = watch::channel(Vec::new());
     let running = driver::spawn(
         cfg,
-        move || Ok((Monitor::open(peer, addr)?, Tun::open(addr)?)),
+        move || {
+            let air = Monitor::open(peer, addr)?;
+            let netif = if tap_mode {
+                HostNetif::Tap(Tap::open(addr, peer_sync)?)
+            } else {
+                HostNetif::Tun(Tun::open(addr)?)
+            };
+            Ok((air, netif))
+        },
         peers,
     )?;
     let mut failed = running.failed();
-    let mut app_task = if let Ok(dir) = std::env::var("OWLY_APP_DIR") {
+    let mut app_task = if !tap_mode && let Ok(dir) = std::env::var("OWLY_APP_DIR") {
         let uid = std::env::var("OWLY_APP_UID").map_err(io::Error::other)?
             .parse::<u32>().map_err(io::Error::other)?;
         let observed = observed.clone();
@@ -640,7 +861,7 @@ pub async fn run() -> io::Result<()> {
     println!("OWLY_ACCEPT_ADDBA={accept_addba_raw}");
     println!("OWLY_TX_ADDBA={tx_addba_raw}");
     println!(
-        "OWLY_READY iface={TUN} addr={} peer={peer} channel=149 amsdu={amsdu} noack={no_ack} ba={accept_addba}",
+        "OWLY_READY iface={iface_name} addr={} peer={peer} channel=149 amsdu={amsdu} noack={no_ack} ba={accept_addba} dynamic_peers={dynamic_peers}",
         addr.link_local()
     );
     let result = loop {

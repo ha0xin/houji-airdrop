@@ -9,6 +9,10 @@ mod app;
 mod radiotap;
 
 #[cfg(any(target_os = "android", test))]
+mod ndp;
+#[cfg(any(target_os = "android", test))]
+mod peer_ctl;
+#[cfg(any(target_os = "android", test))]
 mod rx_gap;
 
 #[cfg(target_os = "android")]

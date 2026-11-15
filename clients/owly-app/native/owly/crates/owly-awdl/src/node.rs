@@ -137,6 +137,9 @@ pub struct Config {
     pub neighbour_echo: bool,
     /// Most peers tracked: [`MAX_PEERS`] by default.
     pub max_peers: usize,
+    /// Emit startup PSF immediately and answer unknown/unvalidated peers with
+    /// an immediate rate-limited MIF so scanning peers validate us on arrival.
+    pub fast_discovery: bool,
 }
 
 impl Config {
@@ -163,6 +166,7 @@ impl Config {
             rssi_threshold: Some(-65),
             neighbour_echo: true,
             max_peers: MAX_PEERS,
+            fast_discovery: false,
         }
     }
 }
@@ -204,6 +208,8 @@ const PSF_INTERVAL_TU: u16 = 110;
 const PEER_TIMEOUT_US: u64 = 5_000_000;
 /// How often the peer table is swept and the election run.
 const TICK_US: u64 = 1_000_000;
+/// Minimum interval between reactive discovery MIF bursts.
+const FAST_MIF_COOLDOWN_US: u64 = 20_000;
 /// How often each valid peer gets an ICMPv6 echo.
 const ECHO_US: u64 = 3_000_000;
 /// The echoes' identifier and payload.
@@ -257,6 +263,7 @@ pub struct Node {
     next_mif: Time,
     next_tick: Time,
     next_echo: Time,
+    last_fast_mif: Option<Time>,
     /// Set when a burst was cut short.
     resume: Option<Time>,
     /// The sync master and its channel, while its sequence has no slot on
@@ -271,10 +278,15 @@ impl Node {
         Node {
             election: Election::own(cfg.addr),
             sequence: Sequence::fixed(cfg.radio.channel),
-            next_psf: now.plus(PSF_INTERVAL_TU as u64 * TU),
+            next_psf: if cfg.fast_discovery {
+                now
+            } else {
+                now.plus(PSF_INTERVAL_TU as u64 * TU)
+            },
             next_mif: now,
             next_tick: now.plus(TICK_US),
             next_echo: now.plus(ECHO_US),
+            last_fast_mif: None,
             clock,
             cfg,
             peers: BTreeMap::new(),
@@ -516,6 +528,7 @@ impl Node {
             peer.rssi = rssi;
         }
         let up = peer.absorb(&advert, subtype == frame::subtype::MIF);
+        let peer_valid = peer.valid;
         if let Some(s) = advert.sync {
             peer.sync_offset_us =
                 Some(self.clock.error_tu(now, s.next_tu, s.aw_counter) * TU as i64);
@@ -531,6 +544,15 @@ impl Node {
                 self.maybe_initiate_addba(now, src, out);
             }
             self.release_syns(src, out);
+        }
+        if self.cfg.fast_discovery
+            && (!known || !peer_valid)
+            && self
+                .last_fast_mif
+                .is_none_or(|last| now.since(last) >= FAST_MIF_COOLDOWN_US)
+        {
+            self.next_mif = now;
+            self.last_fast_mif = Some(now);
         }
     }
 
