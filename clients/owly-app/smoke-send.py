@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 """Validate Android's Owly sender against a temporary scoped AWDL TLS receiver."""
 from pathlib import Path
-import gzip, hashlib, ipaddress, json, plistlib, runpy, shlex, socket, ssl, struct, subprocess, tempfile, threading, time, zlib
+import gzip, hashlib, ipaddress, json, plistlib, shlex, socket, ssl, struct, subprocess, tempfile, threading, time, zlib
+
+from device import current_awdl, root
 
 HERE=Path(__file__).resolve().parent
-REPO=HERE.parents[1]
-WORK=REPO / "experiments"
-g=runpy.run_path(str(WORK/'three-findings-validation/run-three-findings.py'))
-root=g['root'];app='/data/user/0/org.houji.owly/files'
+app='/data/user/0/org.houji.owly/files'
 phone=root('ip -6 -o addr show dev owly0 scope link').split('inet6 ')[1].split('/')[0]
-mac,_=g['R']['current_awdl']();octets=bytearray.fromhex(mac.replace(':',''));octets[0]^=2
+mac,_=current_awdl();octets=bytearray.fromhex(mac.replace(':',''));octets[0]^=2
 macip=str(ipaddress.IPv6Address(b'\xfe\x80'+bytes(6)+octets[:3]+b'\xff\xfe'+octets[3:]))
 scope=socket.if_nametoindex('awdl0')
 payload=b'Owly Android sender: mDNS, TLS, archive and upload verified.\n'
@@ -86,9 +85,12 @@ with tempfile.TemporaryDirectory() as tmp:
     assert not thread.is_alive() and not errors,(thread.is_alive(),errors)
     for _ in range(20):
         state=json.loads(root(f'cat {app}/status.json'))
-        if state.get('message')=='发送完成':break
+        if str(state.get('message','')).startswith('发送完成') and state.get('transfer',{}).get('ok') is True:break
         time.sleep(.2)
-    assert state.get('message')=='发送完成',state
+    assert str(state.get('message','')).startswith('发送完成'),state
+    tr=state.get('transfer') or {}
+    assert tr.get('ok') is True and tr.get('direction')=='send' and tr.get('bytes')==len(payload),state
     receipt['app_message']=state['message']
+    receipt['transfer']=tr
 (HERE/'evidence/send-smoke.json').write_text(json.dumps(receipt,indent=2)+'\n')
 print(json.dumps(receipt))

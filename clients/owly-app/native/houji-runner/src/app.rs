@@ -1,5 +1,5 @@
 //! Private app-file IPC and Owly's AirDrop protocol driver. No XOS dependency.
-use std::{collections::HashMap, fs, io, net::SocketAddrV6, path::{Path, PathBuf}, time::Duration};
+use std::{collections::HashMap, fs, io, net::SocketAddrV6, path::{Path, PathBuf}, time::{Duration, Instant}};
 use std::os::unix::fs::PermissionsExt;
 use owly_awdl::{MacAddr, PeerInfo};
 use owly_airdrop::{driver::{mdns::Mdns, receiver::{Receiver, ReceiverEvent, Options, Request},
@@ -7,6 +7,32 @@ use owly_airdrop::{driver::{mdns::Mdns, receiver::{Receiver, ReceiverEvent, Opti
     proto::{mdns::{Service, Burst, BrowseEvent, RECEIVER_FLAGS}, receiver, sender, messages::Offer}};
 use serde_json::{json, Value};
 use tokio::sync::{watch, mpsc};
+
+fn calc_speed_mbps(bytes: u64, secs: f64) -> f64 {
+    if secs > 0.0 && bytes > 0 { (bytes as f64 / 1_000_000.0) / secs } else { 0.0 }
+}
+
+fn format_bytes(bytes: u64) -> String {
+    if bytes >= 1_000_000 { format!("{:.2} MB", bytes as f64 / 1_000_000.0) }
+    else if bytes >= 1_000 { format!("{:.1} KB", bytes as f64 / 1_000.0) }
+    else { format!("{bytes} B") }
+}
+
+fn format_duration(secs: f64) -> String {
+    if secs >= 60.0 {
+        let mins = (secs as u64) / 60;
+        let rem = secs - (mins as f64 * 60.0);
+        format!("{mins} 分 {rem:.1} 秒（{secs:.2} s）")
+    } else {
+        format!("{secs:.2} 秒")
+    }
+}
+
+fn format_speed(mb_per_s: f64) -> String {
+    if mb_per_s >= 0.1 { format!("{mb_per_s:.2} MB/s") }
+    else if mb_per_s > 0.0 { format!("{:.1} KB/s（{mb_per_s:.3} MB/s）", mb_per_s * 1000.0) }
+    else { "0.00 MB/s".to_string() }
+}
 
 fn app_label(path: &Path, app_dir: &Path) -> io::Result<()> {
     use std::os::unix::ffi::OsStrExt;
@@ -60,7 +86,7 @@ async fn serve(dir: &Path, uid: u32, own: MacAddr, selected: MacAddr,
     let mut state = json!({"mode":if scanning {"scanning"} else {"ready"},
         "session":session,
         "message":if scanning {"请在列表中选择 iPhone"} else {"已连接，等待 AirDrop"},
-        "peers":[], "request":null, "receiver":null, "send_busy":false});
+        "peers":[], "request":null, "receiver":null, "send_busy":false, "transfer":null});
     let mut timer = tokio::time::interval(Duration::from_millis(300));
     if scanning {
         loop {
@@ -78,7 +104,7 @@ async fn serve(dir: &Path, uid: u32, own: MacAddr, selected: MacAddr,
     config.model_name = "Xiaomi 14".into();
     config.limits.max_upload_body = 4 << 30;
     let (server, mut events) = Receiver::bind(SocketAddrV6::new(own.link_local(), 8771, 0, scope),
-        &identity, Options::new(config, dir.join("received"))).await?;
+        &identity, Options::new(config, dir.join("received")).with_progress(true)).await?;
     tokio::spawn(server.run());
     let id = own.to_string().replace(':', "");
     let mdns = Mdns::new(scope).with_burst(Some(Burst { count: 3,
@@ -106,13 +132,33 @@ async fn serve(dir: &Path, uid: u32, own: MacAddr, selected: MacAddr,
                     pending.remove(&id);
                     if state["request"]["id"].as_u64() == Some(id) { state["request"] = Value::Null; }
                 },
-                ReceiverEvent::Received{id:_, paths} => {
+                ReceiverEvent::Progress{id:_, written, wire_bytes, total, elapsed} => {
+                    let secs = elapsed.as_secs_f64();
+                    let mbps = calc_speed_mbps(written, secs);
+                    state["message"] = json!("正在接收…");
+                    state["transfer"] = json!({"active":true, "ok":Value::Null, "direction":"recv",
+                        "bytes":written, "wire_bytes":wire_bytes, "total":total,
+                        "elapsed_ms":elapsed.as_millis() as u64, "duration_secs":secs, "speed_mbps":mbps});
+                },
+                ReceiverEvent::Received{id:_, paths, bytes, wire_bytes, duration} => {
                     for path in &paths { give_to_app(path, uid, dir)?; }
-                    state["message"] = json!(format!("接收完成：{} 个文件/目录", paths.len()));
+                    let secs = duration.as_secs_f64();
+                    let mbps = calc_speed_mbps(bytes, secs);
+                    state["message"] = json!(format!("接收完成：{} 个文件/目录（{}），总耗时 {}，平均速度 {}",
+                        paths.len(), format_bytes(bytes), format_duration(secs), format_speed(mbps)));
                     state["received"] = json!(paths.iter().map(|p| p.to_string_lossy()).collect::<Vec<_>>());
+                    state["transfer"] = json!({"active":false, "ok":true, "direction":"recv",
+                        "files":paths.len(), "bytes":bytes, "wire_bytes":wire_bytes, "total":bytes,
+                        "elapsed_ms":duration.as_millis() as u64, "duration_secs":secs, "speed_mbps":mbps});
                 },
                 ReceiverEvent::Urls{id:_,urls} => { state["message"] = json!(format!("收到链接：{}", urls.join("\n"))); },
-                ReceiverEvent::Failed{id:_,reason} => { state["message"] = json!(format!("接收失败：{reason}")); },
+                ReceiverEvent::Failed{id:_,reason} => {
+                    state["message"] = json!(format!("接收失败：{reason}"));
+                    if state["transfer"]["active"] == true && state["transfer"]["direction"] == "recv" {
+                        state["transfer"]["active"] = json!(false);
+                        state["transfer"]["ok"] = json!(false);
+                    }
+                },
                 ReceiverEvent::Discovered{..} => { state["message"] = json!("对方已发现此设备，等待发送"); },
             },
             Some(event) = browse.events.recv() => match event {
@@ -153,25 +199,104 @@ async fn serve(dir: &Path, uid: u32, own: MacAddr, selected: MacAddr,
                             let allowed = dir.join("outbox").canonicalize()?;
                             let path = match candidate.canonicalize() { Ok(p) if p.starts_with(&allowed) && p.is_file() => p,
                                 _ => { state["message"]=json!("发送文件无效"); continue; } };
+                            let file_bytes = fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
                             let tx=updates.clone(); let id=id.clone(); let flags=receiver_flags;
                             state["send_busy"]=json!(true); state["message"]=json!("正在准备文件并等待对方接受…");
                             tokio::spawn(async move {
                                 let (progress, mut rx) = mpsc::unbounded_channel();
                                 let notify=tx.clone();
-                                let monitor=tokio::spawn(async move { while let Some(event)=rx.recv().await {
-                                    let update=match event { SendEvent::Accepted=>json!({"message":"对方已接受，正在发送…"}),
-                                        SendEvent::Progress(p)=>json!({"message":"正在发送…","sent":p.sent,"total":p.total}) };
-                                    let _=notify.send(update);
-                                }});
+                                let monitor=tokio::spawn(async move {
+                                    let mut upload_started: Option<Instant> = None;
+                                    let mut last_emit: Option<Instant> = None;
+                                    let mut wire_sent = 0u64;
+                                    let mut wire_total = 0u64;
+                                    while let Some(event)=rx.recv().await {
+                                        match event {
+                                            SendEvent::Accepted => {
+                                                let now = Instant::now();
+                                                upload_started = Some(now);
+                                                last_emit = Some(now);
+                                                let _ = notify.send(json!({
+                                                    "message": "对方已接受，正在发送…",
+                                                    "transfer": {
+                                                        "active": true, "ok": Value::Null, "direction": "send",
+                                                        "bytes": 0, "total": file_bytes, "elapsed_ms": 0,
+                                                        "duration_secs": 0.0, "speed_mbps": 0.0
+                                                    }
+                                                }));
+                                            }
+                                            SendEvent::Progress(p) => {
+                                                let now = Instant::now();
+                                                let started = *upload_started.get_or_insert(now);
+                                                wire_sent = p.sent;
+                                                wire_total = p.total;
+                                                if p.sent == p.total || last_emit.map_or(true, |t| now.duration_since(t) >= Duration::from_millis(250)) {
+                                                    last_emit = Some(now);
+                                                    let elapsed = now.duration_since(started);
+                                                    let secs = elapsed.as_secs_f64();
+                                                    let est_bytes = if p.total > 0 && file_bytes > 0 {
+                                                        ((p.sent as u128 * file_bytes as u128) / p.total as u128) as u64
+                                                    } else { p.sent };
+                                                    let mbps = calc_speed_mbps(est_bytes, secs);
+                                                    let _ = notify.send(json!({
+                                                        "message": "正在发送…",
+                                                        "sent": p.sent, "total": p.total,
+                                                        "transfer": {
+                                                            "active": true, "ok": Value::Null, "direction": "send",
+                                                            "bytes": est_bytes, "wire_bytes": p.sent,
+                                                            "total": if file_bytes > 0 { file_bytes } else { p.total },
+                                                            "elapsed_ms": elapsed.as_millis() as u64,
+                                                            "duration_secs": secs, "speed_mbps": mbps
+                                                        }
+                                                    }));
+                                                }
+                                            }
+                                        }
+                                    }
+                                    (upload_started, wire_sent, wire_total)
+                                });
+                                let call_started = Instant::now();
                                 let outcome=match Sender::new(sender::Config::new("Xiaomi 14 Owly", id)) {
                                     Ok(sender)=>sender.send(addr,&Payload::Files(vec![path]),flags,Some(progress)).await,
                                     Err(e)=>Err(e),
                                 };
-                                let _=monitor.await;
-                                let message=match outcome { Ok(sender::Outcome::Delivered)=>"发送完成".to_string(),
-                                    Ok(sender::Outcome::Declined)=>"对方拒绝或未及时接受".to_string(),
-                                    Ok(sender::Outcome::Failed(e))=>format!("发送失败：{e}"),Err(e)=>format!("发送失败：{e}") };
-                                let _=tx.send(json!({"send_busy":false,"message":message}));
+                                let (upload_started, _wire_sent, wire_total) = monitor.await.unwrap_or((None, 0, 0));
+                                let elapsed = upload_started.unwrap_or(call_started).elapsed();
+                                let secs = elapsed.as_secs_f64();
+                                match outcome {
+                                    Ok(sender::Outcome::Delivered) => {
+                                        let effective_bytes = if file_bytes > 0 { file_bytes } else { wire_total };
+                                        let mbps = calc_speed_mbps(effective_bytes, secs);
+                                        let message = format!("发送完成：1 个文件（{}），总耗时 {}，平均速度 {}",
+                                            format_bytes(effective_bytes), format_duration(secs), format_speed(mbps));
+                                        let _ = tx.send(json!({
+                                            "send_busy": false, "message": message,
+                                            "transfer": {
+                                                "active": false, "ok": true, "direction": "send", "files": 1,
+                                                "bytes": effective_bytes, "wire_bytes": wire_total, "total": effective_bytes,
+                                                "elapsed_ms": elapsed.as_millis() as u64, "duration_secs": secs, "speed_mbps": mbps
+                                            }
+                                        }));
+                                    }
+                                    Ok(sender::Outcome::Declined) => {
+                                        let _ = tx.send(json!({
+                                            "send_busy": false, "message": "对方拒绝或未及时接受",
+                                            "transfer": {"active": false, "ok": false, "direction": "send"}
+                                        }));
+                                    }
+                                    Ok(sender::Outcome::Failed(e)) => {
+                                        let _ = tx.send(json!({
+                                            "send_busy": false, "message": format!("发送失败：{e}"),
+                                            "transfer": {"active": false, "ok": false, "direction": "send"}
+                                        }));
+                                    }
+                                    Err(e) => {
+                                        let _ = tx.send(json!({
+                                            "send_busy": false, "message": format!("发送失败：{e}"),
+                                            "transfer": {"active": false, "ok": false, "direction": "send"}
+                                        }));
+                                    }
+                                }
                             });
                         },
                         _ => {},
@@ -180,5 +305,26 @@ async fn serve(dir: &Path, uid: u32, own: MacAddr, selected: MacAddr,
             }
         }
         save(dir, &state)?;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn formats_transfer_size_duration_and_speed() {
+        assert_eq!(format_bytes(512), "512 B");
+        assert_eq!(format_bytes(24_500), "24.5 KB");
+        assert_eq!(format_bytes(26_707_537), "26.71 MB");
+
+        assert_eq!(format_duration(3.424), "3.42 秒");
+        assert_eq!(format_duration(107.1), "1 分 47.1 秒（107.10 s）");
+
+        let slow = calc_speed_mbps(26_707_537, 107.10);
+        assert!((slow - 0.24937).abs() < 0.001);
+        assert_eq!(format_speed(slow), "0.25 MB/s");
+        assert_eq!(format_speed(0.05), "50.0 KB/s（0.050 MB/s）");
+        assert_eq!(format_speed(0.0), "0.00 MB/s");
     }
 }

@@ -7,6 +7,7 @@ ROOT=/data/local/tmp/owly-app
 STATE=$ROOT/state
 RADIO=$ROOT/radio
 NATIVE=/data/local/tmp/xos/native
+OWLY_XOS=/data/local/tmp/xos/owly
 BB=/data/adb/ksu/bin/busybox
 W=/sys/module/qca_cld3_kiwi_v2
 AMSS=/vendor/firmware_mnt/image/kiwi/amss20.bin
@@ -36,6 +37,7 @@ no_native_bridge() {
 stock_environment() {
  test ! -e "$NATIVE/saved.env"
  test ! -e "$BASE/state/saved.env"
+ test ! -e "$OWLY_XOS/state/saved.env"
  test ! -e /sys/module/wonder
  test ! -e /sys/module/houji_wonder_bridge
  test ! -e /sys/class/net/wonder0
@@ -51,10 +53,34 @@ stock_files() {
 }
 
 wait_wifi() {
- for i in $(seq 1 30); do
+ if test "$(settings get global wifi_on)" != 1; then return 0; fi
+ for i in $(seq 1 15); do
   if cmd wifi status | grep -q 'Wifi is connected to'; then
    echo WIFI_CONNECTED
    return 0
+  fi
+  if test "$i" = 2 || test "$i" = 8; then
+   cmd wifi start-scan >/dev/null 2>&1 || true
+  fi
+  sleep 1
+ done
+ echo WIFI_RECONNECT_RETRY_CYCLE
+ cmd wifi set-wifi-enabled disabled
+ for i in $(seq 1 10); do
+  if cmd wifi status | grep -q 'Wifi is disabled'; then break; fi
+  sleep 0.5
+ done
+ sleep 2
+ cmd wifi set-wifi-enabled enabled
+ sleep 2
+ cmd wifi start-scan >/dev/null 2>&1 || true
+ for i in $(seq 1 20); do
+  if cmd wifi status | grep -q 'Wifi is connected to'; then
+   echo WIFI_CONNECTED
+   return 0
+  fi
+  if test "$i" = 8; then
+   cmd wifi start-scan >/dev/null 2>&1 || true
   fi
   sleep 1
  done
@@ -66,7 +92,10 @@ snapshot() {
  test ! -e "$STATE/saved.env"
  test ! -e "$NATIVE/saved.env"
  test ! -e "$BASE/state/saved.env"
- test "$(cat "$BASE/state/status")" = STOCK_RESTORED
+ test ! -e "$OWLY_XOS/state/saved.env"
+ if test -e "$BASE/state/status"; then test "$(cat "$BASE/state/status")" = STOCK_RESTORED; fi
+ if test -e "$OWLY_XOS/state/status"; then grep -qx 'STOCK_RESTORED' "$OWLY_XOS/state/status"; fi
+ if test -e "$NATIVE/status"; then grep -qx 'STOCK_RESTORED' "$NATIVE/status"; fi
  test "$(getprop sys.xos.exclusive)" = 0
  stock_files
  wifi=$(settings get global wifi_on)
@@ -74,15 +103,22 @@ snapshot() {
  cnd=$(getprop init.svc.vendor.cnd)
  hal=$(getprop init.svc.vendor.wifi_hal_legacy)
  pci=$(cat "$PCI")
- test "$wifi" = 1
+ case "$wifi" in 0|1) ;; *) return 1;; esac
  case "$scan" in 0|1) ;; *) return 1;; esac
  case "$cnd:$hal" in running:running|stopped:stopped|running:stopped|stopped:running) ;; *) return 1;; esac
  case "$pci" in auto|on) ;; *) return 1;; esac
  country=$(cmd wifi get-country-code | sed -n 's/^Wifi Country Code = \([A-Z][A-Z]\)$/\1/p')
- phy=$(iw dev wlan0 info | awk '$1 == "wiphy" { print $2 }')
- case "$phy" in ''|*[!0-9]*) return 1;; esac
+ phy=$(iw dev wlan0 info 2>/dev/null | awk '$1 == "wiphy" { print $2 }')
+ if test -n "$phy" && test -n "$country"; then
+  case "$phy" in ''|*[!0-9]*) return 1;; esac
+  iw phy "phy$phy" reg get > "$STATE/stock-reg.txt"
+ elif test "$wifi" = 0 && test -s "$STATE/stock-reg.txt"; then
+  country=$(sed -n 's/^country \([A-Z][A-Z]\):.*/\1/p' "$STATE/stock-reg.txt" | head -n 1)
+  phy=${phy:-cached}
+ else
+  return 1
+ fi
  test -n "$country"
- iw phy "phy$phy" reg get > "$STATE/stock-reg.txt"
  grep -q "^country $country:" "$STATE/stock-reg.txt"
  # Require a non-passive, non-DFS rule covering the whole 149-161 group.
  # The candidate kernel independently validates the live country and each channel.
@@ -98,8 +134,8 @@ snapshot() {
    END { exit !allowed }
  ' "$STATE/stock-reg.txt"
  echo "REGULATORY_COUNTRY=$country STOCK_PHY=$phy WIDTH80_ALLOWED=yes"
- printf 'saved_scan=%s\nsaved_cnd=%s\nsaved_hal=%s\nsaved_pci=%s\nsaved_boot=%s\n' \
-  "$scan" "$cnd" "$hal" "$pci" "$(cat /proc/sys/kernel/random/boot_id)" > "$STATE/snapshot.tmp"
+ printf 'saved_wifi=%s\nsaved_scan=%s\nsaved_cnd=%s\nsaved_hal=%s\nsaved_pci=%s\nsaved_boot=%s\n' \
+  "$wifi" "$scan" "$cnd" "$hal" "$pci" "$(cat /proc/sys/kernel/random/boot_id)" > "$STATE/snapshot.tmp"
  mv "$STATE/snapshot.tmp" "$STATE/saved.env"
 }
 
@@ -122,17 +158,27 @@ restore_stock_settings() {
  echo "$saved_pci" > "$PCI"
  restore_service vendor.cnd "$saved_cnd"
  restore_service vendor.wifi_hal_legacy "$saved_hal"
+ if test "$saved_hal" = running; then
+  for i in $(seq 1 16); do
+   if test -e /sys/class/net/wlan0; then break; fi
+   sleep 0.5
+  done
+ fi
+ setprop sys.xos.exclusive 0
  if test "$saved_scan" = 1; then
   cmd wifi set-scan-always-available enabled
  else
   cmd wifi set-scan-always-available disabled
  fi
- cmd wifi set-wifi-enabled enabled
- setprop sys.xos.exclusive 0
- wait_wifi
+ if test "${saved_wifi:-1}" = 1; then
+  cmd wifi set-wifi-enabled enabled
+  wait_wifi
+ else
+  cmd wifi set-wifi-enabled disabled
+ fi
  test "$(getprop init.svc.vendor.cnd)" = "$saved_cnd"
  test "$(getprop init.svc.vendor.wifi_hal_legacy)" = "$saved_hal"
- test "$(settings get global wifi_on)" = 1
+ test "$(settings get global wifi_on)" = "${saved_wifi:-1}"
  test "$(settings get global wifi_scan_always_enabled)" = "$saved_scan"
  test "$(cat "$PCI")" = "$saved_pci"
 }
@@ -193,11 +239,15 @@ restore() {
      echo "=== IW_WLAN0_LINK_AFTER_PT_RELEASE ==="
      iw dev wlan0 link || true
     } > "$STATE/coexist-wlan0-after-pt-release.txt"
+    cmd wifi set-scan-always-available disabled || true
+    cmd wifi set-wifi-enabled disabled || true
+    for i in $(seq 1 16); do
+     if cmd wifi status 2>/dev/null | grep -q 'Wifi is disabled'; then break; fi
+     sleep 0.5
+    done
     stop vendor.cnd
-    cmd wifi set-scan-always-available disabled
-    cmd wifi set-wifi-enabled disabled
     stop vendor.wifi_hal_legacy
-    sleep 2
+    sleep 0.5
     for i in $(seq 1 12); do
      if test "$(getprop init.svc.vendor.cnd):$(getprop init.svc.vendor.wifi_hal_legacy)" = stopped:stopped && test "$(cat "$W/refcnt")" = 0; then break; fi
      stop vendor.wifi_hal_legacy
@@ -292,11 +342,14 @@ enter() {
  case "$tf_sha" in *[!0-9a-f]*) return 1;; esac
  check "$tf_sha" "$ROOT/three-findings.env"
  . "$ROOT/three-findings.env"
+ : "${tf_coex_5g_override:=0}"
+ : "${tf_rx_msdu_buf:=$tf_remote_assoc}"
+ : "${tf_rx_ezif_marked:=0}"
  case "$tf_remote_reo" in 0|1|2) ;; *) return 1;; esac
- for v in "$tf_remote_assoc" "$tf_remote_ast_override" "$tf_remote_hash_override" "$tf_fw_addba" "$tf_tx_ampdu" "$tf_dynamic_rate" "$tf_sta_coexist"; do
+ for v in "$tf_remote_assoc" "$tf_remote_ast_override" "$tf_remote_hash_override" "$tf_fw_addba" "$tf_tx_ampdu" "$tf_dynamic_rate" "$tf_sta_coexist" "$tf_coex_5g_override" "$tf_rx_msdu_buf" "$tf_rx_ezif_marked"; do
   case "$v" in 0|1) ;; *) return 1;; esac
  done
- echo "THREE_FINDINGS_ENV assoc=$tf_remote_assoc reo=$tf_remote_reo tx_ampdu=$tf_tx_ampdu dyn_rate=$tf_dynamic_rate sta_coexist=$tf_sta_coexist"
+ echo "THREE_FINDINGS_ENV assoc=$tf_remote_assoc reo=$tf_remote_reo tx_ampdu=$tf_tx_ampdu dyn_rate=$tf_dynamic_rate sta_coexist=$tf_sta_coexist coex_5g=$tf_coex_5g_override rx_msdu_buf=$tf_rx_msdu_buf rx_ezif_marked=$tf_rx_ezif_marked"
  check "$CANDIDATE" "$RADIO/amss20.bin"
  check 9a8345d87ec1186a29b413935b4efdbd38566e7e22374e70a7a85510b2970e9a "$RADIO/houji_wonder_bridge.ko"
  qca="$ROOT/qca_cld3_kiwi_v2-remote-peer.ko"
@@ -326,11 +379,17 @@ enter() {
  snapshot
  state ENTERING
  setprop sys.xos.exclusive 1
- stop vendor.cnd
  cmd wifi set-scan-always-available disabled
  cmd wifi set-wifi-enabled disabled
+ for i in $(seq 1 16); do
+  if cmd wifi status 2>/dev/null | grep -q 'Wifi is disabled'; then
+   break
+  fi
+  sleep 0.5
+ done
+ stop vendor.cnd
  stop vendor.wifi_hal_legacy
- sleep 3
+ sleep 1
  for i in $(seq 1 10); do
   if test "$(getprop init.svc.vendor.cnd):$(getprop init.svc.vendor.wifi_hal_legacy)" = stopped:stopped; then break; fi
   stop vendor.wifi_hal_legacy
@@ -358,11 +417,11 @@ enter() {
   caps) set -- "$@" pt_peer_caps_observe=1 ;;
  esac
  set -- "$@" pt_rx_capacity_4224=1 "pt_rx_phy_peer=$peer" pt_vht80_2ss="$vht_2ss"
- set -- "$@" pt_remote_assoc="$tf_remote_assoc" pt_remote_ast_override="$tf_remote_ast_override" pt_remote_hash_override="$tf_remote_hash_override" pt_remote_reo="$tf_remote_reo" pt_fw_addba="$tf_fw_addba" pt_tx_ampdu="$tf_tx_ampdu" pt_dynamic_rate="$tf_dynamic_rate"
+ set -- "$@" pt_remote_assoc="$tf_remote_assoc" pt_remote_ast_override="$tf_remote_ast_override" pt_remote_hash_override="$tf_remote_hash_override" pt_remote_reo="$tf_remote_reo" pt_fw_addba="$tf_fw_addba" pt_tx_ampdu="$tf_tx_ampdu" pt_dynamic_rate="$tf_dynamic_rate" pt_coex_5g_override="$tf_coex_5g_override" pt_rx_ezif_marked="$tf_rx_ezif_marked"
  if test "$tf_remote_assoc" = 1; then
   set -- "$@" "pt_remote_mac=$peer"
  fi
- bounded insmod "$qca" "$@" pt_rx_msdu_buf="$tf_remote_assoc" pt_remote_rx_window=64
+ bounded insmod "$qca" "$@" pt_rx_msdu_buf="$tf_rx_msdu_buf" pt_remote_rx_window=64
  test "$(cat "$W/parameters/pt_rx_phy_peer")" = "$peer"
  echo RX_PHY_PEER_READBACK=Y
  test "$(cat "$W/parameters/pt_rx_capacity_4224")" = Y
@@ -372,6 +431,12 @@ enter() {
  echo "VHT80_2SS_LOAD_READBACK=$expected_2ss"
  expected_coex=$(if test "$tf_sta_coexist" = 1; then echo Y; else echo N; fi)
  test "$(cat "$W/parameters/pt_sta_coexist")" = "$expected_coex"
+ expected_5g=$(if test "$tf_coex_5g_override" = 1; then echo Y; else echo N; fi)
+ test "$(cat "$W/parameters/pt_coex_5g_override")" = "$expected_5g"
+ expected_msdu=$(if test "$tf_rx_msdu_buf" = 1; then echo Y; else echo N; fi)
+ test "$(cat "$W/parameters/pt_rx_msdu_buf")" = "$expected_msdu"
+ expected_marked=$(if test "$tf_rx_ezif_marked" = 1; then echo Y; else echo N; fi)
+ test "$(cat "$W/parameters/pt_rx_ezif_marked")" = "$expected_marked"
  expected_assoc=$(if test "$tf_remote_assoc" = 1; then echo Y; else echo N; fi)
  test "$(cat "$W/parameters/pt_remote_assoc")" = "$expected_assoc"
  expected_ast=$(if test "$tf_remote_ast_override" = 1; then echo Y; else echo N; fi)
@@ -399,6 +464,10 @@ enter() {
   . "$STATE/saved.env"
   restore_service vendor.cnd "$saved_cnd"
   restore_service vendor.wifi_hal_legacy "$saved_hal"
+  for i in $(seq 1 16); do
+   if test -e /sys/class/net/wlan0; then break; fi
+   sleep 0.5
+  done
   cmd wifi set-scan-always-available disabled
   cmd wifi set-wifi-enabled enabled
   wait_wifi
@@ -515,7 +584,7 @@ finish_locked() {
 
 native_pid_matches() {
  case "$(tr '\0' ' ' < "/proc/$1/cmdline")" in
-  "sh $BASE/bridge-supervisor149.sh locked "|"/system/bin/sh $BASE/bridge-supervisor149.sh locked ") return 0;;
+  "sh $OWLY_XOS/bridge-supervisor.sh locked "|"/system/bin/sh $OWLY_XOS/bridge-supervisor.sh locked "|"sh $BASE/bridge-supervisor149.sh locked "|"/system/bin/sh $BASE/bridge-supervisor149.sh locked ") return 0;;
   *) return 1;;
  esac
 }
@@ -523,9 +592,11 @@ native_pid_matches() {
 suspend_native() {
  test ! -e "$NATIVE/saved.env"
  test ! -e "$BASE/state/saved.env"
+ test ! -e "$OWLY_XOS/state/saved.env"
  stock_files
- p=$(cat "$NATIVE/supervisor.pid")
- case "$p" in ''|*[!0-9]*) return 1;; esac
+ p=$(cat "$NATIVE/supervisor.pid" 2>/dev/null || true)
+ case "$p" in ''|*[!0-9]*) return 0;; esac
+ if ! kill -0 "$p" 2>/dev/null && no_native_bridge; then return 0; fi
  test -r "/proc/$p/cmdline"
  native_pid_matches "$p"
  paused=1
@@ -542,19 +613,26 @@ resume_native() {
  test ! -e "$STATE/saved.env"
  test ! -e "$NATIVE/saved.env"
  test ! -e "$BASE/state/saved.env"
- if no_native_bridge; then
-  "$BB" setsid sh "$BASE/bridge-supervisor149.sh" </dev/null >> "$BASE/native149-bridge.log" 2>&1 9>&- &
+ test ! -e "$OWLY_XOS/state/saved.env"
+ sup="$BASE/bridge-supervisor149.sh"
+ sup_log="$BASE/native149-bridge.log"
+ if test -x "$OWLY_XOS/bridge-supervisor.sh"; then
+  sup="$OWLY_XOS/bridge-supervisor.sh"
+  sup_log="$NATIVE/owly-bridge.log"
+ fi
+ if no_native_bridge && test -f "$sup"; then
+  "$BB" setsid sh "$sup" </dev/null >> "$sup_log" 2>&1 9>&- &
  fi
  for i in $(seq 1 12); do
   if service check com.domestic.xoscomm.IDomesticXOsComm/default | grep -q ': found'; then
    p=$(cat "$NATIVE/supervisor.pid")
    native_pid_matches "$p"
-   echo NATIVE149_MCS3_BINDER_FOUND
+   echo NATIVE_BRIDGE_BINDER_FOUND
    return 0
   fi
   sleep 1
  done
- echo NATIVE149_RESTART_TIMEOUT
+ echo NATIVE_BRIDGE_RESTART_TIMEOUT
  return 1
 }
 
@@ -650,7 +728,7 @@ run_locked() {
   kill -0 "$driver"
   test "$(uptime_s)" -lt "$deadline"
   if grep -q '"mode":"error"' "$APP/status.json" 2>/dev/null; then return 1; fi
-  if test "$requested" != scan; then
+  if test "${tf_rx_msdu_buf:-0}" = 1; then
    stats=$(cat "$W/parameters/pt_rx_msdu_stats")
    echo "$stats" > "$STATE/rx-last.txt"
    echo "$stats" | grep -q 'peer_miss=0 bad_desc=0 '

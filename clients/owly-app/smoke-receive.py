@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 """Small real TLS/Discover/Ask/Upload check over AWDL, not a throughput test."""
 from pathlib import Path
-import gzip, hashlib, http.client, json, plistlib, runpy, shlex, socket, ssl, threading, time, uuid
+import gzip, hashlib, http.client, json, plistlib, shlex, socket, ssl, threading, time, uuid
+
+from device import root
 
 HERE=Path(__file__).resolve().parent
-REPO=HERE.parents[1]
-WORK=REPO / "experiments"
-g=runpy.run_path(str(WORK/'three-findings-validation/run-three-findings.py'))
-root=g['root']; app='/data/user/0/org.houji.owly/files'
+app='/data/user/0/org.houji.owly/files'
 ip=root("ip -6 -o addr show dev owly0 scope link").split('inet6 ')[1].split('/')[0]
 scope=socket.if_nametoindex('awdl0')
 raw=socket.socket(socket.AF_INET6,socket.SOCK_STREAM)
@@ -53,7 +52,15 @@ conn.close()
 expected=hashlib.sha256(payload).hexdigest()
 actual=root(f'sha256sum {app}/received/{name}').split()[0]
 assert actual==expected
+state={}
+for _ in range(15):
+    state=json.loads(root(f'cat {app}/status.json'))
+    tr=state.get('transfer') or {}
+    if tr.get('ok') is True and tr.get('direction')=='recv' and str(state.get('message','')).startswith('接收完成'):break
+    time.sleep(.2)
+tr=state.get('transfer') or {}
+assert tr.get('ok') is True and tr.get('direction')=='recv' and tr.get('bytes')==len(payload) and 'speed_mbps' in tr and 'duration_secs' in tr,state
 receipt={'discover_name':discover['ReceiverComputerName'],'ask':'confirmed through app IPC','upload_http':200,
-         'file':name,'bytes':len(payload),'sha256':actual,'verified':True}
+         'file':name,'bytes':len(payload),'sha256':actual,'app_message':state.get('message'),'transfer':tr,'verified':True}
 (HERE/'evidence/receive-smoke.json').write_text(json.dumps(receipt,indent=2)+'\n')
 print(json.dumps(receipt))

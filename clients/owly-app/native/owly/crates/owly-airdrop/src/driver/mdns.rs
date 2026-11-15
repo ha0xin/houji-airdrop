@@ -128,6 +128,18 @@ impl Mdns {
         socket.set_reuse_address(true)?;
         #[cfg(all(unix, not(target_os = "solaris"), not(target_os = "illumos")))]
         socket.set_reuse_port(true)?;
+        #[cfg(any(
+            target_os = "android",
+            target_os = "linux",
+            target_os = "macos",
+            target_os = "ios",
+            target_os = "tvos",
+            target_os = "watchos",
+            target_os = "visionos",
+        ))]
+        if let Some(index) = std::num::NonZeroU32::new(self.scope_id) {
+            let _ = socket.bind_device_by_index_v6(Some(index));
+        }
         socket.bind(&SocketAddr::from((Ipv6Addr::UNSPECIFIED, MDNS_PORT)).into())?;
         socket.join_multicast_v6(&MDNS_GROUP, self.scope_id)?;
         socket.set_multicast_if_v6(self.scope_id)?;

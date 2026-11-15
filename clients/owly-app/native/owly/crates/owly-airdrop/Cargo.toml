@@ -37,7 +37,7 @@ getrandom = { version = "0.3", optional = true }
 p256 = { version = "0.13", default-features = false, features = ["ecdsa", "pem", "pkcs8", "std"], optional = true }
 rcgen = { version = "0.14", default-features = false, optional = true }
 rustls = { version = "0.23", default-features = false, features = ["std", "tls12"], optional = true }
-socket2 = { version = "0.6", optional = true }
+socket2 = { version = "0.6", features = ["all"], optional = true }
 tempfile = { version = "3", optional = true }
 tokio = { version = "1", features = ["io-util", "macros", "net", "rt", "sync", "time", "fs"], optional = true }
 tokio-rustls = { version = "0.26", default-features = false, features = ["tls12"], optional = true }

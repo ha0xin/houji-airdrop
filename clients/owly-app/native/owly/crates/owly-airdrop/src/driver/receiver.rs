@@ -40,6 +40,8 @@ pub struct Options {
     /// A connection with no traffic for this long, and no prompt up, is
     /// closed.
     pub idle_timeout: Duration,
+    /// Emit throttled [`ReceiverEvent::Progress`] updates while receiving an upload.
+    pub report_progress: bool,
 }
 
 impl Options {
@@ -49,7 +51,13 @@ impl Options {
             destination,
             max_connections: 16,
             idle_timeout: Duration::from_secs(60),
+            report_progress: false,
         }
+    }
+
+    pub fn with_progress(mut self, report_progress: bool) -> Self {
+        self.report_progress = report_progress;
+        self
     }
 }
 
@@ -88,9 +96,19 @@ pub enum ReceiverEvent {
         id: u64,
         urls: Vec<String>,
     },
+    Progress {
+        id: u64,
+        written: u64,
+        wire_bytes: u64,
+        total: Option<u64>,
+        elapsed: Duration,
+    },
     Received {
         id: u64,
         paths: Vec<PathBuf>,
+        bytes: u64,
+        wire_bytes: u64,
+        duration: Duration,
     },
     Failed {
         id: u64,
@@ -295,6 +313,11 @@ impl Task {
         let mut staging: Option<Staging> = None;
         let mut id = 0;
         let mut eof = false;
+        let mut expected_bytes: Option<u64> = None;
+        let mut upload_started: Option<Instant> = None;
+        let mut written_bytes: u64 = 0;
+        let mut wire_bytes: u64 = 0;
+        let mut last_progress: Option<Instant> = None;
         // Upload bytes in the current rate window, and when it ends.
         let mut window = (0u64, Instant::now() + RATE_WINDOW);
         loop {
@@ -335,6 +358,14 @@ impl Task {
                             );
                         }
                         id = self.ids.fetch_add(1, Ordering::Relaxed);
+                        expected_bytes = match &ask.offer {
+                            Offer::Files(files)
+                                if !files.is_empty() && files.iter().all(|f| f.size.is_some()) =>
+                            {
+                                Some(files.iter().filter_map(|f| f.size).sum())
+                            }
+                            _ => None,
+                        };
                         held.update(|s| s.busy = true);
                         let (reply, rx) = oneshot::channel();
                         answer = Some(rx);
@@ -350,6 +381,7 @@ impl Task {
                     }
                     Event::AskWithdrawn => {
                         answer = None;
+                        expected_bytes = None;
                         held.update(|s| s.busy = false);
                         let _ = self.events.try_send(ReceiverEvent::Withdrawn { id });
                     }
@@ -359,7 +391,21 @@ impl Task {
                     Event::UploadStarted => match Staging::new(&self.options.destination).await {
                         Ok(s) => {
                             staging = Some(s);
-                            window = (0, Instant::now() + RATE_WINDOW);
+                            let now = Instant::now();
+                            upload_started = Some(now);
+                            written_bytes = 0;
+                            wire_bytes = 0;
+                            last_progress = Some(now);
+                            window = (0, now + RATE_WINDOW);
+                            if self.options.report_progress {
+                                let _ = self.events.try_send(ReceiverEvent::Progress {
+                                    id,
+                                    written: 0,
+                                    wire_bytes: 0,
+                                    total: expected_bytes,
+                                    elapsed: Duration::ZERO,
+                                });
+                            }
                         }
                         Err(e) => return self.fail(&mut tls, id, e).await,
                     },
@@ -377,6 +423,21 @@ impl Task {
                         if let Err(e) = staging.as_mut().unwrap().write(&data).await {
                             return self.fail(&mut tls, id, e).await;
                         }
+                        written_bytes += data.len() as u64;
+                        if self.options.report_progress {
+                            let now = Instant::now();
+                            if last_progress.map_or(true, |t| now.duration_since(t) >= Duration::from_millis(250)) {
+                                last_progress = Some(now);
+                                let elapsed = upload_started.map_or(Duration::ZERO, |t| now.duration_since(t));
+                                let _ = self.events.try_send(ReceiverEvent::Progress {
+                                    id,
+                                    written: written_bytes,
+                                    wire_bytes,
+                                    total: expected_bytes,
+                                    elapsed,
+                                });
+                            }
+                        }
                     }
                     Event::EndFile => {
                         if let Err(e) = staging.as_mut().unwrap().end_file().await {
@@ -386,9 +447,19 @@ impl Task {
                     Event::UploadComplete => {
                         held.update(|s| s.busy = false);
                         let result = staging.take().unwrap().finish().await;
+                        let duration = upload_started.take().map_or(Duration::ZERO, |t| t.elapsed());
+                        let bytes = written_bytes;
+                        let wire = wire_bytes;
+                        expected_bytes = None;
                         conn.finish_upload(result.as_ref().map(|_| ()).map_err(|e| e.to_string()));
                         let event = match result {
-                            Ok(paths) => ReceiverEvent::Received { id, paths },
+                            Ok(paths) => ReceiverEvent::Received {
+                                id,
+                                paths,
+                                bytes,
+                                wire_bytes: wire,
+                                duration,
+                            },
                             Err(e) => ReceiverEvent::Failed {
                                 id,
                                 reason: e.to_string(),
@@ -399,6 +470,8 @@ impl Task {
                     Event::UploadFailed(reason) => {
                         // Dropping staging removes it and everything in it.
                         staging = None;
+                        upload_started = None;
+                        expected_bytes = None;
                         held.update(|s| s.busy = false);
                         let _ = self.events.send(ReceiverEvent::Failed { id, reason }).await;
                     }
@@ -424,6 +497,7 @@ impl Task {
                             let now = Instant::now();
                             idle = now + idle_timeout;
                             if staging.is_some() {
+                                wire_bytes += n as u64;
                                 window.0 += n as u64;
                                 if now >= window.1 {
                                     if window.0 < MIN_UPLOAD_BYTES {

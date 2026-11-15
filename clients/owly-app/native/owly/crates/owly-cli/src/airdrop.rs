@@ -688,6 +688,7 @@ async fn run_receiver(
                     println!("{u:?}");
                 }
             }
+            ReceiverEvent::Progress { .. } => {}
             ReceiverEvent::Received { paths, .. } => {
                 for p in paths {
                     println!("{}", p.display());

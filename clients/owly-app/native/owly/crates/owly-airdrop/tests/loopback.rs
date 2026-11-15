@@ -748,8 +748,10 @@ veth_test! {
             assert_eq!(request.ask.sender_computer_name, "Test Sender");
             request.accept();
             assert_eq!(send.await.unwrap().unwrap(), Outcome::Delivered);
-            let ReceiverEvent::Received { paths, .. } = r.next(5).await else { panic!() };
+            let ReceiverEvent::Received { paths, bytes, duration, .. } = r.next(5).await else { panic!() };
             assert_eq!(paths.len(), 2);
+            assert_eq!(bytes, photo.len() as u64 + 2);
+            assert!(duration > Duration::ZERO);
         }
         let files = r.files();
         let names: Vec<_> = files.iter().map(|(n, _)| n.as_str()).collect();
@@ -798,5 +800,43 @@ veth_test! {
         let addr = owly_awdl::MacAddr(veth.b.mac).link_local();
         let target = std::net::SocketAddrV6::new(addr, 8770, 0, veth.a.index);
         assert!(sender().discover(target).await.unwrap().is_some());
+    }
+}
+
+veth_test! {
+    async fn receive_reports_progress_and_stats(veth: Veth) {
+        let mut r = receiver_with(&veth, config(), |o| o.report_progress = true).await;
+        let src = tempfile::tempdir().unwrap();
+        let blob: Vec<u8> = (0..300_000u32).map(|i| (i * 11 % 251) as u8).collect();
+        std::fs::write(src.path().join("blob.bin"), &blob).unwrap();
+        let payload = Payload::Files(vec![src.path().join("blob.bin")]);
+        let to = veth.to_b(PORT);
+        let send = tokio::spawn(async move {
+            sender().send(to, &payload, RECEIVER_FLAGS | mdns::SUPPORTS_DVZIP, None).await
+        });
+        let ReceiverEvent::Request(request) = r.next(10).await else { panic!() };
+        request.accept();
+        let mut saw_progress = false;
+        let received_bytes;
+        let received_duration;
+        loop {
+            match r.next(5).await {
+                ReceiverEvent::Progress { total, .. } => {
+                    assert_eq!(total, Some(blob.len() as u64));
+                    saw_progress = true;
+                }
+                ReceiverEvent::Received { paths, bytes, duration, .. } => {
+                    assert_eq!(paths.len(), 1);
+                    received_bytes = bytes;
+                    received_duration = duration;
+                    break;
+                }
+                other => panic!("unexpected event: {other:?}"),
+            }
+        }
+        assert!(saw_progress);
+        assert_eq!(received_bytes, blob.len() as u64);
+        assert!(received_duration > Duration::ZERO);
+        assert_eq!(send.await.unwrap().unwrap(), Outcome::Delivered);
     }
 }
