@@ -88,6 +88,7 @@ sync_runtime() {
 }
 
 if [ ! -f "$RUNTIME_DIR/installation.sha256" ] || \
+   ! cmp -s "$MODDIR/payload/installation.sha256" "$RUNTIME_DIR/installation.sha256" || \
    ! (cd "$RUNTIME_DIR" && sha256sum -c installation.sha256 >/dev/null 2>&1); then
   sync_runtime
 fi

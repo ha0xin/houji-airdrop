@@ -200,7 +200,7 @@ snapshot() {
  if test -e "$OWLY_APP/state/status"; then
   test "$(cat "$OWLY_APP/state/status")" = STOCK_RESTORED
  fi
- test "$(getprop sys.xos.exclusive)" = 0
+ case "$(getprop sys.xos.exclusive)" in ''|0) ;; *) return 1 ;; esac
  stock_files
  wifi=$(settings get global wifi_on)
  scan=$(settings get global wifi_scan_always_enabled)

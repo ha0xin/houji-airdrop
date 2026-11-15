@@ -102,7 +102,7 @@ for pidfile in "$NATIVE_DIR/bridge.pid" "$NATIVE_DIR/supervisor.pid"; do
 done
 for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
   if "$BB" flock -n "$NATIVE_DIR/supervisor.lock" true 2>/dev/null && \
-     ! ps -A -o ARGS | grep -q '^[a]pp_process /system/bin XosBridge '; then
+     ! /system/bin/ps -A -o ARGS 2>/dev/null | grep -q '^[a]pp_process /system/bin XosBridge '; then
     break
   fi
   sleep 0.3
@@ -128,6 +128,7 @@ else
 fi
 
 for perm in \
+  android.permission.NETWORK_FACTORY \
   android.permission.NEARBY_WIFI_DEVICES \
   android.permission.BLUETOOTH_CONNECT \
   android.permission.BLUETOOTH_ADVERTISE \
@@ -135,6 +136,8 @@ for perm in \
   android.permission.POST_NOTIFICATIONS; do
   pm grant com.miui.mishare.connectivity "$perm" >/dev/null 2>&1 || true
 done
+dumpsys package com.miui.mishare.connectivity 2>/dev/null | grep -q 'android.permission.NETWORK_FACTORY: granted=true' || \
+  abort "! 授予小米互传 NETWORK_FACTORY 权限失败"
 
 ui_print "- 正在安装 LSPosed 兼容模块 Owly-XOS 小米互传兼容 (org.houji.xoscompat)..."
 cp "$MODPATH/apks/Owly-XOS-Compat.apk" "$STAGE_COMPAT"

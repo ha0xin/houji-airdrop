@@ -18,6 +18,10 @@ if test "${1:-}" != locked; then
 fi
 uid=$(cmd package list packages -U com.miui.mishare.connectivity | sed -n 's/^package:com.miui.mishare.connectivity uid:\([0-9]*\)$/\1/p')
 test -n "$uid"
+pm grant com.miui.mishare.connectivity android.permission.NETWORK_FACTORY >/dev/null 2>&1 || true
+case "$(getprop sys.xos.exclusive)" in
+ ''|0) setprop sys.xos.exclusive 0 ;;
+esac
 SEPOLICY_RULE='allow platform_app default_android_service service_manager { find }'
 if test -x /data/adb/ksu/bin/ksud; then
  /data/adb/ksu/bin/ksud sepolicy check "$SEPOLICY_RULE"
