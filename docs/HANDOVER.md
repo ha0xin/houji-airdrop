@@ -1,5 +1,22 @@
 # 交接入口
 
+## 2026-11-15：App 共存合入与小米互传 `xos0` 高速后端
+
+本轮推进了两条路线并完成了实机匿名化验收：
+
+- **独立 App（`clients/owly-app/` + `runtime/owly-app/`）**：
+  - 将 `2.4 GHz` 与非 DFS `5 GHz`（`5180–5240` / `5745–5825 MHz`）STA 共存合入 `radio.sh` / `control.sh` 与 `MainActivity.java`，并改用 `dc6b21e4...` 567 符号 ABI 审计驱动模块；DFS/受限频段自动回落 `pt_exclusive=1`。
+  - 修复双 5 GHz 退出后 Wi-Fi 自动重连超时：增加有界 `cmd wifi start-scan` 与必要时的 WLAN 开关恢复循环；验证恢复后连接稳定、零丢包。
+  - 在 `owly-airdrop/src/driver/mdns.rs` 使用 `SO_BINDTOIFINDEX` 将 IPv6 `:5353` mDNS socket 绑定到对应接口索引，避免共存多宿主下被其他服务截走单播应答；App 收发双向冒烟校验通过。
+  - 解耦部署清单：`clients/owly-app/runtime-manifest.json` 定义外部内核模块与固件 SHA-256，由 `install.py` 从 `blobs/local/`（或环境变量）解析并校验；`runtime/owly-app/build-radio.py` 完成脚本校验通过。
+- **小米原生互传（`runtime/owly-xos/` + `driver/wlan/` + `houji-runner` / `owly-awdl`，当前主线）**：
+  - 实现 AIDL `XosBridge`（`com.domestic.xoscomm.IDomesticXOsComm/default`）与 `bridge-supervisor.sh`，在保持 SELinux `Enforcing` 下通过 `ksud sepolicy patch` 与每次启动首次 `servicemanager` `avc_cache` 驱逐让原版 `MIShare.apk` 直接绑定守护服务。
+  - 在内核新增 `pt_remote_multi=1` 与 `pt_remote_peer_ctl`（最多 8 个动态远端 peer 槽位），配合用户态 `KernelPeerSync` 异步线程切换至官方 `ezif-amss20.bin` 免预绑定硬件 TX A-MPDU + REO MSDU-buffer RX（`pt_remote_rx_window=256`、`HOUJI_OWLY_TX_ADDBA=1`），并补齐 RFC 2464 组播 MAC、用户态 NDP 与单播 `:5353` mDNS 响应转投 `ff02::fb`。
+  - 完成冷启动与双向发现优化：`radio.sh enter` 预置固件与事件轮询将冷启动从 `~6.2–9.2s` 压至 **`3.16–3.62s`**；`owly-awdl` `fast_discovery` 与 `Tap::peer_up` 双向 PTR 查询/提示使接收侧 NSD 就绪后 **`1.46s`** 即收到 Apple `/Discover`。
+  - 实机验收（详见 [`34-owly-xos-validation.md`](airdrop/34-owly-xos-validation.md) 与 [`runtime/owly-xos/evidence/`](../runtime/owly-xos/evidence/README.md)）：
+    - 16 MiB TCP 裸链路（`xos0` ↔ Mac `awdl0`，SHA-256 通过）：小米→Mac **`64.08 MB/s`**（`max_ppdu_mpdus=31`），Mac→小米 **`9.55 MB/s`**；
+    - 原版 `MIShare.apk` ↔ Apple 手机双向收发 `157.80 MB` MP4 视频：发送正文 **`8.40s`（`18.79 MB/s`）**、含对端落盘 **`9.42s`（`16.75 MB/s`，`98.4%` MPDU 硬件聚合）**；接收单对端 `win=64` **`11.97s`（`13.18 MB/s`，稳态 `20.35 MB/s`）**，多对端 `win=256` 全程零丢包、`host_delayed=0`、A-MSDU 阶段 **`13.00 MB/s`（峰值 `29.54 MB/s`）**，退出均干净恢复 `STOCK_RESTORED`。
+
 ## 2026-11-12：目录整理
 
 用户要求大致按分层 Monorepo 方向整理，**暂不增加任何版本锁定和 SHA**。本轮进行了独立构建验证，没有上机、部署、暂存或提交；既有校验逻辑和历史 SHA 记录保留。检查时发现 README 已有暂存内容，本轮保留该索引状态，没有覆盖或撤销用户暂存。

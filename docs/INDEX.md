@@ -4,7 +4,8 @@
 
 | 目录 | 用途 |
 |---|---|
-| [owly-app](../clients/owly-app/README.zh-CN.md) | `app/` 是 Java 界面；`native/houji-runner` 是 Android 后端；`native/owly` 是协议栈；`runtime/` 管理 root 无线会话；`evidence/` 记录安装和收发检查 |
+| [owly-xos](../runtime/owly-xos/README.zh-CN.md) | 原版小米互传 `MIShare.apk` 的 AIDL `XosBridge` 守护、`ezif.bin` 免预绑定多对端硬件 TX A-MPDU `xos0` 后端及 `evidence/` 匿名化实测日志 |
+| [owly-app](../clients/owly-app/README.zh-CN.md) | `app/` 是 Java 界面；`native/houji-runner` 是 Android 后端；`native/owly` 是协议栈；`runtime/` 管理 root 无线会话；`evidence/` 记录安装和收发检查（当前暂缓，聚焦 `owly-xos`） |
 | [three-findings-validation](../experiments/three-findings-validation) | 当前改动覆盖层已移至 `driver/wlan/`，非完整 WLAN 树；`src/userspace` 为实验后端；根目录存补丁、ABI 审计、构建和实机脚本；`runs/` 为每轮结果 |
 | [sta-coexist](../experiments/sta-coexist/README.zh-CN.md) | 普通 WLAN 与 PASSTHRU 共存，按时间记录失败、修复、成功与恢复问题；`artifacts/` 按产物哈希隔离 |
 | [owly-evaluation](../experiments/owly-evaluation) | Owly 源码和 `houji-runner/bench.py` 等公共测试、无线生命周期工具 |
@@ -23,6 +24,7 @@
 
 ## 优先查看的实测证据
 
+- [原生小米互传 `owly-xos` 实测日志与遥测归档](../runtime/owly-xos/evidence/README.md) 及 [第 34 篇专题报告](airdrop/34-owly-xos-validation.md)。
 - [双 5 GHz 两轮 16 MiB](../experiments/three-findings-validation/runs/coexist-5g40-16m-20261111)：`1/result.json`、`2/result.json`、`rx-stats-final.txt`、`manual-recovery.log`、`stock-after.txt`。
 - [2.4 GHz + 5 GHz 两轮 16 MiB](../experiments/three-findings-validation/runs/coexist-marked-16m-20261111)。
 - [App 安装产物身份](../clients/owly-app/evidence/installed-artifacts.json)。

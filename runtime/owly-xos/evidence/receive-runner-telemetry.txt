@@ -1,0 +1,43 @@
+# Anonymized houji-owly-app userspace telemetry during native MIShare RECEIVE (157,799,892 bytes)
+# Peer MACs and UUIDs replaced with deterministic documentation placeholders; see docs/PRIVACY.md.
+
+OWLY_PT_PEER_CTL enabled=true
+OWLY_AF_PACKET_BUF rcvbuf=16777216 sndbuf=8388608
+OWLY_COALESCE_US=1000
+OWLY_OUTGOING_VHT=2
+OWLY_ACCEPT_ADDBA=2
+OWLY_TX_ADDBA=1
+OWLY_READY iface=xos0 addr=fe80::200:ff:fe00:102 peer=00:00:00:00:00:00 channel=149 amsdu=true noack=false ba=true dynamic_peers=true
+OWLY_PSF_SUBMITTED_HT_CAPABILITIES=00006f001fffff0000
+OWLY_PSF_SUBMITTED_VHT_CONTAINER=bf0c30008003faff0000faff0000
+OWLY_MIF_SUBMITTED_HT_CAPABILITIES=00006f001fffff0000
+OWLY_MIF_SUBMITTED_VHT_CONTAINER=bf0c30008003faff0000faff0000
+ INFO owly_awdl::driver: STATS tx_action 3 tx_unicast 0 tx_multicast 0 tx_amsdu 0 | radio full 0 gave up 0 | rx_action 1 rx_data 0 rx_malformed 0 rx_dup 0 delivered 0 | addba req 0 resp 0 tx_req 0 rx_resp 0 | dropped no_peer 0 queue 0 expired 0 | syn held 0 released 0 | no_overlap 0 | timer late avg 0 µs max 0 µs
+ INFO owly_awdl::driver: add peer 02:00:00:00:00:11 (00000000-0000-4000-8000-000000000011)
+OWLY_PEERS count=1
+OWLY_TX_ADDBA_REQ_SENT token=1 params=0x1003 ssn=0
+OWLY_PT_PEER_CTL op=add active=1 rc=ok
+ INFO owly_awdl::driver: add peer 02:00:00:00:00:12 (00000000-0000-4000-8000-000000000012)
+OWLY_TX_ADDBA_REQ_SENT token=1 params=0x1003 ssn=0
+ INFO owly_awdl::driver: add peer 02:00:00:00:00:13 (00000000-0000-4000-8000-000000000013)
+OWLY_PEERS count=2
+OWLY_PT_PEER_CTL op=add active=2 rc=ok
+OWLY_PEERS count=3
+OWLY_TX_ADDBA_REQ_SENT token=1 params=0x1003 ssn=0
+OWLY_PT_PEER_CTL op=add active=3 rc=ok
+OWLY_TX_ADDBA_REQ_SENT token=2 params=0x1003 ssn=0
+OWLY_TX_ADDBA_REQ_SENT token=2 params=0x1003 ssn=0
+OWLY_TX_ADDBA_REQ_SENT token=3 params=0x1003 ssn=7
+OWLY_TX_ADDBA_REQ_SENT token=2 params=0x1003 ssn=0
+OWLY_TX_ADDBA_REQ_SENT token=3 params=0x1003 ssn=1
+ INFO owly_awdl::driver: remove peer 02:00:00:00:00:11
+OWLY_PT_PEER_CTL op=del active=2 rc=ok
+ INFO owly_awdl::driver: STATS tx_action 244 tx_unicast 701 tx_multicast 20 tx_amsdu 4 | radio full 0 gave up 0 | rx_action 147 rx_data 4032 rx_malformed 0 rx_dup 2 delivered 4030 | addba req 0 resp 0 tx_req 10 rx_resp 0 | dropped no_peer 0 queue 0 expired 0 | syn held 0 released 0 | no_overlap 0 | timer late avg 1340 µs max 5087 µs
+ INFO owly_awdl::driver: STATS tx_action 486 tx_unicast 4707 tx_multicast 22 tx_amsdu 64 | radio full 0 gave up 0 | rx_action 383 rx_data 29468 rx_malformed 0 rx_dup 40 delivered 29460 | addba req 0 resp 0 tx_req 10 rx_resp 0 | dropped no_peer 0 queue 0 expired 0 | syn held 0 released 0 | no_overlap 0 | timer late avg 1153 µs max 3089 µs
+ INFO owly_awdl::driver: STATS tx_action 727 tx_unicast 6944 tx_multicast 23 tx_amsdu 99 | radio full 0 gave up 0 | rx_action 620 rx_data 66746 rx_malformed 0 rx_dup 56 delivered 93150 | addba req 0 resp 0 tx_req 10 rx_resp 0 | dropped no_peer 0 queue 0 expired 0 | syn held 0 released 0 | no_overlap 0 | timer late avg 1179 µs max 4413 µs
+ INFO owly_awdl::driver: STATS tx_action 969 tx_unicast 7151 tx_multicast 24 tx_amsdu 101 | radio full 0 gave up 0 | rx_action 833 rx_data 77518 rx_malformed 0 rx_dup 56 delivered 114594 | addba req 0 resp 0 tx_req 10 rx_resp 0 | dropped no_peer 0 queue 0 expired 0 | syn held 0 released 0 | no_overlap 0 | timer late avg 1253 µs max 8305 µs
+ INFO owly_awdl::driver: STATS tx_action 1200 tx_unicast 7157 tx_multicast 26 tx_amsdu 101 | radio full 0 gave up 0 | rx_action 983 rx_data 77526 rx_malformed 0 rx_dup 56 delivered 114598 | addba req 0 resp 0 tx_req 10 rx_resp 0 | dropped no_peer 0 queue 0 expired 0 | syn held 0 released 0 | no_overlap 0 | timer late avg 1238 µs max 3021 µs
+OWLY_RX_GAPS schema=1 matched=37093 missing=0 equal=34790 backwards=0 host_delayed=0 equal_host_delayed=0 host_caught_up=0 bounds_us=[250, 1000, 4000, 16000, 32000, 64000, 128000, 256000] radio_count=[0, 1503, 401, 380, 2, 1, 0, 14, 1] radio_us=[0, 1140552, 871635, 3220812, 39233, 55410, 0, 2435844, 21383912] host_count=[35422, 857, 423, 372, 2, 1, 0, 14, 1] host_us=[1130805, 476677, 901677, 2703410, 42468, 55735, 0, 2435118, 21383729]
+ INFO houji_owly_app::android: monitor totals air_rx_invalid=0 air_rx_kernel_packets=78565 air_rx_kernel_drops=0 air_tx_fatal=0 air_tx_backpressure=0 air_tx_submitted=8153 air_tx_amsdu_mpdu=101 air_tx_amsdu_msdu=341
+ INFO houji_owly_app::android: tap totals tap_rx_invalid=0 tap_delivery_drops=0
+OWLY_PT_PEER_CTL op=clear active=0 rc=ok

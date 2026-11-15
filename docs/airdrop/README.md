@@ -95,3 +95,7 @@ Owly 在 149 信道与 Mac（零修改）的独立探针已通过双向 SHA-256�
 31. [EZIF 官方固件实机探测](31-ezif-firmware-probe.md)：官方 EZIF 实测 wire 506=1，关联成功；旧驱动 REO 接收异常触发恢复，尚未完成传输或 TX 聚合验证，手机已恢复原厂 Wi-Fi。
 
 32. [EZIF TX A-MPDU 实装与吞吐验证](32-ezif-tx-ampdu-validation.md)：修复 BE cookie 转换与 PASSTHRU RX 接管，完成64 MiB×3双向校验；小米→Mac加权20.978 MB/s，硬件完成记录观测5,718个聚合PPDU、峰值18 MPDU/PPDU。独立实验已通过，日常分享组件尚未回迁。
+
+33. [单向传输参数探索](33-single-direction-optimization.md)：探索用户态合包等待与初始 REO 接收窗口参数边界。
+
+34. [原生小米互传 `owly-xos` 多对端硬件 TX A-MPDU、快速发现与实机双向验证](34-owly-xos-validation.md)：在 `runtime/owly-xos` 落地免预绑定多对端 `pt_remote_multi=1` + 官方 `ezif` 硬件 TX A-MPDU、冷启动加速（`~3.16–3.62s`）与双向快速发现；16 MiB TCP 小米→Mac 达 **64.08 MB/s**，原版 `MIShare.apk` 对 Apple 手机实测收发 `157.80 MB` 视频双向闭环通过并归档匿名化遥测日志。

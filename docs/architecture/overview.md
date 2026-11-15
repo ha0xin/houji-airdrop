@@ -1,9 +1,8 @@
-# 当前架构与后续方向
+# 当前架构与双前端边界
 
-当前实现：独立 Android App → App 专用 Rust 后端 / Owly → root 无线生命周期脚本 → Wonder/PASSTHRU 与 kiwi_v2 驱动。
+当前仓库在同一套 Wonder/PASSTHRU + `qca_cld3_kiwi_v2` 驱动与 `houji-runner` / `owly-awdl` 原生核心之上，提供两套互斥运行入口：
 
-正式入口分别为 `clients/owly-app/`、`runtime/owly-app/`、`driver/wlan/`；实验后端和实机验证仍在 `experiments/`。
+1. **`runtime/owly-xos/`（当前开发主线）**：小米系统原版 `MIShare.apk` → AIDL `XosBridge`（`com.domestic.xoscomm.IDomesticXOsComm/default`，SELinux `Enforcing`）→ `radio.sh`（`ezif.bin` + `pt_remote_multi=1` 免预绑定多对端硬件 TX A-MPDU）→ `houji-owly-app` L2 TAP `xos0`。保留系统分享菜单、超级岛接收弹窗与相册入库，无需修改系统 APK。
+2. **`clients/owly-app/` + `runtime/owly-app/`（独立 App 路线，当前暂缓）**：独立 Android App `Owly AirDrop` → `houji-owly-app` Rust AirDrop 协议栈（L3 TUN `owly0`）→ `radio.sh`（支持 `2.4 GHz` 与非 DFS `5 GHz` 普通 WLAN STA 共存）。
 
-后续目标是统一 root 守护进程，供独立 App 和小米互传 Hook 共同使用。统一 IPC、任务归属、接收确认、权限校验、客户端断开处理，以及 WLAN 共存接入都尚需设计和验证。此次目录整理没有实现这些功能。
-
-暂不拆分 Rust workspace、合并实验 Owly 副本或添加空 Hook 模块，避免目录结构暗示尚不存在的实现。
+两套运行时通过共享的无线状态门禁、`pt_release` 与 `supervisor` 服务启停互锁，确保任意时刻只有一个前端持有 PASSTHRU 会话，并在退出时完整恢复原厂 `STOCK_RESTORED` 状态。实验分支与早期对照归档仍在 `experiments/`。

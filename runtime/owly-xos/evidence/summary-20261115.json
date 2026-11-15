@@ -1,0 +1,109 @@
+{
+  "date": "2026-11-15",
+  "privacy_note": "Personal device names, SSIDs, BSSIDs, and ephemeral MAC/UUID tokens redacted per docs/PRIVACY.md; timestamps, byte counts, and hardware counters unmodified.",
+  "target": {
+    "device": "Xiaomi 14 (houji)",
+    "os": "HyperOS OS3.0.307.0.WNCCNXM (Android 16, SELinux Enforcing)",
+    "kernel": "6.1.138-android14-11-g0c3d559bcd85-ab14529422",
+    "firmware": "SM-S928B S928BXXU6EZIF amss20.bin (37d409044902fb5e4eb47aff5c543adb0dfd6a56e4e38ff723feb823bc8b522f)",
+    "driver_ko_sha256": "e81c4a90fd2f5d6e40cef5f2e282b3cad095c79a3e9a03dad1788f92306f4262",
+    "channel": 149,
+    "radio_profile": "VHT80 2SS MCS9 SGI80 LDPC",
+    "driver_params": {
+      "pt_exclusive": 1,
+      "pt_sta_coexist": 0,
+      "pt_remote_multi": 1,
+      "pt_tx_ampdu": 1,
+      "pt_rx_msdu_buf": 1,
+      "pt_rx_ezif_marked": 1,
+      "pt_remote_reo": 2,
+      "pt_remote_rx_window": 256,
+      "pt_remote_ast_override": 1,
+      "pt_remote_hash_override": 1
+    }
+  },
+  "cold_start_and_discovery": {
+    "pre_optimization_enter_seconds_range": [6.17, 9.19],
+    "cli_radio_enter_seconds": 3.161,
+    "mishare_send_enter_seconds": 3.616,
+    "mishare_receive_enter_seconds": 3.444,
+    "mishare_send_xos_ready_to_mdns_peer_seconds": 2.425,
+    "mishare_send_click_to_discover_200_seconds": 9.027,
+    "mishare_receive_nsd_registered_to_apple_discover_seconds": 1.462,
+    "mishare_receive_ble_trigger_to_discover_200_seconds": 6.176
+  },
+  "raw_tcp_16mib_xos0_mac_awdl0": {
+    "payload_bytes": 16777216,
+    "sha256_verified": true,
+    "tx_xiaomi_to_mac": {
+      "seconds": 0.2618,
+      "MBps": 64.08,
+      "agg_ppdus_delta": 307,
+      "agg_mpdus_delta": 6103,
+      "max_ppdu_mpdus": 31
+    },
+    "rx_mac_to_xiaomi": {
+      "seconds": 1.7565,
+      "MBps": 9.55,
+      "rx_msdu_dropped": 0,
+      "rx_gaps_matched": 24298,
+      "rx_gaps_missing": 0,
+      "rx_gaps_host_delayed": 0
+    }
+  },
+  "mishare_native_video_157mb_e2e": {
+    "payload_bytes": 157799892,
+    "send_xiaomi_to_apple_phone": {
+      "dvzip_payload_bytes": 157800448,
+      "stored_chunks": 1204,
+      "tcp_connect_ms": 8,
+      "tls_handshake_ms": 17,
+      "upload_body_sent_seconds": 8.398,
+      "upload_body_sent_MBps": 18.79,
+      "upload_http_200_seconds": 9.422,
+      "upload_http_200_MBps": 16.75,
+      "tx_valid_completions": 23308,
+      "tx_vht80_mcs9_sgi_ldpc_completions": 23300,
+      "tx_ppdus": 3713,
+      "tx_agg_ppdus": 3338,
+      "tx_agg_mpdus": 22933,
+      "tx_max_ppdu_mpdus": 9,
+      "rx_reverse_msdu_seen": 372,
+      "rx_reverse_msdu_dropped": 0
+    },
+    "receive_apple_phone_to_xiaomi_win64_single_peer_baseline": {
+      "pt_remote_rx_window": 64,
+      "upload_elapsed_seconds": 11.97,
+      "overall_MBps": 13.18,
+      "second_half_steady_MBps": 20.35,
+      "best_window_MBps": 26.08,
+      "single_chunk_peak_MBps": 41.12
+    },
+    "receive_apple_phone_to_xiaomi_win256_multi_peer_run": {
+      "pt_remote_rx_window": 256,
+      "concurrent_awdl_peers_peak": 3,
+      "concurrent_awdl_peers_steady": 2,
+      "upload_elapsed_seconds": 23.861,
+      "overall_MBps": 6.61,
+      "phase1_single_msdu_seconds": 15.945,
+      "phase1_bytes": 54531990,
+      "phase1_MBps": 3.42,
+      "phase2_amsdu_seconds": 7.911,
+      "phase2_bytes": 102867226,
+      "phase2_MBps": 13.0,
+      "two_chunk_window_MBps": 23.56,
+      "single_chunk_peak_MBps": 29.54,
+      "rx_data_mpdus": 77526,
+      "delivered_ipv6_packets": 114598,
+      "rx_gaps_matched": 37093,
+      "rx_gaps_missing": 0,
+      "rx_gaps_equal": 34790,
+      "rx_gaps_host_delayed": 0,
+      "air_rx_kernel_drops": 0,
+      "tap_delivery_drops": 0,
+      "rx_msdu_seen": 999,
+      "rx_msdu_dropped": 0
+    },
+    "post_session_recovery": "STOCK_RESTORED (5 GHz STA auto-reconnected)"
+  }
+}

@@ -2,7 +2,7 @@
 
 小米 14（houji）上的 AirDrop 实验实现。包括独立 App、WLAN 驱动移植与匿名化验证资料。
 
-**当前为研究源码仓库，不是可直接安装的发布包。** 独立构建已验证；新构建产物仍需单独完成 ABI 与实机验收。普通 WLAN 共存尚未合入 App，双 5 GHz 实验退出后的自动重连问题仍未解决。
+**当前为研究源码仓库，不是可直接安装的发布包。** 独立构建已验证；当前开发主线聚焦 [`runtime/owly-xos/`](runtime/owly-xos/README.zh-CN.md)，为小米系统原版 `MIShare` 提供基于官方 `ezif-amss20.bin` 与免预绑定多对端硬件 TX A-MPDU 的高速 `xos0` 后端（16 MiB TCP 小米→Mac **64.08 MB/s**、Mac→小米 **9.55 MB/s**，原生互传收发 `157.80 MB` 视频端到端均通过，冷启动 **3.16–3.62 s**）；独立 App `Owly AirDrop` 在合入 `2.4 GHz` / 非 DFS `5 GHz` 普通 WLAN 共存后暂缓迭代。
 
 本项目探索过三条路线：
 
@@ -12,7 +12,41 @@
 
 从符号、依赖等证据判断，小米 XOS 的 `libxos.so` 使用了 [OWL](https://github.com/seemoo-lab/owl) 衍生实现。
 
-本仓库前期注重把前两种方案跑通，后期转向第三种方案，方便修改代码以提高传输性能。
+本仓库前期验证了前两种方案与独立 `Owly` 协议栈，当前重点收敛在 `runtime/owly-xos` 方式：直接复用小米原版分享菜单、超级岛与相册入库界面，同时把底层 `xos0` 替换为可演进的 `owly-awdl` + `ezif` 多对端硬件聚合后端。
+
+### 三条路线的能力对照
+
+> 以下状态基于在小米 14（`houji`）上的拆包分析与实机验证整理；“待确认”仅表示未在 `houji` 上完成实机或源码级核实，不代表来源机型原厂不具备对应能力。
+
+#### 1. 用户态 AWDL 引擎层
+
+| 功能特性 | 小米 XOS（`libxos.so`） | Google / 三星（`Mosey`） | 当前 Owly 路线 |
+|---|---|---|---|
+| PSF / MIF 时钟同步与主节点选举 | ✅ 已实现（基于 `OWL` 改造） | ✅ 已实现（`mosey_server` 内置） | ✅ **已实现**（`owly-awdl` 原生支持） |
+| 动态多信道调度（非固定 149） | ⚠️ 待确认（`houji` 测试曾改写到 6 信道） | ⚠️ 待确认（有调度模块，未在 `houji` 验切换） | ❌ **未实现**（App 与实验均固定信道 149） |
+| 普通 Wi-Fi（STA）并发共存 | ❌ 未在 `houji` 实现（走 `pt_exclusive=1`） | ✅ 底座原生支持（`Mosey` 调度策略待确认） | ✅ **已实现**（App 已合入 2.4G 与非 DFS 5G 共存，退出重连已修） |
+| 远端 Peer 与硬件 TX 聚合联动 | ✅ 原生 `libxos` 仅 `0.21–0.48 MB/s`；本仓 [`runtime/owly-xos`](runtime/owly-xos/README.zh-CN.md) 启用 `ezif` + `pt_remote_multi=1` 免预绑定多对端硬件 TX A-MPDU 后，16 MiB TCP 发送达 **64.08 MB/s**、原生发 `157.80 MB` 视频落盘均速 **16.75 MB/s** | ✅ 底座支持（`EZIF` + `wondertap` 原生支持） | ✅ **已实现**（扫描用 `dzf2`，连接后启用 `EZIF` 远端 peer + TX 聚合） |
+| 802.11 ↔ TUN/TAP + RFC 4291 映射 | ✅ 已实现（`xos0` + IPv6 邻居） | ✅ 已实现（`mosey0`） | ✅ **已实现**（`owly0` TUN + `radio.sh` `10075` 策略路由） |
+| mDNS ↔ AWDL TLV 代理转换 | ✅ 已实现 | ✅ 已实现 | ✅ **已实现**（内置 mDNS ↔ TLV 同步与复用 socket） |
+
+#### 2. 上层 AirDrop 传输协议层
+
+| 功能特性 | 小米原版（`MIShare`） | Google / 三星（`Mosey` 探针） | 当前 Owly 路线 |
+|---|---|---|---|
+| `_airdrop._tcp` mDNS 服务发现 | ✅ 已实现 | ✅ 已实现（`houji` 探针由 Java 辅助） | ✅ **已实现** |
+| TLS + `/Discover` / `/Ask` / `/Upload` | ✅ 已实现（`sharop` 层负责） | ✅ 已实现（`houji` 探针由 Java 补齐） | ✅ **已实现**（Rust 后端完整实现） |
+| CPIO / DVZip / gzip 归档收发 | ✅ 已实现 | ✅ 已实现 | ✅ **已实现**（已通过双向 SHA-256 校验） |
+| Live Photo（`.pvt`）解析 / 兼容 | ⚠️ 部分实现（测试应用收过 `.pvt`；原版仅验 JPG） | ⚠️ 部分实现（探针收过 `.pvt`，未导入相册） | ❌ **未专门适配**（按普通文件/目录落盘导出） |
+| “仅限联系人”身份证书校验 | ❌ 未实现（走“所有人”模式） | ❌ 未实现（探针仅短时许可，无证书链校验） | ❌ **未实现**（仅支持“所有人 10 分钟”） |
+
+#### 3. 系统体验与集成层
+
+| 功能特性 | 小米原版（`MIShare`） | Google / 三星（`Mosey` 移植） | 当前 Owly 路线 |
+|---|---|---|---|
+| BLE 近场唤醒（免对方常开界面） | ✅ 已验证（发送广播唤醒对端、接收扫到 BLE 自动激活 `xos0`） | ⚠️ 待确认（原版具备，提取件未在 `houji` 验证） | ❌ **未实现**（需对端手动保持“所有人 10 分钟”界面） |
+| 系统分享菜单（Share Sheet） | ✅ 已实现（系统相册分享接入） | ❌ 未在小米系统实现 | ❌ **未实现**（仅可在 App 内选文件发送） |
+| 超级岛 / 系统接收弹窗与相册入库 | ✅ 已实现（超级岛弹窗 + `/MiShare/AirDrop/`） | ❌ 未在小米系统实现 | ❌ **未实现**（App 内确认，私有目录需手动导出） |
+| 后台常驻守护进程 + 开机自启 | ✅ 原版自带（`houji` 上依赖脚本拉起） | ✅ 原版自带（`houji` 上未完成开机自启） | ❌ **未实现**（前台拉起临时脚本，退出即恢复原厂 Wi-Fi） |
 
 ## 性能
 
@@ -52,7 +86,23 @@
 
 此前 **2.4 GHz WLAN + 5 GHz Owly** 共存的两轮同尺寸测试，小米→Mac 为 **37.89 / 45.42 MB/s**，Mac→小米为 **10.22 / 4.49 MB/s**。测试时段与无线条件不同，不将两组差异直接归因于频段或调度方式。
 
-这些数字是测试 TCP 载荷的十进制 MB/s，不包含完整 AirDrop 发现、用户确认、归档和落盘耗时，也不是双向同时传输成绩。双 5 GHz 目前只通过短时收发与网关连通验证；退出后自动重连仍可能超时，需要开关 WLAN 并恢复。**共存实验尚未合入 App，不能据此宣称 App 已支持无缝 WLAN 共存。**
+这些数字是测试 TCP 载荷的十进制 MB/s，不包含完整 AirDrop 发现、用户确认、归档和落盘耗时，也不是双向同时传输成绩。上述 `2.4 GHz` 与非 DFS `5 GHz`（`5180–5240` / `5745–5825 MHz`）共存、mDNS `SO_BINDTOIFINDEX` 绑定及退出 Wi-Fi 自动重连恢复现已合入 `Owly AirDrop` App；DFS 等受限信道仍会自动回落独占模式并在停止后恢复原厂 WLAN。
+
+### 小米原生互传（`runtime/owly-xos` 高速 `xos0` 后端，当前主线）
+
+2026-11-15，[`runtime/owly-xos`](runtime/owly-xos/README.zh-CN.md) 通过 AIDL `XosBridge`（`com.domestic.xoscomm.IDomesticXOsComm/default`）+ `owly-awdl`（L2 TAP `xos0` + 用户态 NDP + 组播/单播 mDNS 投递修正）替代原厂低速 `libxos.so`，并通过内核 `pt_remote_multi=1`（`pt_remote_peer_ctl` 最多 8 个动态槽位）与用户态 `KernelPeerSync` 解锁官方 `ezif-amss20.bin` **免预绑定多对端硬件 TX A-MPDU** 与 `pt_remote_rx_window=256` REO MSDU-buffer RX。
+
+1. **裸链路 16 MiB TCP 吞吐对比（信道 149，`xos0` ↔ Mac `awdl0`，SHA-256 全通过）**：
+
+| 方向 | 原版 `libxos.so`（HT20 MCS3） | 旧 `dzf2.bin` 软件 A-MSDU | 当前 `ezif.bin` + 多对端硬件 TX A-MPDU | 对比原版提升 |
+|---|---:|---:|---:|---:|
+| 小米 `xos0` → Mac `awdl0` | `0.21–0.29 MB/s` | `6.85 MB/s` | **64.08 MB/s**（`0.262s`，`max_ppdu_mpdus=31`） | **~220×–305×** |
+| Mac `awdl0` → 小米 `xos0` | `0.48 MB/s` | `9.95 MB/s` | **9.55 MB/s**（`1.757s`，`dropped=0`） | **~20×** |
+
+2. **原版 `MIShare.apk` 对 Apple 手机收发 `157.80 MB` 视频实测**（匿名化遥测与完整时间线见 [`runtime/owly-xos/evidence/`](runtime/owly-xos/evidence/README.md) 与 [第 34 篇验证报告](docs/airdrop/34-owly-xos-validation.md)）：
+   - **冷启动与发现**：经固件预置、`50–100 ms` 事件轮询与 `fast_discovery` + `peer_up` 双向 mDNS 触发，`startDomestXOsComm(149)` 冷切驱动耗时从 `6.17–9.19s` 缩短至 **`3.44–3.62s`**（CLI `radio.sh enter` **`3.16s`**）；接收侧 NSD 注册完成后仅 **`1.46s`** 即收到 Apple 设备 `POST /Discover`。
+   - **发送视频（小米 → Apple 手机）**：`/Upload` 正文 **`8.40s`** 发完（**`18.79 MB/s`**），含对端落盘返回 `HTTP 200` 共 **`9.42s`**（**`16.75 MB/s`**），`99.97%` VHT80 MCS9 SGI LDPC、`98.4%` MPDU 经硬件 A-MPDU 聚合发出。
+   - **接收视频（Apple 手机 → 小米）**：单对端 `win=64` 全程 **`11.97s`（`13.18 MB/s`）**、后半程稳态 **`20.35 MB/s`**（单块突发 **`41.12 MB/s`**）；多对端在场 `win=256` 下开启双包 A-MSDU 阶段 **`13.00 MB/s`**（双块窗口 **`23.56 MB/s`**、单块峰值 **`29.54 MB/s`**），全程 `114,598` 个 IPv6 包零丢包、`OWLY_RX_GAPS` `host_delayed=0`；全程保持 SELinux `Enforcing`，退出自动恢复原厂 `5 GHz` Wi-Fi（`STOCK_RESTORED`）。
 
 ## 工作原理
 
@@ -101,12 +151,12 @@ python3 runtime/owly-app/build-radio.py
 
 1. 打开普通 WLAN 和 **Owly AirDrop**，首次使用在 KernelSU 中授予该 App root。
 2. iPhone / Mac 将 AirDrop 接收范围设为“所有人（10 分钟）”，或保持 AirDrop 界面打开。
-3. App 中点击“搜索附近设备”，选择对端，再点击“连接所选设备”。当前版本一次连接一个设备，切换链路约需 20–40 秒，并会暂停普通 WLAN。
+3. App 中点击“搜索附近设备”，选择对端，再点击“连接所选设备”。当手机连接在 `2.4 GHz` 或非 DFS `5 GHz`（如 `5180–5240`、`5745–5825 MHz`）时会自动启用 STA 共存保持普通 WLAN 在线；处于 DFS 或其他受限状态时则自动回落独占模式并在停止后恢复。
 4. **接收**：在 Apple 设备上选择 `Xiaomi 14 Owly`，在手机 App 确认接受；完成后通过“收到的文件 · 保存到…”导出。
 5. **发送**：在 App 中选取文件并发送，在对端确认接收。
 6. 完成后点击“停止并恢复 Wi-Fi”。
 
-接收内容先保存在 App 私有目录，暂不自动导入相册。App 没有接入系统分享菜单；共存实验也尚未成为 App 的运行选项。详细说明见 [App README](clients/owly-app/README.zh-CN.md)。
+接收内容先保存在 App 私有目录，暂不自动导入相册。App 没有接入系统分享菜单；如需直接从小米系统分享菜单收发并提速原厂互传，见 [`runtime/owly-xos`](runtime/owly-xos/README.zh-CN.md)。详细说明见 [App README](clients/owly-app/README.zh-CN.md)。
 
 ## 致谢
 
@@ -133,7 +183,8 @@ python3 runtime/owly-app/build-radio.py
 houji-airdrop/
 ├── clients/owly-app/     独立 App、Android 后端与所用 Owly 协议栈
 ├── driver/wlan/          当前驱动修改文件覆盖层
-├── runtime/owly-app/     root 会话与无线恢复脚本
+├── runtime/owly-app/     App 路线 root 会话与无线恢复脚本
+├── runtime/owly-xos/  小米互传原生前端的高速 xos0 桥接与无线后端
 ├── scripts/             构建入口和构建环境配方
 ├── third_party/upstream/ 上游基础组件、配方与许可证
 ├── experiments/         实验分支、测试工具和匿名化汇总
@@ -143,11 +194,11 @@ houji-airdrop/
 └── archive/import/      首次导入记录的隐私清理说明
 ```
 
-本轮只整理工程布局，未新增版本锁定或 SHA 清单；已有校验与历史记录保留。全部旧路径兼容链接已删除，开发使用上述正式路径。实验脚本尚未完全抽离，不能把 `experiments/` 整体当成不再使用的档案。
+`install.py` 安装入口现通过 `clients/owly-app/runtime-manifest.json` 校验哈希并从 `blobs/local/`（或环境变量）解析闭源输入，与构建脚本解耦。
 
-[交接入口](docs/HANDOVER.md)说明本轮变更及后续边界；[架构说明](docs/architecture/overview.md)区分已实现功能与双前端目标。统一守护进程和小米互传 Hook 尚未实现。
+[交接入口](docs/HANDOVER.md)说明近期变更及后续边界；[架构说明](docs/architecture/overview.md)区分两条互传前端的实现。`runtime/owly-xos/` 与 `runtime/owly-app/` 共享锁与模块恢复门禁，保证双前端互斥安全切换。
 
-当前 App 的普通 WLAN 共存尚未实装。安装器仍读取当前实验产物；目录整理没有消除这个既有行为，详见构建说明。
+当前 `Owly AirDrop` App 已合入 `2.4 GHz` / 非 DFS `5 GHz` 普通 WLAN 共存及退出重连恢复；小米原生 `MIShare` 高速 `xos0` 后端可通过 [`runtime/owly-xos`](runtime/owly-xos/README.zh-CN.md) 单独安装并开机守护。
 
 ## 隐私与测试记录
 

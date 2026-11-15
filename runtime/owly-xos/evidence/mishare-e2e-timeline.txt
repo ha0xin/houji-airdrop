@@ -1,0 +1,308 @@
+# Anonymized MIShare persistent debug log excerpt (2026-11-15 back-to-back Send + Receive)
+# Personal device names, ephemeral link-local IIDs, service tokens, and TLS fingerprints redacted per docs/PRIVACY.md.
+# Timestamps, cold-start durations, HTTP/TLS states, and 4.00 MiB chunk byte counters are unmodified.
+
+2026-11-15 14:29:20,328 WirelessArbiter: registerOwner(WIFI_P2P) -> com.miui.mishare.connectivity.coex.P2pResourceOwner@<obj>
+2026-11-15 14:29:20,365 WirelessArbiter: registerOwner(AWDL) -> com.xiaomi.sharop.awdl.AwdlManager@<obj>
+2026-11-15 14:29:20,365 AirDropAvailability: registerWonderObserver: wonder_enable file not found, skip
+2026-11-15 14:29:20,370 AwdlServiceClient: Trying to bind XOS service...
+2026-11-15 14:29:20,371 AirDropAvailability: isXOSBindable: bound=true, cached=true
+2026-11-15 14:29:20,371 AwdlServiceClient: Got binder: android.os.BinderProxy isBinderAlive=true
+2026-11-15 14:29:20,371 AwdlServiceClient: Got service via getService(): com.domestic.xoscomm.IDomesticXOsComm/default
+2026-11-15 14:29:20,371 AwdlServiceClient: XOS service bound successfully
+2026-11-15 14:29:20,373 AirDropAvailability: syncShareEntryEnabled: no change, available=true, current=1
+2026-11-15 14:29:22,412 AirDropShareDialogActivity: init
+2026-11-15 14:29:22,423 AirDropShareDialogActivity: use EXTRA_STREAM for AirDrop file share, count=1
+2026-11-15 14:29:22,462 AirDropShareBridge: acquireDiscoverAuthorization count=1
+2026-11-15 14:29:22,462 AirDropShareBridge: startDiscover from=未知来源
+2026-11-15 14:29:22,470 AirDropShareBridge: AirDropService connected
+2026-11-15 14:29:22,470 AirDropService: clearDiscoveredPeers: cleared 0 peer(s)
+2026-11-15 14:29:22,634 AirDropService: Config created: serviceId=<service-tx>
+2026-11-15 14:29:22,634 AwdlManager: acquire(AirDrop, sender=true), newHolder=true, activeUsers=[AirDrop]
+2026-11-15 14:29:22,634 AwdlServiceClient: Trying to bind XOS service...
+2026-11-15 14:29:22,634 WirelessArbiter: acquire(AWDL, AirDrop) -> SUCCESS (other idle)
+2026-11-15 14:29:22,635 AwdlServiceClient: Got binder: android.os.BinderProxy isBinderAlive=true
+2026-11-15 14:29:22,635 AwdlServiceClient: Got service via getService(): com.domestic.xoscomm.IDomesticXOsComm/default
+2026-11-15 14:29:22,635 AwdlServiceClient: XOS service bound successfully
+2026-11-15 14:29:22,636 WifiConflictManager: WiFi monitoring started (broadcast)
+2026-11-15 14:29:22,636 WifiConflictManager: WiFi switch enabled (ignored — initial sticky broadcast)
+2026-11-15 14:29:22,851 WifiConflictManager: Triggered WiFi scan to accelerate 2.4GHz discovery
+2026-11-15 14:29:22,852 AwdlManager: Sender: switched from 5GHz to 2.4GHz before XOS ch149 start
+2026-11-15 14:29:22,852 WifiConflictManager: Disconnected 5GHz STA (networkId=27, freq=5200) — system will fall back to 2.4GHz if available
+2026-11-15 14:29:22,873 WifiConflictManager: WiFi disconnected (was WifiStaInfo(bssid=<hidden>, frequency=5200, ssid=<hidden>, networkId=27, bands=[]))
+2026-11-15 14:29:22,952 AwdlManager: STA is off 5GHz before XOS start
+2026-11-15 14:29:22,952 AwdlServiceClient: calling XOSService.startDomestXOsComm, chan=149
+2026-11-15 14:29:26,568 AwdlServiceClient: XOS started on channel: 149
+2026-11-15 14:29:26,569 AwdlManager: XOS started on ch149 (sender=true)
+2026-11-15 14:29:26,572 AwdlManager: xos0 interface is up with IPv6 link-local address
+2026-11-15 14:29:26,573 AwdlManager: xos0 up: addresses=[/fe80::200:ff:fe00:101%xos0] mtu=1450
+2026-11-15 14:29:26,575 AwdlNetworkAgent: NetworkProvider registered
+2026-11-15 14:29:26,577 AwdlNetworkAgent: Added link-local address: fe80::200:ff:fe00:101%xos0
+2026-11-15 14:29:26,577 AwdlNetworkAgent: NetworkAgentConfig: setExplicitlySelected(true)
+2026-11-15 14:29:26,577 AwdlNetworkAgent: NetworkAgentConfig: setUnvalidatedConnectivityAcceptable(true)
+2026-11-15 14:29:26,577 AwdlNetworkAgent: NetworkScore: setKeepConnectedReason(KEEP_CONNECTED_FOR_TEST=3)
+2026-11-15 14:29:26,580 AwdlNetworkAgent: xos0 network registered: 472
+2026-11-15 14:29:26,588 AwdlServiceClient: setRegisteredNetwork: 472
+2026-11-15 14:29:26,588 AwdlServiceClient: XOSNetworkAgent registerAndConnect: true
+2026-11-15 14:29:26,588 AwdlNetworkAgent: Failed to file keep-alive request
+2026-11-15 14:29:26,590 AwdlManager: Routes installed for xos0 in 1ms
+2026-11-15 14:29:26,590 AwdlManager: XOS ready for AirDrop, network=472, ch=149
+2026-11-15 14:29:26,592 AirDropBleAdvertiser: Started AdvertisingSet API
+2026-11-15 14:29:26,592 AirDropService: Raw mDNS browser bound to xos0 network
+2026-11-15 14:29:26,596 RawMdnsBrowser: Joined multicast group ff02::fb on xos0
+2026-11-15 14:29:26,596 RawMdnsBrowser: Socket bound to network 472
+2026-11-15 14:29:26,597 AirDropService: AirDrop sending discovery started session=1
+2026-11-15 14:29:26,597 RawMdnsBrowser: RawMdnsBrowser started on xos0
+2026-11-15 14:29:26,600 AirDropService: WiFi switch off — handling AirDrop state (savedClient=true savedServer=false)
+2026-11-15 14:29:26,600 WifiConflictManager: WiFi radio off
+2026-11-15 14:29:26,608 AirDropBleAdvertiser: BLE advertising started (AdvertisingSet API, txPower=-2)
+2026-11-15 14:29:29,022 RawMdnsBrowser: Peer found: <service-peer> addr=fe80::200:ff:fe00:13%xos0 port=8770 flags=0x1b3fb dc=0 model=null
+2026-11-15 14:29:29,028 AirDropClient: AirDropClient created for fe80::200:ff:fe00:13%xos0:8770
+2026-11-15 14:29:30,789 AirDropClient: /Discover: TCP connected
+2026-11-15 14:29:31,392 AirDropClient: /Discover: TLS TLSv1.3
+2026-11-15 14:29:31,393 AirDropClient: /Discover: sent 70 bytes body
+2026-11-15 14:29:31,421 AirDropClient: /Discover: HTTP/1.1 200 OK
+2026-11-15 14:29:31,433 AirDropClient: /Discover: body 1448 bytes
+2026-11-15 14:29:31,436 AirDropClient: /Discover plist keys: [IsAirDropable, ReceiverComputerName, ReceiverMediaCapabilities]
+2026-11-15 14:29:31,436 AirDropClient: /Discover OK: name=<ApplePeer> model=null manufacturer=null service=<service-peer> fingerprint=<redacted-sha256>
+2026-11-15 14:29:31,439 AirDropService: Peer discovered (attempt 1): <ApplePeer> model=null endpoint=<service-peer>@fe80::200:ff:fe00:13%xos0:8770%xos0
+2026-11-15 14:29:31,440 AirDropShareBridge: AirDrop peer discovered: AirDropPeer{<ApplePeer> @ /fe80::200:ff:fe00:13%xos0:8770}
+2026-11-15 14:29:32,876 AwdlManager: acquire(AirDrop, sender=true), newHolder=false, activeUsers=[AirDrop]
+2026-11-15 14:29:32,879 WifiConflictManager: WiFi monitoring stopped
+2026-11-15 14:29:32,882 AwdlManager: Routes installed for xos0 in 0ms
+2026-11-15 14:29:32,882 WifiConflictManager: WiFi monitoring started (broadcast)
+2026-11-15 14:29:32,882 AwdlManager: XOS ready for AirDrop, network=472, ch=149
+2026-11-15 14:29:32,882 WifiConflictManager: WiFi radio off
+2026-11-15 14:29:32,886 AirDropClient: AirDropClient created for fe80::200:ff:fe00:13%xos0:8770
+2026-11-15 14:29:32,886 AirDropService: sendToDevice: calling send() with 1 files, totalBytes=157799892
+2026-11-15 14:29:32,886 AirDropService: sendToDevice: creating client for <ApplePeer> addr=/fe80::200:ff:fe00:13%xos0:8770
+2026-11-15 14:29:32,894 AirDropClient: send(): TCP connected (attempt 1)
+2026-11-15 14:29:32,911 AirDropClient: send(): TLS done, TLSv1.3
+2026-11-15 14:29:32,912 AirDropClient: /Ask: starting for 1 files
+2026-11-15 14:29:32,913 AirDropClient: /Ask: sent 432 bytes body
+2026-11-15 14:29:34,524 AirDropClient: /Ask: HTTP/1.1 200 OK
+2026-11-15 14:29:34,569 AirDropClient: /Ask accepted
+2026-11-15 14:29:34,570 AirDropClient: /Upload: headers sent
+2026-11-15 14:29:34,570 AirDropClient: /Upload: starting for 1 files
+2026-11-15 14:29:34,571 AirDropClient: /Upload: dvzip mode=AUTO
+2026-11-15 14:29:34,574 AirDropClient: /Upload watchdog started
+2026-11-15 14:29:42,968 AirDropClient: /Upload: body sent
+2026-11-15 14:29:42,968 AirDropClient: dvzip upload stats: storedOnly=true, rawBytes=157800448, payloadBytes=157800448, compressedChunks=0, storedChunks=1204, deflateMs=0
+2026-11-15 14:29:43,992 AirDropClient: /Upload: HTTP/1.1 200 OK
+2026-11-15 14:29:43,992 AirDropClient: /Upload HTTP 200: HTTP/1.1 200 OK
+2026-11-15 14:29:43,995 AirDropService: Send finished — keeping XOS alive while AirDrop page is active
+2026-11-15 14:29:48,660 AirDropShareBridge: releaseDiscoverAuthorization count=0
+2026-11-15 14:29:48,660 AirDropShareBridge: stopDiscover
+2026-11-15 14:29:48,660 AirDropService: clearDiscoveredPeers: cleared 1 peer(s)
+2026-11-15 14:29:48,662 RawMdnsBrowser: Receive loop exited
+2026-11-15 14:29:48,663 RawMdnsBrowser: RawMdnsBrowser stopped
+2026-11-15 14:29:48,664 AirDropShareBridge: AirDrop peer lost: <service-peer>
+2026-11-15 14:29:48,666 AirDropBleAdvertiser: BLE advertising stopped
+2026-11-15 14:29:48,666 AwdlManager: release(AirDrop), activeUsers=[]
+2026-11-15 14:29:48,670 WifiConflictManager: WiFi monitoring stopped
+2026-11-15 14:29:48,671 AwdlServiceClient: setRegisteredNetwork: null
+2026-11-15 14:29:48,671 AwdlNetworkAgent: xos0 network unregistered
+2026-11-15 14:29:48,671 AwdlServiceClient: Auto-renewing NetworkAgent in 500ms
+2026-11-15 14:29:48,676 AwdlServiceClient: XOS stopped
+2026-11-15 14:29:48,677 AwdlManager: XOS stopped (no active users)
+2026-11-15 14:29:48,677 WirelessArbiter: release(AWDL, AirDrop) refCount 1 -> 0
+2026-11-15 14:29:48,678 AirDropService: AWDL released (sending off)
+2026-11-15 14:29:48,678 AirDropService: AirDrop sending discovery stopped
+2026-11-15 14:29:48,682 AirDropShareBridge: destroy
+2026-11-15 14:29:48,682 AirDropService: stopSharopSession: stopping page session sends=0 receives=0 waitingAccept=false
+2026-11-15 14:29:48,684 WirelessArbiter: reset()
+2026-11-15 14:29:48,701 AirDropBleAdvertiser: AdvertisingSet stopped
+2026-11-15 14:29:48,702 AirDropService: AirDrop receiving stopped synchronously
+2026-11-15 14:29:48,702 AirDropService: AirDrop sending discovery stopped synchronously
+2026-11-15 14:29:48,702 AirDropService: cancelCurrentTransferSynchronously
+2026-11-15 14:29:48,702 AwdlManager: XOS stopped (no active users)
+2026-11-15 14:29:48,702 AwdlManager: release(AirDrop), activeUsers=[]
+2026-11-15 14:30:06,402 WirelessArbiter: registerOwner(WIFI_P2P) -> com.miui.mishare.connectivity.coex.P2pResourceOwner@<obj>
+2026-11-15 14:30:06,429 WirelessArbiter: registerOwner(AWDL) -> com.xiaomi.sharop.awdl.AwdlManager@<obj>
+2026-11-15 14:30:06,430 AirDropAvailability: registerWonderObserver: wonder_enable file not found, skip
+2026-11-15 14:30:06,431 AwdlServiceClient: Trying to bind XOS service...
+2026-11-15 14:30:06,432 AirDropAvailability: isXOSBindable: bound=true, cached=true
+2026-11-15 14:30:06,432 AwdlServiceClient: Got binder: android.os.BinderProxy isBinderAlive=true
+2026-11-15 14:30:06,432 AwdlServiceClient: Got service via getService(): com.domestic.xoscomm.IDomesticXOsComm/default
+2026-11-15 14:30:06,432 AwdlServiceClient: XOS service bound successfully
+2026-11-15 14:30:06,433 AirDropAvailability: syncShareEntryEnabled: no change, available=true, current=1
+2026-11-15 14:30:06,443 AirDropShareBridge: acquireReceiveAuthorization count=1
+2026-11-15 14:30:06,443 AirDropShareBridge: startSharopServer
+2026-11-15 14:30:06,448 AirDropShareBridge: AirDropService connected
+2026-11-15 14:30:06,639 AirDropService: Config created: serviceId=<service-rx>
+2026-11-15 14:30:06,649 AirDropServer: Server started port=32871
+2026-11-15 14:30:07,150 AirDropService: Server started on dynamic port 32871
+2026-11-15 14:30:07,150 AirDropService: mDNS advertiser created (will start on XOS rebind)
+2026-11-15 14:30:07,170 AirDropShareBridge: AirDrop state changed: true
+2026-11-15 14:30:07,170 AirDropBleScanner: BLE scanning started
+2026-11-15 14:30:07,170 AirDropService: AirDrop receiving started
+2026-11-15 14:30:07,219 AirDropBleScanner: AirDrop BLE detected from <hidden>
+2026-11-15 14:30:07,219 AirDropService: AirDrop BLE device detected
+2026-11-15 14:30:07,221 AirDropService: Activating XOS service (receiver)
+2026-11-15 14:30:07,221 WirelessArbiter: acquire(AWDL, AirDrop) -> SUCCESS (other idle)
+2026-11-15 14:30:07,222 AwdlManager: acquire(AirDrop, sender=false), newHolder=true, activeUsers=[AirDrop]
+2026-11-15 14:30:07,222 AwdlServiceClient: Trying to bind XOS service...
+2026-11-15 14:30:07,225 AwdlChannelPolicy: Receiver locked to ch149
+2026-11-15 14:30:07,225 AwdlServiceClient: Got binder: android.os.BinderProxy isBinderAlive=true
+2026-11-15 14:30:07,225 AwdlServiceClient: Got service via getService(): com.domestic.xoscomm.IDomesticXOsComm/default
+2026-11-15 14:30:07,225 AwdlServiceClient: XOS service bound successfully
+2026-11-15 14:30:07,437 WifiConflictManager: Triggered WiFi scan to accelerate 2.4GHz discovery
+2026-11-15 14:30:07,438 AwdlManager: Receiver: switched from 5GHz to 2.4GHz before XOS ch149 start
+2026-11-15 14:30:07,438 WifiConflictManager: Disconnected 5GHz STA (networkId=27, freq=5200) — system will fall back to 2.4GHz if available
+2026-11-15 14:30:07,539 AwdlChannelPolicy: Receiver locked to ch149
+2026-11-15 14:30:07,539 AwdlManager: STA is off 5GHz before XOS start
+2026-11-15 14:30:07,539 AwdlServiceClient: calling XOSService.startDomestXOsComm, chan=149
+2026-11-15 14:30:08,160 AirDropService: WiFi switch off — handling AirDrop state (savedClient=false savedServer=true)
+2026-11-15 14:30:10,983 AwdlServiceClient: XOS started on channel: 149
+2026-11-15 14:30:10,984 AwdlManager: XOS started on ch149 (sender=false)
+2026-11-15 14:30:10,990 AwdlManager: xos0 interface is up with IPv6 link-local address
+2026-11-15 14:30:10,992 AwdlManager: xos0 up: addresses=[/fe80::200:ff:fe00:102%xos0] mtu=1450
+2026-11-15 14:30:10,994 AwdlNetworkAgent: NetworkProvider registered
+2026-11-15 14:30:10,995 AwdlNetworkAgent: Added link-local address: fe80::200:ff:fe00:102%xos0
+2026-11-15 14:30:10,995 AwdlNetworkAgent: NetworkScore: setKeepConnectedReason(KEEP_CONNECTED_FOR_TEST=3)
+2026-11-15 14:30:10,996 AwdlNetworkAgent: NetworkAgentConfig: setExplicitlySelected(true)
+2026-11-15 14:30:10,996 AwdlNetworkAgent: NetworkAgentConfig: setUnvalidatedConnectivityAcceptable(true)
+2026-11-15 14:30:11,003 AwdlNetworkAgent: xos0 network registered: 476
+2026-11-15 14:30:11,009 AwdlServiceClient: setRegisteredNetwork: 476
+2026-11-15 14:30:11,009 AwdlServiceClient: XOSNetworkAgent registerAndConnect: true
+2026-11-15 14:30:11,009 AwdlNetworkAgent: Failed to file keep-alive request
+2026-11-15 14:30:11,061 AwdlManager: Routes installed for xos0 in 53ms
+2026-11-15 14:30:11,061 AwdlManager: XOS ready for AirDrop, network=476, ch=149
+2026-11-15 14:30:11,062 NsdAdvertiser: rebind() called: nsdManager=false running=false registrationInProgress=false oldNetwork=null newNetwork=476
+2026-11-15 14:30:11,062 NsdAdvertiser: start() called: running=false registrationInProgress=false boundNetwork=476 port=32871
+2026-11-15 14:30:11,077 AirDropService: NSD advertiser rebound to xos0 (BLE trigger)
+2026-11-15 14:30:11,077 NsdAdvertiser: Registering NSD service on bound network: 476
+2026-11-15 14:30:11,077 NsdAdvertiser: Registering NSD service: <service-rx> on port 32871 flags=95
+2026-11-15 14:30:11,929 NsdAdvertiser: NSD service registered: name=<service-rx> network=null
+2026-11-15 14:30:12,087 AirDropBleScanner: AirDrop BLE detected from <hidden>
+2026-11-15 14:30:12,087 AirDropService: AirDrop BLE device detected
+2026-11-15 14:30:13,391 AirDropServer: request=null connection=e37aadb9 state=OPEN request POST /Discover
+2026-11-15 14:30:13,393 AirDropService: Discover from: authenticated
+2026-11-15 14:30:13,395 AirDropServer: request=null connection=e37aadb9 state=OPEN response 200 bytes=560
+2026-11-15 14:30:14,978 AirDropServer: request=null connection=b3a0c0f9 state=OPEN request POST /Discover
+2026-11-15 14:30:14,979 AirDropService: Discover from: authenticated
+2026-11-15 14:30:14,982 AirDropServer: request=null connection=b3a0c0f9 state=OPEN response 200 bytes=560
+2026-11-15 14:30:17,056 AirDropServer: request=null connection=8b2045d0 state=OPEN request POST /Ask
+2026-11-15 14:30:17,100 AirDropService: Incoming /Ask requestId=<request-uuid> SenderModelName=iPhone sender=<ApplePeer>
+2026-11-15 14:30:17,114 AirDropShareBridge: Receive TaskInner created: <task-id> sender=<ApplePeer> items=1 totalBytes=157799892 urlOnly=false
+2026-11-15 14:30:17,366 AirDropBleScanner: AirDrop BLE detected from <hidden>
+2026-11-15 14:30:17,367 AirDropService: AirDrop BLE device detected
+2026-11-15 14:30:18,544 AirDropShareBridge: acceptReceive: <task-id>
+2026-11-15 14:30:18,545 AwdlManager: Routes installed for xos0 in 1ms
+2026-11-15 14:30:18,545 AirDropService: NetworkAgent registered for incoming upload requestId=<request-uuid>
+2026-11-15 14:30:18,549 AirDropServer: request=<request-uuid> connection=8b2045d0 state=WAITING_UPLOAD response 200 bytes=560
+2026-11-15 14:30:18,611 AirDropServer: request=<request-uuid> connection=8b2045d0 state=WAITING_UPLOAD request POST /Upload
+2026-11-15 14:30:18,613 AirDropServer: request=<request-uuid> connection=8b2045d0 state=WAITING_UPLOAD Upload body start framing=CHUNKED contentLength=-1 totalBytes=157799892 contentType=application/x-dvzip expect100=false socket=local=/[fe80::200:ff:fe00:102%xos0]:32871 remote=/[fe80::200:ff:fe00:13%xos0]:54598 connected=true closed=false inputShutdown=false outputShutdown=false
+2026-11-15 14:30:18,616 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload consumer start expected=157799892 logicalTotal=157799892 expectLargeEntry=false
+2026-11-15 14:30:18,619 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload extract start contentType=application/x-dvzip
+2026-11-15 14:30:20,239 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=4200342/157799892 spoolSize=4200342
+2026-11-15 14:30:21,383 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=8394646/157799892 spoolSize=8394646
+2026-11-15 14:30:22,093 AirDropBleScanner: AirDrop BLE detected from <hidden>
+2026-11-15 14:30:22,093 AirDropService: AirDrop BLE device detected
+2026-11-15 14:30:22,531 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=12588950/157799892 spoolSize=12588950
+2026-11-15 14:30:23,892 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=16783254/157799892 spoolSize=16783254
+2026-11-15 14:30:25,061 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=20977558/157799892 spoolSize=20977558
+2026-11-15 14:30:26,220 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=25171862/157799892 spoolSize=25171862
+2026-11-15 14:30:27,489 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=29366166/157799892 spoolSize=29366166
+2026-11-15 14:30:27,712 AirDropBleScanner: AirDrop BLE detected from <hidden>
+2026-11-15 14:30:27,712 AirDropService: AirDrop BLE device detected
+2026-11-15 14:30:28,634 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=33560470/157799892 spoolSize=33560470
+2026-11-15 14:30:29,773 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=37754774/157799892 spoolSize=37754774
+2026-11-15 14:30:30,907 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=41949078/157799892 spoolSize=41949078
+2026-11-15 14:30:32,105 AirDropBleScanner: AirDrop BLE detected from <hidden>
+2026-11-15 14:30:32,105 AirDropService: AirDrop BLE device detected
+2026-11-15 14:30:32,268 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=46143382/157799892 spoolSize=46143382
+2026-11-15 14:30:33,418 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=50337686/157799892 spoolSize=50337686
+2026-11-15 14:30:34,564 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=54531990/157799892 spoolSize=54531990
+2026-11-15 14:30:35,006 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=58726294/157799892 spoolSize=58726294
+2026-11-15 14:30:35,489 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=62920598/157799892 spoolSize=62920598
+2026-11-15 14:30:35,871 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=67114902/157799892 spoolSize=67114902
+2026-11-15 14:30:36,107 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=71309206/157799892 spoolSize=71309206
+2026-11-15 14:30:36,561 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=75503510/157799892 spoolSize=75503510
+2026-11-15 14:30:36,950 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=79697814/157799892 spoolSize=79697814
+2026-11-15 14:30:37,185 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=83892118/157799892 spoolSize=83892118
+2026-11-15 14:30:37,587 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=88086422/157799892 spoolSize=88086422
+2026-11-15 14:30:37,881 AirDropBleScanner: AirDrop BLE detected from <hidden>
+2026-11-15 14:30:37,881 AirDropService: AirDrop BLE device detected
+2026-11-15 14:30:37,929 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=92280726/157799892 spoolSize=92280726
+2026-11-15 14:30:38,143 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=96475030/157799892 spoolSize=96475030
+2026-11-15 14:30:38,285 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=100669334/157799892 spoolSize=100669334
+2026-11-15 14:30:38,663 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=104863638/157799892 spoolSize=104863638
+2026-11-15 14:30:39,016 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=109057942/157799892 spoolSize=109057942
+2026-11-15 14:30:39,227 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=113252246/157799892 spoolSize=113252246
+2026-11-15 14:30:39,668 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=117446550/157799892 spoolSize=117446550
+2026-11-15 14:30:40,080 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=121640854/157799892 spoolSize=121640854
+2026-11-15 14:30:40,289 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=125835158/157799892 spoolSize=125835158
+2026-11-15 14:30:40,697 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=130029462/157799892 spoolSize=130029462
+2026-11-15 14:30:41,047 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=134223766/157799892 spoolSize=134223766
+2026-11-15 14:30:41,244 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=138418070/157799892 spoolSize=138418070
+2026-11-15 14:30:41,427 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=142612374/157799892 spoolSize=142612374
+2026-11-15 14:30:41,788 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=146806678/157799892 spoolSize=146806678
+2026-11-15 14:30:42,132 AirDropBleScanner: AirDrop BLE detected from <hidden>
+2026-11-15 14:30:42,132 AirDropService: AirDrop BLE device detected
+2026-11-15 14:30:42,133 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=151000982/157799892 spoolSize=151000982
+2026-11-15 14:30:42,360 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body progress bytes=155195286/157799892 spoolSize=155195286
+2026-11-15 14:30:42,475 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload framing zero-chunk-parsed trailers-start READ_TRAILERS chunkIndex=10809 remaining=0 sizeLineBytes=0 previousCrlf=true zeroChunk=true trailersComplete=false payloadBytes=157399216
+2026-11-15 14:30:42,476 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload framing trailers-complete count=0 COMPLETE chunkIndex=10809 remaining=0 sizeLineBytes=0 previousCrlf=true zeroChunk=true trailersComplete=true payloadBytes=157399216
+2026-11-15 14:30:42,477 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body EOF bytes=157399216 expected=157799892 elapsedMs=23865
+2026-11-15 14:30:42,477 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload body read EOF waitMs=0 bytes=157399216 socket=local=/[fe80::200:ff:fe00:102%xos0]:32871 remote=/[fe80::200:ff:fe00:13%xos0]:54598 connected=true closed=false inputShutdown=false outputShutdown=false
+2026-11-15 14:30:42,673 AirDropServer: Upload spool complete file=/data/user/0/com.miui.mishare.connectivity/cache/airdrop-upload-000001.spool bytes=157399216
+2026-11-15 14:30:42,673 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload extract complete files=1 spoolSize=157399216 archiveBytes=157801984 trailer=true blockBoundary=true decoderFrame=true
+2026-11-15 14:30:42,673 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload spool complete bytes=157399216
+2026-11-15 14:30:42,674 AirDropServer: Upload spool await complete file=/data/user/0/com.miui.mishare.connectivity/cache/airdrop-upload-000001.spool bytes=157399216
+2026-11-15 14:30:42,674 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload awaitComplete complete spoolSize=157399216
+2026-11-15 14:30:42,674 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload awaitComplete start spoolSize=157399216
+2026-11-15 14:30:42,674 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload final chunk compatibility not-eligible chunked=true contentType=true extraction=true trailer=true blockBoundary=true decoderFrame=true archiveBytes=157801984 metadata=true spoolConsumed=true bodyFailed=false completion=NORMAL_HTTP
+2026-11-15 14:30:42,715 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload files committed count=1
+2026-11-15 14:30:42,715 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload response 200 start
+2026-11-15 14:30:42,716 AirDropService: BLE idle window expired — skipped while AirDrop page is active
+2026-11-15 14:30:42,716 AirDropService: notifyTransferEnd: skipped — AirDrop transfer still active
+2026-11-15 14:30:42,716 AirDropService: reconnectWlanIfIdle: skipped — AirDrop page active
+2026-11-15 14:30:42,716 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING Upload response 200 complete
+2026-11-15 14:30:42,716 AirDropServer: request=<request-uuid> connection=8b2045d0 state=UPLOADING response 200 bytes=2
+2026-11-15 14:30:42,717 AirDropServer: request=<request-uuid> connection=8b2045d0 state=TERMINATED terminate reason=COMPLETED from=UPLOADING message=1 files received bytes=157399216 readPending=false readWaitMs=241 framing=trailers-complete count=0 COMPLETE chunkIndex=10809 remaining=0 sizeLineBytes=0 previousCrlf=true zeroChunk=true trailersComplete=true payloadBytes=157399216 socketBeforeClose=local=/[fe80::200:ff:fe00:102%xos0]:32871 remote=/[fe80::200:ff:fe00:13%xos0]:54598 connected=true closed=false inputShutdown=false outputShutdown=false
+2026-11-15 14:30:42,733 AirDropShareBridge: scanReceivedMediaFiles: count=1
+2026-11-15 14:30:43,738 AirDropServer: request=null connection=e37aadb9 state=OPEN connection ended before Ask Connection reset
+2026-11-15 14:30:43,739 AirDropServer: request=null connection=e37aadb9 state=OPEN terminate silently uploadHeaders=false bodyComplete=false bodyFailed=false bytes=0
+2026-11-15 14:30:45,428 AirDropServer: request=null connection=b3a0c0f9 state=OPEN connection ended before Ask Connection reset
+2026-11-15 14:30:45,429 AirDropServer: request=null connection=b3a0c0f9 state=OPEN terminate silently uploadHeaders=false bodyComplete=false bodyFailed=false bytes=0
+2026-11-15 14:30:47,908 AirDropBleScanner: AirDrop BLE detected from <hidden>
+2026-11-15 14:30:47,910 AirDropService: AirDrop BLE device detected
+2026-11-15 14:30:57,719 AirDropService: requestStopStartedServiceWhenIdle: startId=1, businessBusy=false
+2026-11-15 14:30:57,719 AirDropService: stopSharopSession: stopping page session sends=0 receives=0 waitingAccept=false
+2026-11-15 14:30:57,720 AirDropShareBridge: releaseReceiveAuthorization count=0
+2026-11-15 14:30:57,720 AirDropShareBridge: stopSharopServer: scheduling delayed stop
+2026-11-15 14:30:57,721 AwdlManager: release(AirDrop), activeUsers=[]
+2026-11-15 14:30:57,722 AirDropBleScanner: BLE scanning stopped
+2026-11-15 14:30:57,722 AirDropService: stopSharopServer: advertiser.stop() calling...
+2026-11-15 14:30:57,722 NsdAdvertiser: stop() called: running=true registrationInProgress=false activeListener=true
+2026-11-15 14:30:57,722 NsdAdvertiser: stop() requesting unregister...
+2026-11-15 14:30:57,723 AirDropShareBridge: doStopReceiving: stopping receive discovery
+2026-11-15 14:30:57,723 AirDropService: stopStartedServiceIfIdle: startId=1, stopped=true
+2026-11-15 14:30:57,726 AirDropService: stopSharopServer: advertiser.stop() returned
+2026-11-15 14:30:57,726 NsdAdvertiser: NSD advertiser stopped
+2026-11-15 14:30:57,728 NsdAdvertiser: NSD service unregistered (callback received)
+2026-11-15 14:30:57,729 WifiConflictManager: Starting targeted Wi-Fi scan on channel 5200 to shorten recovery time
+2026-11-15 14:30:57,731 WifiConflictManager: Target BSSID <hidden> not yet in scan results, proceeding with reconnect
+2026-11-15 14:30:57,731 AwdlNetworkAgent: xos0 network unregistered
+2026-11-15 14:30:57,731 WifiConflictManager: Reconnected STA with targeted scan (networkId=27, freq=5200, bssid=<hidden>)
+2026-11-15 14:30:57,732 AwdlServiceClient: setRegisteredNetwork: null
+2026-11-15 14:30:57,732 AirDropServer: Server stopped
+2026-11-15 14:30:57,732 AirDropService: AirDrop receiving stopped
+2026-11-15 14:30:57,732 AirDropService: Scheduling XOS delayed release (1000ms)
+2026-11-15 14:30:57,732 AwdlServiceClient: Auto-renewing NetworkAgent in 500ms
+2026-11-15 14:30:57,733 AirDropShareBridge: AirDrop state changed: false
+2026-11-15 14:30:57,733 AwdlManager: XOS stopped (no active users)
+2026-11-15 14:30:57,733 AwdlServiceClient: XOS stopped
+2026-11-15 14:30:57,733 WirelessArbiter: release(AWDL, AirDrop) refCount 1 -> 0
+2026-11-15 14:30:58,737 AirDropService: AWDL delayed release — executing
+2026-11-15 14:30:58,737 AwdlManager: XOS stopped (no active users)
+2026-11-15 14:30:58,737 AwdlManager: release(AirDrop), activeUsers=[]
+2026-11-15 14:31:04,226 AirDropService: WiFi switch on — no active owner, skipping auto-resume
+2026-11-15 14:31:07,724 AirDropService: clearDiscoveredPeers: cleared 0 peer(s)
+2026-11-15 14:31:07,724 AirDropShareBridge: prepareModuleDisable: generation=8, snapshot=businessBusy=false, ownerActive=false, sessionActive=false, resourceBusy=false, serviceAlive=true
+2026-11-15 14:31:10,735 AirDropShareBridge: stopDiscover
+2026-11-15 14:31:10,735 AirDropService: clearDiscoveredPeers: cleared 0 peer(s)
+2026-11-15 14:31:10,736 AirDropShareBridge: stopSharopServer: not receiving, skip
+2026-11-15 14:31:10,739 AirDropShareBridge: destroy
+2026-11-15 14:31:10,739 AirDropService: stopSharopSession: stopping page session sends=0 receives=0 waitingAccept=false
