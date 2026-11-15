@@ -4,7 +4,7 @@
 
 ## 来源纠正及当前状态
 
-此前没有在本项目任一机器编译过 houji 内核驱动。设备使用上游 [Xiaomi14-PixelOS-Airdrop](https://github.com/YoWenhow/Xiaomi14-PixelOS-Airdrop) 的预编译 `open-runtime-v0.5.1-preview.1.zip`，本地位于 `downloads/oneui9-houji-analysis/reference-runtime/`。上游构建经历不代表我们已复现。
+此前没有在本项目任一机器编译过 houji 内核驱动。设备使用上游 [Xiaomi14-PixelOS-Airdrop](https://github.com/YoWenhow/Xiaomi14-PixelOS-Airdrop) 的预编译 `open-runtime-v0.5.1-preview.1.zip`，本地位于 `downloads/oneui9-houji-analysis/reference-runtime/`。
 
 2026-11-09 已把 `/tmp/work` 复制到项目内[持久化源码配方目录](../../third_party/upstream)，避免临时目录清理。这里包含重建配方、覆盖层及bridge/wonder源码，**不是已经准备好的完整Linux内核工作树**。
 
@@ -41,7 +41,7 @@
 2. 按脚本准备源码。当前独占运行时涉及pre-framework版本，须按KERNEL.md核对 `legacy-to-framework.patch` 的反向应用条件，不能混用framework版本。
 3. 分离三个输出目录，使用对应config；先bridge，再按provider符号关系构建WLAN和wonder。wonder需要WONDER_SOURCE与KBUILD_KCONFIG。
 4. 先复现未修改基线。核对UTS_RELEASE、模块versioned imports及CRC、provider导出和struct module布局；仅vermagic相同不够，modules_prepare也不提供所有正确符号CRC。
-5. 保存构建日志、输入和产物SHA256、ABI对比结果后才进入设备装载验证。编译成功不等于能安全加载。
+5. 保存构建日志、输入和产物SHA256、ABI对比结果后才进入设备装载验证。
 6. 基线通过后添加受owner生命周期约束的完成计数、在途量和失败观测。保持generation/retire隔离，不恢复可能访问已释放OSIF/vdev的普通回调。
 7. 有数据后再决定在途帧限制、窗口末尾停止提交/排空等措施，并同时验证吞吐、双向传输、退出恢复与反复启停。
 

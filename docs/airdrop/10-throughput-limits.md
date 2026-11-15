@@ -25,7 +25,7 @@
 
 - [OWL 官方 README](https://github.com/seemoo-lab/owl)：接收帧的硬件 ACK 缺失可能导致重传和吞吐下降。我们已有传输成功和部分发送完成统计，不能照搬其他芯片的问题，认定本机缺失 ACK。
 - [Google Project Zero 的 AWDL 研究](https://projectzero.google/2020/12/an-ios-zero-click-radio-proximity.html)：节点按可用窗口与信道序列协调，无线共存占用和同步误差会影响有效吞吐。当前 Mac 的基础网络与149不同信道，仍需通过包时间分布测量影响，不能直接假定固定50%占空比。
-- [Cisco 802.11ac 参数表](https://www.cisco.com/c/en/us/products/collateral/wireless/aironet-2800-series-access-points/datasheet-c78-736497.html)：更宽信道提供更高PHY速率。资料只用于解释标准速率，不作为本实验硬件/固件支持VHT80的验收。
+- [Cisco 802.11ac 参数表](https://www.cisco.com/c/en/us/products/collateral/wireless/aironet-2800-series-access-points/datasheet-c78-736497.html)：用于解释标准 VHT80 PHY 速率。
 
 ## 实验边界与顺序
 

@@ -16,7 +16,7 @@ flowchart TB
   N <--> UI[系统相册分享与超级岛]
 ```
 
-图中是两套可选链路，非并行运行。AWDL 提供无线发现、同步与数据承载；IPv6、mDNS、TLS 和 Discover/Ask/Upload 位于上层。接口建立成功不等于 AirDrop 文件验收成功。
+图中是两套可选链路，非并行运行。AWDL 提供无线发现、同步与数据承载；IPv6、mDNS、TLS 和 Discover/Ask/Upload 位于上层。
 
 ## 共同驱动底座
 
