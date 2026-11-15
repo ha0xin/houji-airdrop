@@ -69,6 +69,8 @@ build/
 
 # App build outputs (including the native wonder-init helper).
 /clients/owly-app/dist/
+/runtime/owly-xos/dist/
+/runtime/owly-xos/installed-artifacts.json
 
 # Private local diagnostics and signing material must not be published.
 *.log
