@@ -1,6 +1,8 @@
 package org.houji.xoscompat;
 
 import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
 import android.net.wifi.WifiManager;
 import android.os.IBinder;
 import android.util.Log;
@@ -85,16 +87,31 @@ public final class Hook implements IXposedHookLoadPackage {
                 new XC_MethodHook() {
                     @Override
                     protected void beforeHookedMethod(MethodHookParam param) {
-                        if (!ownsRadio()) {
-                            return;
+                        if (ownsRadio()) {
+                            param.setResult(WifiManager.WIFI_STATE_ENABLED);
                         }
-                        for (StackTraceElement frame : Thread.currentThread().getStackTrace()) {
-                            if ("com.xiaomi.sharop.awdl.AwdlManager".equals(frame.getClassName())
-                                    && "a".equals(frame.getMethodName())) {
-                                param.setResult(WifiManager.WIFI_STATE_ENABLED);
-                                Log.i(TAG, "Suppress delayed bridge-owned Wi-Fi-off check");
-                                return;
-                            }
+                    }
+                });
+
+        XposedBridge.hookMethod(
+                WifiManager.class.getDeclaredMethod("isWifiEnabled"),
+                new XC_MethodHook() {
+                    @Override
+                    protected void beforeHookedMethod(MethodHookParam param) {
+                        if (ownsRadio()) {
+                            param.setResult(true);
+                        }
+                    }
+                });
+
+        XposedBridge.hookMethod(
+                WifiManager.class.getDeclaredMethod("setWifiEnabled", boolean.class),
+                new XC_MethodHook() {
+                    @Override
+                    protected void beforeHookedMethod(MethodHookParam param) {
+                        if (ownsRadio() && Boolean.TRUE.equals(param.args[0])) {
+                            Log.i(TAG, "Suppress WifiManager.setWifiEnabled(true) while bridge owns radio");
+                            param.setResult(true);
                         }
                     }
                 });
@@ -132,6 +149,34 @@ public final class Hook implements IXposedHookLoadPackage {
                     }
                 }
             });
+        }
+
+        String[] wifiReceivers = {
+                "com.miui.mishare.connectivity.MiShareService$h",
+                "a.c",
+                "a.d0",
+                "E1.a$a",
+                "E1.b$a",
+        };
+        for (final String clsName : wifiReceivers) {
+            try {
+                final Method onReceive = Class.forName(clsName, false, cl)
+                        .getDeclaredMethod("onReceive", Context.class, Intent.class);
+                XposedBridge.hookMethod(onReceive, new XC_MethodHook() {
+                    @Override
+                    protected void beforeHookedMethod(MethodHookParam param) {
+                        Intent intent = (Intent) param.args[1];
+                        if (intent != null
+                                && WifiManager.WIFI_STATE_CHANGED_ACTION.equals(intent.getAction())
+                                && ownsRadio()) {
+                            Log.i(TAG, "Ignore bridge-owned WIFI_STATE_CHANGED: " + clsName);
+                            param.setResult(null);
+                        }
+                    }
+                });
+            } catch (Throwable t) {
+                Log.w(TAG, "Failed to hook Wi-Fi receiver " + clsName, t);
+            }
         }
 
         XposedBridge.hookMethod(
