@@ -1,0 +1,6 @@
+id=owly_xos
+name=Owly-XOS 小米互传高速 AirDrop 后端 (Xiaomi 14)
+version=v1.0.0
+versionCode=10000
+author=houji-airdrop
+description=小米 14 (houji, HyperOS 3 / Android 16, kernel 6.1.138-ab14529422) 原生小米互传高速 AirDrop 后端 (Owly VHT80 2SS + EZIF 多对端硬件 TX A-MPDU)。

@@ -8,7 +8,11 @@ RADIO=$R/radio
 NATIVE=/data/local/tmp/xos/native
 OWLY_APP=/data/local/tmp/owly-app
 LEGACY_BASE=/data/local/tmp/houji-buildtest-20261110
-BB=/data/adb/ksu/bin/busybox
+BB=""
+for cand in /data/adb/ksu/bin/busybox /data/adb/ap/bin/busybox /data/adb/magisk/busybox; do
+ if test -x "$cand"; then BB="$cand"; break; fi
+done
+test -n "$BB"
 W=/sys/module/qca_cld3_kiwi_v2
 AMSS=/vendor/firmware_mnt/image/kiwi/amss20.bin
 STOCK=/vendor_dlkm/lib/modules/qca_cld3_kiwi_v2.ko

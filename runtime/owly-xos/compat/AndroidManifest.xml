@@ -1,0 +1,26 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="org.houji.xoscompat"
+    android:versionCode="2"
+    android:versionName="1.0.0">
+
+    <uses-sdk
+        android:minSdkVersion="33"
+        android:targetSdkVersion="36" />
+
+    <application
+        android:allowBackup="false"
+        android:label="Owly-XOS 小米互传兼容">
+        <meta-data
+            android:name="xposedmodule"
+            android:value="true" />
+        <meta-data
+            android:name="xposeddescription"
+            android:value="适配小米 14 owly-xos 高速 AirDrop 后端：保持独占切换期间互传会话不断开、按需识别 XosBridge 并修复相册系统分享跳转。" />
+        <meta-data
+            android:name="xposedminversion"
+            android:value="82" />
+        <meta-data
+            android:name="xposedscope"
+            android:resource="@array/xposed_scope" />
+    </application>
+</manifest>

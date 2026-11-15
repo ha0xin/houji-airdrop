@@ -70,7 +70,29 @@ houji-owly-app xos0 amsdu ack (HOUJI_OWLY_TX_ADDBA=1, max_peers=8, fast_discover
   - 3 个 AWDL 节点在场 `win=256` 实测：前 `15.95s` 对端以单包模式保守发送（`3.42 MB/s`），切入双包 A-MSDU 后 `7.91s` 收完剩余 `102.87 MB`（阶段均速 **`13.00 MB/s`**、双块窗口 **`23.56 MB/s`**、单块峰值 **`29.54 MB/s`**）；全程交付 `114,598` 个 IPv6 包，`OWLY_RX_GAPS` `matched=37,093 missing=0 host_delayed=0`（平均每 PPDU `16.1` 个 A-MSDU 大帧），全链路 `dropped=0`。
 - **退出恢复**：停止 `AirDropService` / `MiShareService` 后，自动经 `op=clear` 与 `pt_release` 卸载实验模块、恢复固件挂载并重连原厂 5 GHz Wi-Fi（`STOCK_RESTORED`）。
 
-## 构建与安装
+## 系统、内核与运行环境要求
+
+本目录加载的树外内核模块（`qca_cld3_kiwi_v2-three-findings.ko`、`houji_wonder_bridge.ko`、`wonder.ko`）已完成 **567 个导出符号 CRC** 严格审计，仅在完全匹配的目标内核与原厂固件环境下放行运行（安装脚本 `customize.sh`、开机守护 `service.sh` 与切换脚本 `radio.sh` 均执行硬校验，OTA 变更内核后会自动安全停用）：
+
+| 检查项 | 要求值 | 说明 |
+|---|---|---|
+| **设备机型** | 小米 14（`ro.product.device = houji`） | 仅适配 `houji`（如 `23127PN0CC`），不适用 `shennong` / `aurora` |
+| **系统版本** | 澎湃 HyperOS 3 / Android 16（`SDK = 36`） | 实测基线 **`OS3.0.307.0.WNCCNXM`**（适配 SDK 36 原厂互传与系统分享 `ChooserActivityStubImpl`） |
+| **内核版本（`uname -r`）** | `6.1.138-android14-11-g0c3d559bcd85-ab14529422` | 必须一字不差完全一致 |
+| **原厂驱动 Build-ID** | `a3e9bd62646444e1ecbe0f421c95ec46e6caf69a78323efb2f6ebe00e6b2bd8b` | `/sys/module/qca_cld3_kiwi_v2/notes/.note.gnu.build-id` SHA-256 |
+| **原厂 WLAN 固件哈希** | `4db7b0e1aa7e4ec071708359c9d0db8d3d7872390cd8e88ffa0bbb30d560bcc8` | `/vendor/firmware_mnt/image/kiwi/amss20.bin` SHA-256 |
+| **Root 与模块框架** | KernelSU（或 APatch / Magisk）+ Zygisk + LSPosed | 原厂提取 `MIShare.apk`（`5.4.2`）持有小米平台签名，支持 `pm install -r` 直装；模块声明 `skip_mount`，**无需** OverlayFS / `magic_mount` 元模块，也**无需** CorePatch 核心破解 |
+
+### LSPosed 兼容模块（`compat/`，`org.houji.xoscompat`）作用域说明
+
+`compat/` 提供自包含的轻量 LSPosed 模块 **「Owly-XOS 小米互传兼容」**，采用 **`AndroidManifest.xml` `<meta-data android:name="xposedscope" android:resource="@array/xposed_scope" />`（默认推荐作用域）+ `Hook.java` 包名硬白名单** 双重约束，而非 `libxposed` API 100 专属的 `staticScope=true`：
+
+- 在 LSPosed 1.8.x / 1.9.x / 2.x 全系列管理器中，首次启用模块时会自动勾选且仅推荐以下两个进程（无需手动翻找系统应用）：
+  1. `com.miui.mishare.connectivity`（小米互传）：放行 `IDomesticXOsComm/default` 可用性检测，并在 `sys.xos.exclusive=1` 独占无线电切换期间抑制延迟 Wi-Fi 关闭广播误判；
+  2. `com.android.intentresolver`（系统分享）：修复相册点击「隔空投送 / 小米互传」时的 URI 授权跳转。
+- `Hook.java` 入口对 `LoadPackageParam.packageName` 执行精确匹配，即便用户误勾选其他应用（如 `android` 系统框架）也立即空返回，不注入任何 Hook。
+
+## 构建、直连部署与 KernelSU 模块打包
 
 需按 [BYOB 输入清单](../../docs/guides/byob.md) 与 [独立构建指南](../../docs/guides/building.md) 准备好原生构建产出（`houji-owly-app`、`wonder-init`）及 `blobs/local/`（或环境变量指定的驱动与固件）。
 
@@ -78,10 +100,15 @@ houji-owly-app xos0 amsdu ack (HOUJI_OWLY_TX_ADDBA=1, max_peers=8, fast_discover
 # 1. 构建用户态原生可执行文件（产出位于 clients/owly-app/dist/）
 bash scripts/build-userspace.sh
 
-# 2. 构建 AIDL 桥接 DEX（需 Android SDK stub 与 build-tools）
+# 2. 构建 AIDL 桥接 DEX 与 LSPosed 兼容模块 APK（需 Android SDK stub 与 build-tools）
 ANDROID_HOME=/path/to/android-sdk BUILD_TOOLS=/path/to/android-sdk/build-tools/35.0.0 \
   bash runtime/owly-xos/build.sh
+ANDROID_HOME=/path/to/android-sdk BUILD_TOOLS=/path/to/android-sdk/build-tools/35.0.0 \
+  bash runtime/owly-xos/compat/build.sh
 
-# 3. 校验 BYOB 输入并部署 / 启动守护到已 Root 的小米 14
+# 3a. 开发调试：通过 ADB 直接部署并拉起守护
 ANDROID_SERIAL=<serial> python3 runtime/owly-xos/install.py
+
+# 3b. 打包单文件 KernelSU / APatch / Magisk 刷机包（输出至 runtime/owly-xos/dist/，已被 git 忽略）
+python3 runtime/owly-xos/package-ksu.py --mishare-apk /path/to/MIShare.apk
 ```
