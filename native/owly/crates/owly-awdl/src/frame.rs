@@ -256,24 +256,37 @@ pub struct Msdu<'a> {
     pub payload: &'a [u8],
 }
 
-/// The packets in a data frame's body (AWDL-13). An A-MSDU's subframes each
-/// carry their own addresses; there may be at most
-/// [`MAX_AMSDU_SUBFRAMES`] (AWDL-14).
-pub fn msdus<'a>(header: &Header, amsdu: bool, body: &'a [u8]) -> Result<Vec<Msdu<'a>>, Error> {
+const EMPTY_MSDU: Msdu<'static> = Msdu {
+    dst: MacAddr([0; 6]),
+    src: MacAddr([0; 6]),
+    ethertype: 0,
+    payload: &[],
+};
+
+/// Unpacks all data subframes into a caller-provided stack array without heap allocation,
+/// validating every subframe before returning the count.
+pub fn decode_msdus<'a>(
+    header: &Header,
+    amsdu: bool,
+    body: &'a [u8],
+    out: &mut [Msdu<'a>; MAX_AMSDU_SUBFRAMES],
+) -> Result<usize, Error> {
     if !amsdu {
-        return Ok(Vec::from([msdu(header.dst, header.src, body)?]));
+        out[0] = msdu(header.dst, header.src, body)?;
+        return Ok(1);
     }
-    let mut out = Vec::new();
+    let mut count = 0usize;
     let mut rest = body;
     while !rest.is_empty() {
-        if out.len() == MAX_AMSDU_SUBFRAMES {
+        if count == MAX_AMSDU_SUBFRAMES {
             return Err(Error::Malformed("too many A-MSDU subframes"));
         }
         let b = Bytes(rest);
         let dst = b.mac(0)?;
         let src = b.mac(6)?;
         let len = b.be16(12)? as usize;
-        out.push(msdu(dst, src, b.slice(14, len)?)?);
+        out[count] = msdu(dst, src, b.slice(14, len)?)?;
+        count += 1;
         rest = &rest[14 + len..];
         if !rest.is_empty() {
             // Each subframe but the last is padded to 4 bytes.
@@ -281,7 +294,31 @@ pub fn msdus<'a>(header: &Header, amsdu: bool, body: &'a [u8]) -> Result<Vec<Msd
             rest = rest.get(pad..).ok_or(Error::Truncated)?;
         }
     }
-    Ok(out)
+    Ok(count)
+}
+
+/// Validates and iterates unpacked MSDUs on the stack without allocating a `Vec`.
+pub fn visit_msdus<'a>(
+    header: &Header,
+    amsdu: bool,
+    body: &'a [u8],
+    mut f: impl FnMut(Msdu<'a>),
+) -> Result<(), Error> {
+    let mut buf = [EMPTY_MSDU; MAX_AMSDU_SUBFRAMES];
+    let n = decode_msdus(header, amsdu, body, &mut buf)?;
+    for m in &buf[..n] {
+        f(*m);
+    }
+    Ok(())
+}
+
+/// The packets in a data frame's body (AWDL-13). An A-MSDU's subframes each
+/// carry their own addresses; there may be at most
+/// [`MAX_AMSDU_SUBFRAMES`] (AWDL-14).
+pub fn msdus<'a>(header: &Header, amsdu: bool, body: &'a [u8]) -> Result<Vec<Msdu<'a>>, Error> {
+    let mut buf = [EMPTY_MSDU; MAX_AMSDU_SUBFRAMES];
+    let n = decode_msdus(header, amsdu, body, &mut buf)?;
+    Ok(buf[..n].to_vec())
 }
 
 fn msdu(dst: MacAddr, src: MacAddr, body: &[u8]) -> Result<Msdu<'_>, Error> {
@@ -341,12 +378,42 @@ fn put_msdu(out: &mut Vec<u8>, awdl_seq: u16, payload: &[u8]) {
     out.extend_from_slice(payload);
 }
 
+/// Encodes an AWDL non-QoS data frame into `out`, reusing existing capacity when available.
+pub fn write_data_frame(
+    out: &mut Vec<u8>,
+    src: MacAddr,
+    dst: MacAddr,
+    seq: u16,
+    awdl_seq: u16,
+    packet: &[u8],
+) {
+    out.clear();
+    out.reserve(HEADER_LEN + DATA_HEADER_LEN + packet.len());
+    put_header(out, fc::DATA, dst, src, seq);
+    put_msdu(out, awdl_seq, packet);
+}
+
 /// AWDL-13: a data frame carrying one IPv6 packet.
 pub fn data_frame(src: MacAddr, dst: MacAddr, seq: u16, awdl_seq: u16, packet: &[u8]) -> Vec<u8> {
-    let mut out = Vec::with_capacity(HEADER_LEN + DATA_HEADER_LEN + packet.len());
-    put_header(&mut out, fc::DATA, dst, src, seq);
-    put_msdu(&mut out, awdl_seq, packet);
+    let mut out = Vec::new();
+    write_data_frame(&mut out, src, dst, seq, awdl_seq, packet);
     out
+}
+
+/// Encodes a QoS Data (TID 0, Normal Ack) frame into `out`, reusing existing capacity.
+pub fn write_qos_data_frame(
+    out: &mut Vec<u8>,
+    src: MacAddr,
+    dst: MacAddr,
+    seq: u16,
+    awdl_seq: u16,
+    packet: &[u8],
+) {
+    out.clear();
+    out.reserve(HEADER_LEN + 2 + DATA_HEADER_LEN + packet.len());
+    put_header(out, fc::QOS_DATA, dst, src, seq);
+    out.le16(0x0000); // QoS control: TID 0, Normal Ack, A-MSDU absent
+    put_msdu(out, awdl_seq, packet);
 }
 
 /// QoS Data (TID 0, Normal Ack) frame carrying a single IPv6 packet, so TQM
@@ -358,10 +425,8 @@ pub fn qos_data_frame(
     awdl_seq: u16,
     packet: &[u8],
 ) -> Vec<u8> {
-    let mut out = Vec::with_capacity(HEADER_LEN + 2 + DATA_HEADER_LEN + packet.len());
-    put_header(&mut out, fc::QOS_DATA, dst, src, seq);
-    out.le16(0x0000); // QoS control: TID 0, Normal Ack, A-MSDU absent
-    put_msdu(&mut out, awdl_seq, packet);
+    let mut out = Vec::new();
+    write_qos_data_frame(&mut out, src, dst, seq, awdl_seq, packet);
     out
 }
 
@@ -369,6 +434,44 @@ pub fn qos_data_frame(
 /// padding that may come before it.
 pub fn amsdu_subframe_len(packet_len: usize) -> usize {
     14 + DATA_HEADER_LEN + packet_len
+}
+
+/// Exact encoded byte length of an A-MSDU QoS data frame carrying `packets`.
+pub fn amsdu_frame_len(packets: &[&[u8]]) -> usize {
+    let mut body_len = 0usize;
+    for (i, p) in packets.iter().enumerate() {
+        if i > 0 {
+            body_len = body_len.next_multiple_of(4);
+        }
+        body_len += amsdu_subframe_len(p.len());
+    }
+    HEADER_LEN + 2 + body_len
+}
+
+/// Encodes an A-MSDU QoS data frame into `out`, reserving exact capacity up front.
+pub fn write_amsdu_frame(
+    out: &mut Vec<u8>,
+    src: MacAddr,
+    dst: MacAddr,
+    seq: u16,
+    awdl_seq: u16,
+    packets: &[&[u8]],
+) {
+    out.clear();
+    out.reserve(amsdu_frame_len(packets));
+    put_header(out, fc::QOS_DATA, dst, src, seq);
+    out.le16(0x0080); // QoS control: A-MSDU present
+    for (i, p) in packets.iter().enumerate() {
+        if i > 0 {
+            while !(out.len() - HEADER_LEN - 2).is_multiple_of(4) {
+                out.u8(0);
+            }
+        }
+        out.mac(dst);
+        out.mac(src);
+        out.be16((DATA_HEADER_LEN + p.len()) as u16);
+        put_msdu(out, awdl_seq.wrapping_add(i as u16), p);
+    }
 }
 
 /// An A-MSDU of IPv6 packets to one peer, in a QoS data frame (TID 0). Its
@@ -380,20 +483,8 @@ pub fn amsdu_frame(
     awdl_seq: u16,
     packets: &[&[u8]],
 ) -> Vec<u8> {
-    let mut out = Vec::with_capacity(2048);
-    put_header(&mut out, fc::QOS_DATA, dst, src, seq);
-    out.le16(0x0080); // QoS control: A-MSDU present
-    for (i, p) in packets.iter().enumerate() {
-        if i > 0 {
-            while !(out.len() - HEADER_LEN - 2).is_multiple_of(4) {
-                out.u8(0);
-            }
-        }
-        out.mac(dst);
-        out.mac(src);
-        out.be16((DATA_HEADER_LEN + p.len()) as u16);
-        put_msdu(&mut out, awdl_seq.wrapping_add(i as u16), p);
-    }
+    let mut out = Vec::new();
+    write_amsdu_frame(&mut out, src, dst, seq, awdl_seq, packets);
     out
 }
 

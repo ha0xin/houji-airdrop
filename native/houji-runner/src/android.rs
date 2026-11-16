@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 use std::ffi::CStr;
 use std::fs::{self, OpenOptions};
 use std::io;
@@ -7,9 +7,12 @@ use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use std::ptr;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::{Duration, Instant};
 
-use owly_awdl::driver::{self, Air, Netif, Received};
+use owly_awdl::Time;
+use owly_awdl::driver::{self, Air, AirRx, Netif, Received};
 use owly_awdl::frame::Frame;
 use owly_awdl::{
     Channel, Config, Ipv6Packet, MacAddr, PeerCaps, PeerInfo, Presence, RadioConstraints,
@@ -24,6 +27,7 @@ use crate::{
     peer_ctl::KernelPeerSync,
     radiotap,
     rx_gap::RxGaps,
+    vnet,
 };
 
 const MONITOR: &CStr = c"wonder0";
@@ -31,11 +35,46 @@ const TUN: &str = "owly0";
 const TAP: &str = "xos0";
 const TAP_CSTR: &CStr = c"xos0";
 const PACKET_BUFFER: usize = 16 * 1024;
+const TAP_VNET_BUFFER: usize = 72 * 1024;
+const TX_POOL_INIT: usize = 128;
+const TX_POOL_MAX: usize = 512;
+const RX_BATCH_CAP: usize = 32;
+const TX_BATCH_CAP: usize = 32;
+const TP_RING_FRAME_SIZE: usize = 16 * 1024;
+const TP_RING_FRAME_NR: usize = 2048;
 const ETH_P_ALL: u16 = 3;
+const PACKET_RX_RING: libc::c_int = 5; // linux/if_packet.h
 const PACKET_STATISTICS: libc::c_int = 6; // linux/if_packet.h
+const PACKET_VERSION: libc::c_int = 10; // linux/if_packet.h
 const PACKET_IGNORE_OUTGOING: libc::c_int = 23; // linux/if_packet.h
+const TPACKET_V2: libc::c_int = 1;
+const TP_STATUS_KERNEL: u32 = 0;
+const TP_STATUS_USER: u32 = 1 << 0;
 const MONITOR_RCVBUF_BYTES: libc::c_int = 8 * 1024 * 1024;
 const MONITOR_SNDBUF_BYTES: libc::c_int = 4 * 1024 * 1024;
+
+#[repr(C)]
+struct TpacketReq {
+    tp_block_size: libc::c_uint,
+    tp_block_nr: libc::c_uint,
+    tp_frame_size: libc::c_uint,
+    tp_frame_nr: libc::c_uint,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct Tpacket2Hdr {
+    tp_status: u32,
+    tp_len: u32,
+    tp_snaplen: u32,
+    tp_mac: u16,
+    tp_net: u16,
+    tp_sec: u32,
+    tp_nsec: u32,
+    tp_vlan_tci: u16,
+    tp_vlan_tpid: u16,
+    tp_padding: [u8; 4],
+}
 
 #[repr(C)]
 #[derive(Default)]
@@ -153,31 +192,75 @@ fn write_packet(fd: &OwnedFd, packet: &[u8]) -> io::Result<()> {
     }
 }
 
-fn write_tap_ethernet(fd: &OwnedFd, hdr: &[u8; 14], payload: &[u8]) -> io::Result<()> {
-    let total = hdr.len() + payload.len();
-    let iov = [
-        libc::iovec {
-            iov_base: hdr.as_ptr().cast_mut().cast(),
-            iov_len: hdr.len(),
-        },
-        libc::iovec {
-            iov_base: payload.as_ptr().cast_mut().cast(),
-            iov_len: payload.len(),
-        },
-    ];
+fn write_iovec(fd: &OwnedFd, iov: &[libc::iovec], expected: usize, label: &str) -> io::Result<()> {
     loop {
-        // Both buffers stay live for the synchronous writev syscall.
+        // Buffers stay live for the synchronous writev syscall.
         match syscall(unsafe { libc::writev(fd.as_raw_fd(), iov.as_ptr(), iov.len() as _) }) {
-            Ok(n) if n == total => return Ok(()),
+            Ok(n) if n == expected => return Ok(()),
             Ok(_) => {
-                return Err(io::Error::new(
-                    io::ErrorKind::WriteZero,
-                    "short tap packet write",
-                ));
+                return Err(io::Error::new(io::ErrorKind::WriteZero, label));
             }
             Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
             Err(e) => return Err(e),
         }
+    }
+}
+
+fn write_tap_ethernet(
+    fd: &OwnedFd,
+    vnet_hdr: bool,
+    hdr: &[u8; 14],
+    payload: &[u8],
+) -> io::Result<()> {
+    if vnet_hdr {
+        let total = vnet::VNET_HDR_LEN + hdr.len() + payload.len();
+        let iov = [
+            libc::iovec {
+                iov_base: vnet::ZERO_VNET_HDR.as_ptr().cast_mut().cast(),
+                iov_len: vnet::VNET_HDR_LEN,
+            },
+            libc::iovec {
+                iov_base: hdr.as_ptr().cast_mut().cast(),
+                iov_len: hdr.len(),
+            },
+            libc::iovec {
+                iov_base: payload.as_ptr().cast_mut().cast(),
+                iov_len: payload.len(),
+            },
+        ];
+        write_iovec(fd, &iov, total, "short tap packet write")
+    } else {
+        let total = hdr.len() + payload.len();
+        let iov = [
+            libc::iovec {
+                iov_base: hdr.as_ptr().cast_mut().cast(),
+                iov_len: hdr.len(),
+            },
+            libc::iovec {
+                iov_base: payload.as_ptr().cast_mut().cast(),
+                iov_len: payload.len(),
+            },
+        ];
+        write_iovec(fd, &iov, total, "short tap packet write")
+    }
+}
+
+fn write_tap_raw(fd: &OwnedFd, vnet_hdr: bool, eth_frame: &[u8]) -> io::Result<()> {
+    if vnet_hdr {
+        let total = vnet::VNET_HDR_LEN + eth_frame.len();
+        let iov = [
+            libc::iovec {
+                iov_base: vnet::ZERO_VNET_HDR.as_ptr().cast_mut().cast(),
+                iov_len: vnet::VNET_HDR_LEN,
+            },
+            libc::iovec {
+                iov_base: eth_frame.as_ptr().cast_mut().cast(),
+                iov_len: eth_frame.len(),
+            },
+        ];
+        write_iovec(fd, &iov, total, "short tap raw write")
+    } else {
+        write_packet(fd, eth_frame)
     }
 }
 
@@ -190,21 +273,243 @@ fn rx_gaps_enabled() -> bool {
     })
 }
 
-struct Monitor {
-    fd: AsyncFd<OwnedFd>,
-    rx: Vec<u8>,
-    tx: Vec<u8>,
+struct TpacketRxRing {
+    ptr: *mut u8,
+    len: usize,
+    frame_size: usize,
+    frame_nr: usize,
+    cursor: usize,
+}
+
+// SAFETY: TpacketRxRing owns a unique MAP_SHARED mapping for the socket lifetime
+// and is only mutated on the single `owly-awdl` driver thread after open().
+unsafe impl Send for TpacketRxRing {}
+
+impl TpacketRxRing {
+    fn try_map(raw: libc::c_int) -> io::Result<Self> {
+        let ver = TPACKET_V2;
+        syscall(unsafe {
+            libc::setsockopt(
+                raw,
+                libc::SOL_PACKET,
+                PACKET_VERSION,
+                (&raw const ver).cast(),
+                size_of::<libc::c_int>() as _,
+            )
+        } as libc::ssize_t)?;
+
+        let req = TpacketReq {
+            tp_block_size: TP_RING_FRAME_SIZE as _,
+            tp_block_nr: TP_RING_FRAME_NR as _,
+            tp_frame_size: TP_RING_FRAME_SIZE as _,
+            tp_frame_nr: TP_RING_FRAME_NR as _,
+        };
+        syscall(unsafe {
+            libc::setsockopt(
+                raw,
+                libc::SOL_PACKET,
+                PACKET_RX_RING,
+                (&raw const req).cast(),
+                size_of::<TpacketReq>() as _,
+            )
+        } as libc::ssize_t)?;
+
+        let len = TP_RING_FRAME_SIZE * TP_RING_FRAME_NR;
+        let ptr = unsafe {
+            libc::mmap(
+                ptr::null_mut(),
+                len,
+                libc::PROT_READ | libc::PROT_WRITE,
+                libc::MAP_SHARED,
+                raw,
+                0,
+            )
+        };
+        if ptr == libc::MAP_FAILED {
+            return Err(io::Error::last_os_error());
+        }
+        Ok(Self {
+            ptr: ptr.cast(),
+            len,
+            frame_size: TP_RING_FRAME_SIZE,
+            frame_nr: TP_RING_FRAME_NR,
+            cursor: 0,
+        })
+    }
+
+    fn slot_status_ptr(&self, idx: usize) -> *const AtomicU32 {
+        // SAFETY: `idx < frame_nr`, each frame slot starts at a multiple of 16 KiB (4-byte aligned).
+        unsafe { self.ptr.add(idx * self.frame_size).cast::<AtomicU32>() }
+    }
+
+    fn peek_slice(&self) -> Option<&[u8]> {
+        // SAFETY: Acquire load pairs with kernel Release store setting TP_STATUS_USER.
+        let status = unsafe { (*self.slot_status_ptr(self.cursor)).load(Ordering::Acquire) };
+        if (status & TP_STATUS_USER) == 0 {
+            return None;
+        }
+        let base = self.cursor * self.frame_size;
+        let hdr = unsafe { ptr::read(self.ptr.add(base).cast::<Tpacket2Hdr>()) };
+        let mac = usize::from(hdr.tp_mac);
+        let snaplen = hdr.tp_snaplen as usize;
+        let Some(end) = mac.checked_add(snaplen) else {
+            return Some(&[]);
+        };
+        if end > self.frame_size {
+            return Some(&[]);
+        }
+        Some(unsafe { std::slice::from_raw_parts(self.ptr.add(base + mac), snaplen) })
+    }
+
+    fn release_slot(&mut self) {
+        // SAFETY: Release store hands slot ownership back to kernel after all slice reads finish.
+        unsafe {
+            (*self.slot_status_ptr(self.cursor)).store(TP_STATUS_KERNEL, Ordering::Release);
+        }
+        self.cursor = (self.cursor + 1) % self.frame_nr;
+    }
+}
+
+impl Drop for TpacketRxRing {
+    fn drop(&mut self) {
+        unsafe {
+            libc::munmap(self.ptr.cast(), self.len);
+        }
+    }
+}
+
+struct RecvmmsgRx {
+    bufs: Vec<Vec<u8>>,
+    lens: [usize; RX_BATCH_CAP],
+    head: usize,
+    tail: usize,
+}
+
+impl RecvmmsgRx {
+    fn new() -> Self {
+        Self {
+            bufs: (0..RX_BATCH_CAP).map(|_| vec![0; PACKET_BUFFER]).collect(),
+            lens: [0; RX_BATCH_CAP],
+            head: 0,
+            tail: 0,
+        }
+    }
+
+    fn fill(&mut self, raw: libc::c_int) -> io::Result<usize> {
+        let mut iovs = [libc::iovec {
+            iov_base: ptr::null_mut(),
+            iov_len: 0,
+        }; RX_BATCH_CAP];
+        let mut msgs: [libc::mmsghdr; RX_BATCH_CAP] = unsafe { zeroed() };
+        for (i, buf) in self.bufs.iter_mut().enumerate() {
+            iovs[i].iov_base = buf.as_mut_ptr().cast();
+            iovs[i].iov_len = buf.len();
+            msgs[i].msg_hdr.msg_iov = &raw mut iovs[i];
+            msgs[i].msg_hdr.msg_iovlen = 1 as _;
+        }
+        let n = syscall(unsafe {
+            libc::recvmmsg(
+                raw,
+                msgs.as_mut_ptr(),
+                RX_BATCH_CAP as _,
+                libc::MSG_TRUNC | libc::MSG_DONTWAIT,
+                ptr::null(),
+            )
+        } as libc::ssize_t)?;
+        for i in 0..n {
+            self.lens[i] = (msgs[i].msg_len as usize).min(self.bufs[i].len());
+        }
+        self.head = 0;
+        self.tail = n;
+        Ok(n)
+    }
+
+    fn peek_slice(&self) -> Option<&[u8]> {
+        if self.head < self.tail {
+            let idx = self.head;
+            Some(&self.bufs[idx][..self.lens[idx]])
+        } else {
+            None
+        }
+    }
+
+    fn release_slot(&mut self) {
+        self.head += 1;
+    }
+}
+
+enum RxBackend {
+    Ring(TpacketRxRing),
+    Recvmmsg(RecvmmsgRx),
+}
+
+struct RxTelemetry {
     peer: MacAddr,
     own: MacAddr,
     rx_gaps: Option<RxGaps>,
     rx_invalid: DropCount,
+    rx_addba_resp_reported: u8,
+}
+
+impl RxTelemetry {
+    fn report_first_rx_addba_resp(&mut self, bytes: &[u8]) {
+        if self.rx_addba_resp_reported >= 8 || bytes.len() < 33 || bytes[0] != 0xd0 {
+            return;
+        }
+        if bytes[24] == 3 && bytes[25] == 1 {
+            let token = bytes[26];
+            let status = u16::from_le_bytes([bytes[27], bytes[28]]);
+            let params = u16::from_le_bytes([bytes[29], bytes[30]]);
+            let win = (params >> 6) & 0x3ff;
+            println!(
+                "OWLY_TX_ADDBA_RESP_RCVD token={token} status={status} params=0x{params:04x} win={win}"
+            );
+            self.rx_addba_resp_reported = self.rx_addba_resp_reported.saturating_add(1);
+        }
+    }
+
+    fn validate<'a>(&mut self, packet: &'a [u8]) -> Option<radiotap::Rx<'a>> {
+        let Some(received) = radiotap::parse(packet) else {
+            self.rx_invalid
+                .record("air rx", &"invalid or truncated radiotap frame");
+            return None;
+        };
+        // The transmitter is Address 2 of every supported AWDL frame.
+        if received.freq.is_some_and(|freq| freq != 5745)
+            || (self.peer.0 != [0; 6]
+                && received.frame.get(10..16) != Some(self.peer.0.as_slice()))
+        {
+            return None;
+        }
+        Some(received)
+    }
+
+    fn accept(&mut self, received: &radiotap::Rx<'_>) {
+        let raw = received.frame;
+        if let Some(rx_gaps) = &mut self.rx_gaps
+            && raw.len() >= 1536
+            && raw[0] == 0x88
+            && raw[1] & 0xc7 == 0
+            && raw[22] & 0x0f == 0
+            && raw[4..10] == self.own.0
+            && raw[16..22] == [0x00, 0x25, 0, 0xff, 0x94, 0x73]
+        {
+            rx_gaps.record(received.tsft_us, Instant::now());
+        }
+        self.report_first_rx_addba_resp(raw);
+    }
+}
+
+struct Monitor {
+    fd: AsyncFd<OwnedFd>,
+    rx: RxBackend,
+    rx_tel: RxTelemetry,
     tx_fatal: DropCount,
     tx_backpressure: u64,
     tx_submitted: u64,
     psf_reported: bool,
     mif_reported: bool,
     tx_addba_reported: u8,
-    rx_addba_resp_reported: u8,
     tx_amsdu_mpdu: u64,
     tx_amsdu_msdu: u64,
 }
@@ -230,6 +535,20 @@ impl Monitor {
         let rcvbuf = set_socket_buf(raw, libc::SO_RCVBUFFORCE, libc::SO_RCVBUF, MONITOR_RCVBUF_BYTES)?;
         let sndbuf = set_socket_buf(raw, libc::SO_SNDBUFFORCE, libc::SO_SNDBUF, MONITOR_SNDBUF_BYTES)?;
         println!("OWLY_AF_PACKET_BUF rcvbuf={rcvbuf} sndbuf={sndbuf}");
+        // Attach TPACKET_V2 RX ring before bind() so sk_receive_queue cannot race with ring setup.
+        let rx = match TpacketRxRing::try_map(raw) {
+            Ok(ring) => {
+                println!(
+                    "OWLY_AF_PACKET_RX mode=tpacket_v2 frame_size={TP_RING_FRAME_SIZE} frames={TP_RING_FRAME_NR}"
+                );
+                RxBackend::Ring(ring)
+            }
+            Err(error) => {
+                tracing::warn!(%error, "TPACKET_V2 ring setup failed, falling back to recvmmsg");
+                println!("OWLY_AF_PACKET_RX mode=recvmmsg batch={RX_BATCH_CAP}");
+                RxBackend::Recvmmsg(RecvmmsgRx::new())
+            }
+        };
         let addr = libc::sockaddr_ll {
             sll_family: libc::AF_PACKET as _,
             sll_protocol: protocol,
@@ -266,19 +585,20 @@ impl Monitor {
         )?;
         Ok(Self {
             fd: register(fd)?,
-            rx: vec![0; PACKET_BUFFER],
-            tx: Vec::with_capacity(PACKET_BUFFER),
-            peer,
-            own,
-            rx_gaps: rx_gaps_enabled().then(RxGaps::default),
-            rx_invalid: DropCount::default(),
+            rx,
+            rx_tel: RxTelemetry {
+                peer,
+                own,
+                rx_gaps: rx_gaps_enabled().then(RxGaps::default),
+                rx_invalid: DropCount::default(),
+                rx_addba_resp_reported: 0,
+            },
             tx_fatal: DropCount::default(),
             tx_backpressure: 0,
             tx_submitted: 0,
             psf_reported: false,
             mif_reported: false,
             tx_addba_reported: 0,
-            rx_addba_resp_reported: 0,
             tx_amsdu_mpdu: 0,
             tx_amsdu_msdu: 0,
         })
@@ -294,22 +614,6 @@ impl Monitor {
             let ssn = u16::from_le_bytes([bytes[31], bytes[32]]) >> 4;
             println!("OWLY_TX_ADDBA_REQ_SENT token={token} params=0x{params:04x} ssn={ssn}");
             self.tx_addba_reported = self.tx_addba_reported.saturating_add(1);
-        }
-    }
-
-    fn report_first_rx_addba_resp(&mut self, bytes: &[u8]) {
-        if self.rx_addba_resp_reported >= 8 || bytes.len() < 33 || bytes[0] != 0xd0 {
-            return;
-        }
-        if bytes[24] == 3 && bytes[25] == 1 {
-            let token = bytes[26];
-            let status = u16::from_le_bytes([bytes[27], bytes[28]]);
-            let params = u16::from_le_bytes([bytes[29], bytes[30]]);
-            let win = (params >> 6) & 0x3ff;
-            println!(
-                "OWLY_TX_ADDBA_RESP_RCVD token={token} status={status} params=0x{params:04x} win={win}"
-            );
-            self.rx_addba_resp_reported = self.rx_addba_resp_reported.saturating_add(1);
         }
     }
 
@@ -352,6 +656,33 @@ impl Monitor {
         );
         *reported = true;
     }
+
+    fn note_tx_sent(&mut self, bytes: &[u8]) {
+        self.tx_submitted += 1;
+        self.report_first_submitted_action(bytes);
+        self.report_first_tx_addba(bytes);
+        if let Some(msdus) = count_amsdu_subframes(bytes) {
+            self.tx_amsdu_mpdu += 1;
+            self.tx_amsdu_msdu += msdus;
+        }
+    }
+
+    fn send_one_raw(fd: &OwnedFd, frame: &Frame) -> io::Result<()> {
+        let mut hdr = [0u8; 16];
+        let hdr_len = radiotap::write_tx_header(frame.rate, frame.no_ack, &mut hdr);
+        let total = hdr_len + frame.bytes.len();
+        let iov = [
+            libc::iovec {
+                iov_base: hdr.as_ptr().cast_mut().cast(),
+                iov_len: hdr_len,
+            },
+            libc::iovec {
+                iov_base: frame.bytes.as_ptr().cast_mut().cast(),
+                iov_len: frame.bytes.len(),
+            },
+        ];
+        write_iovec(fd, &iov, total, "short air frame write")
+    }
 }
 
 impl Drop for Monitor {
@@ -367,48 +698,16 @@ impl Drop for Monitor {
                 &raw mut len,
             )
         } == 0;
-        if let Some(rx_gaps) = &self.rx_gaps {
+        if let Some(rx_gaps) = &self.rx_tel.rx_gaps {
             rx_gaps.report();
         }
-        tracing::info!(air_rx_invalid = self.rx_invalid.0,
+        tracing::info!(air_rx_invalid = self.rx_tel.rx_invalid.0,
                        air_rx_kernel_packets = if stats_ok { stats.tp_packets as u64 } else { u64::MAX },
                        air_rx_kernel_drops = if stats_ok { stats.tp_drops as u64 } else { u64::MAX },
                        air_tx_fatal = self.tx_fatal.0,
                        air_tx_backpressure = self.tx_backpressure, air_tx_submitted = self.tx_submitted,
                        air_tx_amsdu_mpdu = self.tx_amsdu_mpdu, air_tx_amsdu_msdu = self.tx_amsdu_msdu,
                        "monitor totals");
-    }
-}
-
-impl Monitor {
-    fn decode_rx(&mut self, n: usize) -> Option<Received> {
-        let Some(received) = self.rx.get(..n).and_then(radiotap::parse) else {
-            self.rx_invalid
-                .record("air rx", &"invalid or truncated radiotap frame");
-            return None;
-        };
-        // The transmitter is Address 2 of every supported AWDL frame.
-        if received.freq.is_some_and(|freq| freq != 5745)
-            || (self.peer.0 != [0; 6]
-                && received.frame.get(10..16) != Some(self.peer.0.as_slice()))
-        {
-            return None;
-        }
-        let raw = received.frame;
-        if let Some(rx_gaps) = &mut self.rx_gaps
-            && raw.len() >= 1536
-            && raw[0] == 0x88
-            && raw[1] & 0xc7 == 0
-            && raw[22] & 0x0f == 0
-            && raw[4..10] == self.own.0
-            && raw[16..22] == [0x00, 0x25, 0, 0xff, 0x94, 0x73]
-        {
-            rx_gaps.record(received.tsft_us, Instant::now());
-        }
-        let bytes = raw.to_vec();
-        let rssi = received.rssi;
-        self.report_first_rx_addba_resp(&bytes);
-        Some(Received { bytes, rssi })
     }
 }
 
@@ -436,73 +735,128 @@ fn count_amsdu_subframes(bytes: &[u8]) -> Option<u64> {
 
 impl Air for Monitor {
     async fn recv(&mut self) -> io::Result<Received> {
+        let mut out = None;
+        self.wait_or_recv().await?;
+        self.drain_rx(1, |rssi, bytes| {
+            out = Some(Received {
+                bytes: bytes.to_vec(),
+                rssi,
+            });
+        })?;
+        if let Some(r) = out {
+            return Ok(r);
+        }
+        Err(io::Error::new(io::ErrorKind::WouldBlock, "no frame ready"))
+    }
+
+    async fn wait_or_recv(&mut self) -> io::Result<AirRx> {
         let mut skip = SkipBudget::new(RX_SKIP_LIMIT);
         loop {
-            let mut ready = self.fd.readable().await?;
-            let read = ready.try_io(|fd| {
-                // MSG_TRUNC reports the original size even if the buffer was too small.
-                syscall(unsafe {
-                    libc::recv(
-                        fd.get_ref().as_raw_fd(),
-                        self.rx.as_mut_ptr().cast(),
-                        self.rx.len(),
-                        libc::MSG_TRUNC,
-                    )
-                })
-            });
-            match read {
-                Ok(Ok(0)) => return Err(io::ErrorKind::UnexpectedEof.into()),
-                Ok(Ok(n)) => {
-                    if let Some(received) = self.decode_rx(n) {
-                        return Ok(received);
+            match &mut self.rx {
+                RxBackend::Ring(ring) => {
+                    let mut skipped = 0;
+                    while let Some(raw) = ring.peek_slice() {
+                        if self.rx_tel.validate(raw).is_some() {
+                            return Ok(AirRx::Ready);
+                        }
+                        ring.release_slot();
+                        skipped += 1;
+                        if skipped >= RX_SKIP_LIMIT {
+                            break;
+                        }
                     }
-                    skip.note_skip().await;
+                    if skipped >= RX_SKIP_LIMIT {
+                        skip.note_skip().await;
+                        continue;
+                    }
                 }
-                Ok(Err(e)) if e.kind() != io::ErrorKind::Interrupted => return Err(e),
-                _ => {}
+                RxBackend::Recvmmsg(batch) => {
+                    let mut skipped = 0;
+                    while let Some(raw) = batch.peek_slice() {
+                        if self.rx_tel.validate(raw).is_some() {
+                            return Ok(AirRx::Ready);
+                        }
+                        batch.release_slot();
+                        skipped += 1;
+                        if skipped >= RX_SKIP_LIMIT {
+                            break;
+                        }
+                    }
+                    if skipped >= RX_SKIP_LIMIT {
+                        skip.note_skip().await;
+                        continue;
+                    }
+                    match batch.fill(self.fd.get_ref().as_raw_fd()) {
+                        Ok(0) => return Err(io::ErrorKind::UnexpectedEof.into()),
+                        Ok(_) => continue,
+                        Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
+                        Err(e) if e.kind() != io::ErrorKind::WouldBlock => return Err(e),
+                        Err(_) => {}
+                    }
+                }
             }
+            let mut guard = self.fd.readable().await?;
+            guard.clear_ready();
         }
     }
 
-    fn try_recv(&mut self) -> io::Result<Option<Received>> {
-        for _ in 0..RX_SKIP_LIMIT {
-            let read = syscall(unsafe {
-                libc::recv(
-                    self.fd.get_ref().as_raw_fd(),
-                    self.rx.as_mut_ptr().cast(),
-                    self.rx.len(),
-                    libc::MSG_TRUNC,
-                )
-            });
-            match read {
-                Ok(0) => return Err(io::ErrorKind::UnexpectedEof.into()),
-                Ok(n) => {
-                    if let Some(received) = self.decode_rx(n) {
-                        return Ok(Some(received));
+    fn drain_rx<F>(&mut self, limit: usize, mut on_frame: F) -> io::Result<()>
+    where
+        F: FnMut(Option<i8>, &[u8]),
+    {
+        let mut delivered = 0usize;
+        let mut skipped = 0usize;
+        match &mut self.rx {
+            RxBackend::Ring(ring) => {
+                while delivered < limit && skipped < RX_SKIP_LIMIT {
+                    let Some(raw) = ring.peek_slice() else {
+                        break;
+                    };
+                    if let Some(received) = self.rx_tel.validate(raw) {
+                        self.rx_tel.accept(&received);
+                        on_frame(received.rssi, received.frame);
+                        delivered += 1;
+                        skipped = 0;
+                    } else {
+                        skipped += 1;
                     }
+                    ring.release_slot();
                 }
-                Err(e) if e.kind() == io::ErrorKind::WouldBlock => return Ok(None),
-                Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
-                Err(e) => return Err(e),
+            }
+            RxBackend::Recvmmsg(batch) => {
+                let raw_fd = self.fd.get_ref().as_raw_fd();
+                while delivered < limit && skipped < RX_SKIP_LIMIT {
+                    if batch.peek_slice().is_none() {
+                        match batch.fill(raw_fd) {
+                            Ok(0) => return Err(io::ErrorKind::UnexpectedEof.into()),
+                            Ok(_) => {}
+                            Err(e) if e.kind() == io::ErrorKind::WouldBlock => break,
+                            Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
+                            Err(e) => return Err(e),
+                        }
+                    }
+                    let Some(raw) = batch.peek_slice() else {
+                        break;
+                    };
+                    if let Some(received) = self.rx_tel.validate(raw) {
+                        self.rx_tel.accept(&received);
+                        on_frame(received.rssi, received.frame);
+                        delivered += 1;
+                        skipped = 0;
+                    } else {
+                        skipped += 1;
+                    }
+                    batch.release_slot();
+                }
             }
         }
-        Ok(None)
+        Ok(())
     }
 
     fn send(&mut self, frame: Frame) -> Result<(), Frame> {
-        self.tx.clear();
-        self.tx
-            .extend_from_slice(&radiotap::tx_header(frame.rate, frame.no_ack));
-        self.tx.extend_from_slice(&frame.bytes);
-        match write_packet(self.fd.get_ref(), &self.tx) {
+        match Self::send_one_raw(self.fd.get_ref(), &frame) {
             Ok(()) => {
-                self.tx_submitted += 1;
-                self.report_first_submitted_action(&frame.bytes);
-                self.report_first_tx_addba(&frame.bytes);
-                if let Some(msdus) = count_amsdu_subframes(&frame.bytes) {
-                    self.tx_amsdu_mpdu += 1;
-                    self.tx_amsdu_msdu += msdus;
-                }
+                self.note_tx_sent(&frame.bytes);
                 Ok(())
             }
             Err(e) if matches!(e.raw_os_error(), Some(libc::EAGAIN) | Some(libc::ENOBUFS)) => {
@@ -514,6 +868,99 @@ impl Air for Monitor {
                 Ok(())
             }
         }
+    }
+
+    fn supports_batch(&self) -> bool {
+        true
+    }
+
+    fn send_batch(
+        &mut self,
+        frames: &mut VecDeque<(Time, Frame)>,
+        recycled: &mut Vec<Vec<u8>>,
+    ) -> (usize, bool) {
+        let mut total_sent = 0usize;
+        let raw_fd = self.fd.get_ref().as_raw_fd();
+        while !frames.is_empty() {
+            let batch_len = frames.len().min(TX_BATCH_CAP);
+            let mut hdrs = [[0u8; 16]; TX_BATCH_CAP];
+            let mut iovs = [[libc::iovec {
+                iov_base: ptr::null_mut(),
+                iov_len: 0,
+            }; 2]; TX_BATCH_CAP];
+            let mut msgs: [libc::mmsghdr; TX_BATCH_CAP] = unsafe { zeroed() };
+
+            for (i, (_, frame)) in frames.iter().take(batch_len).enumerate() {
+                let hdr_len = radiotap::write_tx_header(frame.rate, frame.no_ack, &mut hdrs[i]);
+                iovs[i][0].iov_base = hdrs[i].as_ptr().cast_mut().cast();
+                iovs[i][0].iov_len = hdr_len;
+                iovs[i][1].iov_base = frame.bytes.as_ptr().cast_mut().cast();
+                iovs[i][1].iov_len = frame.bytes.len();
+                msgs[i].msg_hdr.msg_iov = iovs[i].as_mut_ptr();
+                msgs[i].msg_hdr.msg_iovlen = 2 as _;
+            }
+
+            let res = syscall(unsafe {
+                libc::sendmmsg(raw_fd, msgs.as_mut_ptr(), batch_len as _, 0)
+            } as libc::ssize_t);
+            match res {
+                Ok(n) if n > 0 => {
+                    for _ in 0..n {
+                        if let Some((_, mut frame)) = frames.pop_front() {
+                            self.note_tx_sent(&frame.bytes);
+                            frame.bytes.clear();
+                            recycled.push(frame.bytes);
+                            total_sent += 1;
+                        }
+                    }
+                    if n < batch_len {
+                        // Kernel stopped at frame `n`; probe head to distinguish backpressure vs fatal.
+                        if let Some((_, head)) = frames.front() {
+                            match Self::send_one_raw(self.fd.get_ref(), head) {
+                                Ok(()) => {
+                                    let (_, mut frame) = frames.pop_front().unwrap();
+                                    self.note_tx_sent(&frame.bytes);
+                                    frame.bytes.clear();
+                                    recycled.push(frame.bytes);
+                                    total_sent += 1;
+                                }
+                                Err(e)
+                                    if matches!(
+                                        e.raw_os_error(),
+                                        Some(libc::EAGAIN) | Some(libc::ENOBUFS)
+                                    ) =>
+                                {
+                                    self.tx_backpressure += 1;
+                                    return (total_sent, true);
+                                }
+                                Err(e) => {
+                                    self.tx_fatal.record("air tx", &e);
+                                    let (_, mut frame) = frames.pop_front().unwrap();
+                                    frame.bytes.clear();
+                                    recycled.push(frame.bytes);
+                                }
+                            }
+                        }
+                    }
+                }
+                Ok(_) => break,
+                Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
+                Err(e)
+                    if matches!(e.raw_os_error(), Some(libc::EAGAIN) | Some(libc::ENOBUFS)) =>
+                {
+                    self.tx_backpressure += 1;
+                    return (total_sent, true);
+                }
+                Err(e) => {
+                    self.tx_fatal.record("air tx", &e);
+                    if let Some((_, mut frame)) = frames.pop_front() {
+                        frame.bytes.clear();
+                        recycled.push(frame.bytes);
+                    }
+                }
+            }
+        }
+        (total_sent, false)
     }
 }
 
@@ -614,7 +1061,11 @@ impl Tun {
     }
 
     fn deliver(&mut self, packet: Ipv6Packet) {
-        if let Err(e) = write_packet(self.fd.get_ref(), &packet.data) {
+        self.deliver_slice(&packet.data);
+    }
+
+    fn deliver_slice(&mut self, data: &[u8]) {
+        if let Err(e) = write_packet(self.fd.get_ref(), data) {
             self.delivery_drops.record("tun deliver", &e);
         }
     }
@@ -799,7 +1250,11 @@ impl NeighBackend for RtnlNeigh {
 /// L2 Ethernet TAP interface (`xos0`) for native MIShare compatibility.
 struct Tap {
     fd: AsyncFd<OwnedFd>,
+    vnet_hdr: bool,
     rx: Vec<u8>,
+    pending_tx: VecDeque<Ipv6Packet>,
+    tx_pool: Vec<Vec<u8>>,
+    mdns_scratch: Vec<u8>,
     own: MacAddr,
     neigh: NeighWorker,
     rx_invalid: DropCount,
@@ -812,10 +1267,19 @@ struct Tap {
 
 impl Tap {
     fn open(addr: MacAddr, peer_sync: KernelPeerSync) -> io::Result<Self> {
-        let fd = open_netif_fd(
-            TAP,
-            (libc::IFF_TAP | libc::IFF_NO_PI | libc::IFF_TUN_EXCL) as _,
-        )?;
+        let tap_flags = (libc::IFF_TAP | libc::IFF_NO_PI | libc::IFF_TUN_EXCL)
+            | libc::c_int::from(vnet::IFF_VNET_HDR);
+        let fd = open_netif_fd(TAP, tap_flags as libc::c_short)?;
+        let vnet_sz: libc::c_int = vnet::VNET_HDR_LEN as _;
+        syscall(unsafe {
+            libc::ioctl(fd.as_raw_fd(), vnet::TUNSETVNETHDRSZ as _, &raw const vnet_sz)
+        } as libc::ssize_t)?;
+        let offloads: libc::c_ulong = libc::c_ulong::from(vnet::TUN_F_CSUM | vnet::TUN_F_TSO6);
+        syscall(unsafe {
+            libc::ioctl(fd.as_raw_fd(), vnet::TUNSETOFFLOAD as _, offloads)
+        } as libc::ssize_t)?;
+        println!("OWLY_TAP_OFFLOAD vnet_hdr=1 vnet_hdr_sz={vnet_sz} csum=1 tso6=1");
+
         let mac = addr.to_string();
         ip(&[
             "link",
@@ -843,7 +1307,11 @@ impl Tap {
         let (inject_tx, inject_rx) = mpsc::unbounded_channel();
         Ok(Self {
             fd: register(fd)?,
-            rx: vec![0; PACKET_BUFFER],
+            vnet_hdr: true,
+            rx: vec![0; TAP_VNET_BUFFER],
+            pending_tx: VecDeque::with_capacity(64),
+            tx_pool: (0..TX_POOL_INIT).map(|_| Vec::with_capacity(2048)).collect(),
+            mdns_scratch: Vec::with_capacity(2048),
             own: addr,
             neigh,
             rx_invalid: DropCount::default(),
@@ -859,7 +1327,7 @@ impl Tap {
         match injected {
             TapInject::Outbound(packet) => Some(packet),
             TapInject::InboundTap(eth) => {
-                if let Err(e) = write_packet(self.fd.get_ref(), &eth) {
+                if let Err(e) = write_tap_raw(self.fd.get_ref(), self.vnet_hdr, &eth) {
                     self.delivery_drops.record("tap mdns prompt", &e);
                 }
                 None
@@ -868,24 +1336,35 @@ impl Tap {
     }
 
     fn process_rx_frame(&mut self, n: usize) -> Option<Ipv6Packet> {
-        let frame = &self.rx[..n];
-        let Some(packet) = Ipv6Packet::from_ethernet(frame) else {
-            if frame.get(12..14) == Some(&[0x86, 0xdd]) {
-                self.rx_invalid
-                    .record("tap rx", &"truncated IPv6 ethernet frame");
-            }
-            return None;
-        };
-        if let Some(na_eth) = crate::ndp::synthesize_na_for_ns(&packet, self.own) {
-            if let Err(e) = write_packet(self.fd.get_ref(), &na_eth) {
-                self.delivery_drops.record("tap ndp reply", &e);
-            }
-            return None;
+        let raw = &mut self.rx[..n];
+        let vnet_hdr = self.vnet_hdr;
+        let own = self.own;
+        let fd = &self.fd;
+        let tx_pool = &mut self.tx_pool;
+        let pending_tx = &mut self.pending_tx;
+        let delivery_drops = &mut self.delivery_drops;
+        let res = vnet::process_tap_tx(
+            raw,
+            vnet_hdr,
+            own,
+            &mut || tx_pool.pop().unwrap_or_else(|| Vec::with_capacity(2048)),
+            |na_eth| {
+                if let Err(e) = write_tap_raw(fd.get_ref(), vnet_hdr, na_eth) {
+                    delivery_drops.record("tap ndp reply", &e);
+                }
+            },
+            |packet| pending_tx.push_back(packet),
+        );
+        if let Err(msg) = res {
+            self.rx_invalid.record("tap rx", &msg);
         }
-        Some(packet)
+        self.pending_tx.pop_front()
     }
 
     async fn recv(&mut self) -> io::Result<Ipv6Packet> {
+        if let Some(packet) = self.pending_tx.pop_front() {
+            return Ok(packet);
+        }
         let mut skip = SkipBudget::new(RX_SKIP_LIMIT);
         loop {
             tokio::select! {
@@ -911,6 +1390,9 @@ impl Tap {
     }
 
     fn try_recv(&mut self) -> io::Result<Option<Ipv6Packet>> {
+        if let Some(packet) = self.pending_tx.pop_front() {
+            return Ok(Some(packet));
+        }
         for _ in 0..RX_SKIP_LIMIT {
             match self.inject_rx.try_recv() {
                 Ok(injected) => {
@@ -938,8 +1420,24 @@ impl Tap {
     fn deliver(&mut self, mut packet: Ipv6Packet) {
         crate::ndp::fanout_unicast_mdns_response(&mut packet, self.own);
         let hdr = packet.ethernet_header();
-        if let Err(e) = write_tap_ethernet(self.fd.get_ref(), &hdr, &packet.data) {
+        if let Err(e) = write_tap_ethernet(self.fd.get_ref(), self.vnet_hdr, &hdr, &packet.data) {
             self.delivery_drops.record("tap deliver", &e);
+        }
+    }
+
+    fn deliver_slice(&mut self, dst: MacAddr, src: MacAddr, data: &[u8]) {
+        let (eff_dst, payload) =
+            crate::ndp::maybe_fanout_mdns_slice(dst, data, self.own, &mut self.mdns_scratch);
+        let hdr = owly_awdl::ip::ethernet_header_for(eff_dst, src, payload);
+        if let Err(e) = write_tap_ethernet(self.fd.get_ref(), self.vnet_hdr, &hdr, payload) {
+            self.delivery_drops.record("tap deliver", &e);
+        }
+    }
+
+    fn recycle_packet_buf(&mut self, mut buf: Vec<u8>) {
+        buf.clear();
+        if self.tx_pool.len() < TX_POOL_MAX && buf.capacity() <= 4_096 {
+            self.tx_pool.push(buf);
         }
     }
 
@@ -1031,6 +1529,19 @@ impl Netif for HostNetif {
         match self {
             Self::Tun(tun) => tun.deliver(packet),
             Self::Tap(tap) => tap.deliver(packet),
+        }
+    }
+
+    fn deliver_slice(&mut self, dst: MacAddr, src: MacAddr, data: &[u8]) {
+        match self {
+            Self::Tun(tun) => tun.deliver_slice(data),
+            Self::Tap(tap) => tap.deliver_slice(dst, src, data),
+        }
+    }
+
+    fn recycle_packet_buf(&mut self, buf: Vec<u8>) {
+        if let Self::Tap(tap) = self {
+            tap.recycle_packet_buf(buf);
         }
     }
 

@@ -110,7 +110,7 @@ ensure_rule() {
  prio="$1"
  pattern="$2"
  shift 2
- matches=$(printf '%s\n' "$rules_dump" | grep -cE "^$prio:[[:space:]].*$pattern" || true)
+ matches=$(printf '%s\n' "$rules_dump" | grep -cE "^$prio:[[:space:]]+$pattern[[:space:]]*$" || true)
  total=$(printf '%s\n' "$rules_dump" | grep -cE "^$prio:[[:space:]]" || true)
  if test "$matches" = 1 && test "$total" = 1; then
   return 0
@@ -125,9 +125,9 @@ routes() {
  ip -6 route replace fe80::/64 dev "$IFACE" table "$TABLE"
  ip -6 route replace ff00::/8 dev "$IFACE" table "$TABLE"
  rules_dump=$(ip -6 rule show 2>/dev/null || true)
- ensure_rule 10980 "to fe80::/64[[:space:]].*oif $IFACE[[:space:]].*uidrange 0-0[[:space:]].*lookup $TABLE([[:space:]]|$)" to fe80::/64 oif "$IFACE" uidrange 0-0 lookup "$TABLE"
- ensure_rule 10981 "to ff00::/8[[:space:]].*oif $IFACE[[:space:]].*uidrange 0-0[[:space:]].*lookup $TABLE([[:space:]]|$)" to ff00::/8 oif "$IFACE" uidrange 0-0 lookup "$TABLE"
- ensure_rule 10982 "from $addr(/128)?[[:space:]].*lookup $TABLE([[:space:]]|$)" from "$addr/128" lookup "$TABLE"
+ ensure_rule 10980 "from all[[:space:]]+to fe80::/64[[:space:]]+oif $IFACE[[:space:]]+uidrange 0-0[[:space:]]+lookup $TABLE" to fe80::/64 oif "$IFACE" uidrange 0-0 lookup "$TABLE"
+ ensure_rule 10981 "from all[[:space:]]+to ff00::/8[[:space:]]+oif $IFACE[[:space:]]+uidrange 0-0[[:space:]]+lookup $TABLE" to ff00::/8 oif "$IFACE" uidrange 0-0 lookup "$TABLE"
+ ensure_rule 10982 "from $addr(/128)?[[:space:]]+lookup $TABLE" from "$addr/128" lookup "$TABLE"
 }
 
 runner_alive() {

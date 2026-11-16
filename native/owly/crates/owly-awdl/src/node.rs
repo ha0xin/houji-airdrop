@@ -58,6 +58,43 @@ pub enum Action {
     Deliver(Ipv6Packet),
 }
 
+/// Zero-copy counterpart of [`Action`] yielded by [`Node::handle_with`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ActionRef<'a> {
+    Transmit { at: Time, frame: Frame },
+    ArmTimer(Time),
+    PeerUp(PeerInfo),
+    PeerCaps(MacAddr, PeerCaps),
+    PeerDown(MacAddr),
+    /// Borrows the incoming IPv6 payload slice directly from the RX frame buffer.
+    DeliverSlice {
+        dst: MacAddr,
+        src: MacAddr,
+        data: &'a [u8],
+    },
+    /// Delivers an already-owned IPv6 packet (held SYN release or local loopback).
+    Deliver(Ipv6Packet),
+}
+
+impl ActionRef<'_> {
+    /// Converts this borrowed action into an owned [`Action`].
+    pub fn into_action(self) -> Action {
+        match self {
+            Self::Transmit { at, frame } => Action::Transmit { at, frame },
+            Self::ArmTimer(t) => Action::ArmTimer(t),
+            Self::PeerUp(p) => Action::PeerUp(p),
+            Self::PeerCaps(m, caps) => Action::PeerCaps(m, caps),
+            Self::PeerDown(m) => Action::PeerDown(m),
+            Self::DeliverSlice { dst, src, data } => Action::Deliver(Ipv6Packet {
+                dst,
+                src,
+                data: data.to_vec(),
+            }),
+            Self::Deliver(p) => Action::Deliver(p),
+        }
+    }
+}
+
 /// How a radio is present on AWDL: the one channel it stays on, and how.
 /// Neither presence hops; a
 /// radio that does would bring a third.
@@ -242,6 +279,10 @@ const AMSDU_PACKETS: usize = 8;
 /// What a peer that announces no HT capabilities is assumed to take.
 const AMSDU_DEFAULT_MAX: usize = 3839;
 
+const POOLED_FRAMES_MAX: usize = 64;
+const POOLED_PACKETS_MAX: usize = 256;
+const STACK_TX_PEERS: usize = 16;
+
 struct Queued {
     packet: Ipv6Packet,
     at: Time,
@@ -273,6 +314,8 @@ pub struct Node {
     /// ours (a shared radio).
     no_overlap: Option<(MacAddr, u8)>,
     stats: Stats,
+    frame_pool: Vec<Vec<u8>>,
+    packet_pool: Vec<Vec<u8>>,
 }
 
 impl Node {
@@ -304,6 +347,8 @@ impl Node {
             resume: None,
             no_overlap: None,
             stats: Stats::default(),
+            frame_pool: Vec::with_capacity(POOLED_FRAMES_MAX),
+            packet_pool: Vec::with_capacity(POOLED_PACKETS_MAX),
         }
     }
 
@@ -311,24 +356,66 @@ impl Node {
     /// time to be called back.
     pub fn handle(&mut self, input: Input) -> impl Iterator<Item = Action> + use<> {
         let mut out = Vec::new();
+        self.handle_with(input, |a| out.push(a.into_action()));
+        out.into_iter()
+    }
+
+    /// Zero-copy variant of [`Node::handle`] invoking `emit` directly without
+    /// allocating an intermediate `Vec<Action>` or cloning RX IPv6 payloads.
+    pub fn handle_with<'a, F>(&mut self, input: Input<'a>, mut emit: F)
+    where
+        F: FnMut(ActionRef<'a>),
+    {
         let now = match input {
             Input::Frame {
                 rx_time,
                 rssi,
                 bytes,
             } => {
-                self.receive(rx_time, rssi, bytes, &mut out);
+                self.receive(rx_time, rssi, bytes, &mut emit);
                 rx_time
             }
             Input::Timer(now) => now,
             Input::Outbound { now, packet } => {
-                self.enqueue(now, packet, &mut out);
+                self.enqueue(now, packet, &mut emit);
                 now
             }
         };
-        self.service(now, &mut out);
-        out.push(Action::ArmTimer(self.deadline(now)));
-        out.into_iter()
+        self.service(now, &mut emit);
+        emit(ActionRef::ArmTimer(self.deadline(now)));
+    }
+
+    /// Returns a sent TX frame's byte buffer to the internal reuse pool.
+    pub fn recycle_frame_buf(&mut self, mut buf: Vec<u8>) {
+        buf.clear();
+        if self.frame_pool.len() < POOLED_FRAMES_MAX
+            && buf.capacity() >= 256
+            && buf.capacity() <= 16_384
+        {
+            self.frame_pool.push(buf);
+        }
+    }
+
+    /// Drains consumed outbound `Ipv6Packet.data` buffers so the host [`Netif`] can reuse them.
+    pub fn drain_recycled_packets(&mut self, mut sink: impl FnMut(Vec<u8>)) {
+        while let Some(buf) = self.packet_pool.pop() {
+            sink(buf);
+        }
+    }
+
+    fn take_frame_buf(&mut self) -> Vec<u8> {
+        self.frame_pool.pop().unwrap_or_default()
+    }
+
+    fn retire_packet(&mut self, packet: Ipv6Packet) {
+        let mut data = packet.data;
+        data.clear();
+        if self.packet_pool.len() < POOLED_PACKETS_MAX
+            && data.capacity() >= 256
+            && data.capacity() <= 4_096
+        {
+            self.packet_pool.push(data);
+        }
     }
 
     pub fn config(&self) -> &Config {
@@ -402,7 +489,13 @@ impl Node {
         self.cfg.radio.presence == Presence::Fixed
     }
 
-    fn receive(&mut self, now: Time, rssi: Option<i8>, bytes: &[u8], out: &mut Vec<Action>) {
+    fn receive<'a, F: FnMut(ActionRef<'a>)>(
+        &mut self,
+        now: Time,
+        rssi: Option<i8>,
+        bytes: &'a [u8],
+        emit: &mut F,
+    ) {
         let parsed = match frame::parse(bytes) {
             Ok(p) => p,
             Err(_) => {
@@ -417,7 +510,7 @@ impl Node {
                 tlvs,
                 ..
             } if header.src != self.cfg.addr => {
-                self.rx_action(now, rssi, header.src, subtype, tlvs, out)
+                self.rx_action(now, rssi, header.src, subtype, tlvs, emit)
             }
             Received::AddBaRequest {
                 header,
@@ -438,7 +531,7 @@ impl Node {
                         self.cfg.accept_addba_amsdu,
                     );
                     self.stats.tx_addba_resp += 1;
-                    out.push(Action::Transmit {
+                    emit(ActionRef::Transmit {
                         at: now,
                         frame: Frame {
                             bytes,
@@ -530,20 +623,20 @@ impl Node {
                 } else {
                     16
                 };
-                self.rx_data(now, &header, tid_slot, amsdu, body, out);
+                self.rx_data(now, &header, tid_slot, amsdu, body, emit);
             }
             _ => {}
         }
     }
 
-    fn rx_action(
+    fn rx_action<'a, F: FnMut(ActionRef<'a>)>(
         &mut self,
         now: Time,
         rssi: Option<i8>,
         src: MacAddr,
         subtype: u8,
         tlvs: &[u8],
-        out: &mut Vec<Action>,
+        emit: &mut F,
     ) {
         let known = self.peers.contains_key(&src);
         if let (Some(threshold), Some(r)) = (self.cfg.rssi_threshold, rssi) {
@@ -562,7 +655,7 @@ impl Node {
             return;
         };
         if !known && self.peers.len() >= self.cfg.max_peers.max(1) {
-            self.evict_stalest(out);
+            self.evict_stalest(emit);
         }
         self.stats.rx_action += 1;
         let ours = self.election.sync == src;
@@ -586,13 +679,13 @@ impl Node {
         }
         if up {
             let info = peer.info();
-            out.push(Action::PeerUp(info));
+            emit(ActionRef::PeerUp(info));
             if self.cfg.initiate_addba {
-                self.maybe_initiate_addba(now, src, out);
+                self.maybe_initiate_addba(now, src, emit);
             }
-            self.release_syns(src, out);
+            self.release_syns(src, emit);
         } else if was_valid && peer_valid && prev_caps != new_caps {
-            out.push(Action::PeerCaps(src, new_caps));
+            emit(ActionRef::PeerCaps(src, new_caps));
         }
         if self.cfg.fast_discovery
             && (!known || !peer_valid)
@@ -605,22 +698,15 @@ impl Node {
         }
     }
 
-    fn rx_data(
+    fn rx_data<'a, F: FnMut(ActionRef<'a>)>(
         &mut self,
         now: Time,
         header: &frame::Header,
         tid_slot: usize,
         amsdu: bool,
-        body: &[u8],
-        out: &mut Vec<Action>,
+        body: &'a [u8],
+        emit: &mut F,
     ) {
-        let msdus = match frame::msdus(header, amsdu, body) {
-            Ok(m) => m,
-            Err(_) => {
-                self.stats.rx_malformed += 1;
-                return;
-            }
-        };
         let src = header.src;
         let peer = self.peers.get_mut(&src);
         let (known, valid) = match peer {
@@ -643,34 +729,53 @@ impl Node {
             }
             None => (false, false),
         };
-        self.stats.rx_data += 1;
-        for m in msdus {
+        let mut delivered_any = false;
+        let res = frame::visit_msdus(header, amsdu, body, |m| {
+            if !delivered_any {
+                self.stats.rx_data += 1;
+                delivered_any = true;
+            }
             // NET-3: IPv6 only. And never another node's unicast, which a
             // monitor hears too.
             if m.ethertype != 0x86dd || !(m.dst == self.cfg.addr || m.dst.is_multicast()) {
-                continue;
+                return;
             }
-            let packet = Ipv6Packet {
-                dst: m.dst,
-                src: m.src,
-                data: m.payload.to_vec(),
-            };
             if valid {
-                if packet.dst == self.cfg.addr && packet.is_echo_reply(ECHO_ID) {
-                    continue;
+                if m.dst == self.cfg.addr && crate::ip::is_echo_reply_data(m.payload, ECHO_ID) {
+                    return;
                 }
                 self.stats.delivered += 1;
-                out.push(Action::Deliver(packet));
-            } else if packet.is_bare_syn_to(self.cfg.addr) {
+                emit(ActionRef::DeliverSlice {
+                    dst: m.dst,
+                    src: m.src,
+                    data: m.payload,
+                });
+            } else if crate::ip::is_bare_syn_data(m.dst, self.cfg.addr, m.payload) {
                 // A phone can open its connection before the MIF that makes
                 // it valid. Delivered now, the kernel's answer would wait on
                 // a neighbour entry that doesn't exist yet.
-                self.hold_syn(now, packet);
+                self.hold_syn(
+                    now,
+                    Ipv6Packet {
+                        dst: m.dst,
+                        src: m.src,
+                        data: m.payload.to_vec(),
+                    },
+                );
             } else if known {
                 // Legacy handed on data from any peer in its table.
                 self.stats.delivered += 1;
-                out.push(Action::Deliver(packet));
+                emit(ActionRef::DeliverSlice {
+                    dst: m.dst,
+                    src: m.src,
+                    data: m.payload,
+                });
             }
+        });
+        if res.is_err() {
+            self.stats.rx_malformed += 1;
+        } else if !delivered_any {
+            self.stats.rx_data += 1;
         }
     }
 
@@ -685,33 +790,42 @@ impl Node {
         self.held.push_back(Queued { packet, at: now });
     }
 
-    fn release_syns(&mut self, src: MacAddr, out: &mut Vec<Action>) {
+    fn release_syns<'a, F: FnMut(ActionRef<'a>)>(&mut self, src: MacAddr, emit: &mut F) {
         let held = core::mem::take(&mut self.held);
         for q in held {
             if q.packet.src == src {
                 self.stats.syn_released += 1;
                 self.stats.delivered += 1;
-                out.push(Action::Deliver(q.packet));
+                emit(ActionRef::Deliver(q.packet));
             } else {
                 self.held.push_back(q);
             }
         }
     }
 
-    fn enqueue(&mut self, now: Time, packet: Ipv6Packet, out: &mut Vec<Action>) {
+    fn enqueue<'a, F: FnMut(ActionRef<'a>)>(
+        &mut self,
+        now: Time,
+        packet: Ipv6Packet,
+        emit: &mut F,
+    ) {
         if packet.dst == self.cfg.addr {
-            out.push(Action::Deliver(packet));
+            emit(ActionRef::Deliver(packet));
             return;
         }
-        let queue = if packet.dst.is_multicast() {
+        let queued_packet = if packet.dst.is_multicast() {
             if self.multicast.len() == MULTICAST_QUEUE {
-                self.multicast.pop_front();
+                if let Some(evicted) = self.multicast.pop_front() {
+                    self.retire_packet(evicted.packet);
+                }
                 self.stats.dropped_queue_full += 1;
             }
-            &mut self.multicast
+            self.multicast.push_back(Queued { packet, at: now });
+            return;
         } else {
             let Some(peer) = self.peers.get(&packet.dst) else {
                 self.stats.dropped_no_peer += 1;
+                self.retire_packet(packet);
                 return;
             };
             let dst = packet.dst;
@@ -730,7 +844,8 @@ impl Node {
                         .pure_tcp_ack()
                         .is_some_and(|queued| ack.supersedes(&queued))
                 {
-                    existing.packet = packet;
+                    let prev = core::mem::replace(&mut existing.packet, packet);
+                    self.retire_packet(prev);
                     return;
                 }
             }
@@ -741,31 +856,41 @@ impl Node {
                     .iter()
                     .max_by_key(|(mac, q)| (q.len(), **mac != dst))
                     && let Some(victim) = self.unicast.get_mut(&victim_mac)
-                    && victim.pop_front().is_some()
+                    && let Some(evicted) = victim.pop_front()
                 {
+                    let empty = victim.is_empty();
                     self.unicast_total -= 1;
                     self.stats.dropped_queue_full += 1;
-                    if victim.is_empty() {
+                    if empty {
                         self.unicast.remove(&victim_mac);
                     }
+                    self.retire_packet(evicted.packet);
                 }
             }
             self.unicast_total += 1;
-            self.unicast.entry(dst).or_default()
+            let _ = dst;
+            packet
         };
-        queue.push_back(Queued { packet, at: now });
+        let dst = queued_packet.dst;
+        self.unicast
+            .entry(dst)
+            .or_default()
+            .push_back(Queued {
+                packet: queued_packet,
+                at: now,
+            });
     }
 
-    fn service(&mut self, now: Time, out: &mut Vec<Action>) {
+    fn service<'a, F: FnMut(ActionRef<'a>)>(&mut self, now: Time, emit: &mut F) {
         if now >= self.next_tick {
-            self.tick(now, out);
+            self.tick(now, emit);
             while self.next_tick <= now {
                 self.next_tick = self.next_tick.plus(TICK_US);
             }
         }
         if now >= self.next_psf {
             let f = self.action_frame(now, frame::subtype::PSF);
-            out.push(Action::Transmit { at: now, frame: f });
+            emit(ActionRef::Transmit { at: now, frame: f });
             let interval = PSF_INTERVAL_TU as u64 * TU;
             while self.next_psf <= now {
                 self.next_psf = self.next_psf.plus(interval);
@@ -774,7 +899,7 @@ impl Node {
         if now >= self.next_mif {
             // In the middle of the slot.
             let f = self.action_frame(now, frame::subtype::MIF);
-            out.push(Action::Transmit { at: now, frame: f });
+            emit(ActionRef::Transmit { at: now, frame: f });
             self.next_mif = now.plus(self.clock.next_slot_us(now) + SLOT_US / 2);
         }
         if self.cfg.neighbour_echo && now >= self.next_echo {
@@ -794,13 +919,13 @@ impl Node {
                     self.echo_seq,
                     ECHO_PAYLOAD,
                 );
-                self.enqueue(now, p, out);
+                self.enqueue(now, p, emit);
             }
         }
         self.resume = None;
         let mut sent = 0;
-        self.send_multicast(now, &mut sent, out);
-        self.send_unicast(now, &mut sent, out);
+        self.send_multicast(now, &mut sent, emit);
+        self.send_unicast(now, &mut sent, emit);
         if sent >= self.cfg.burst_limit.max(1) {
             self.resume = Some(now);
         }
@@ -811,6 +936,9 @@ impl Node {
             let dropped = q.len();
             self.unicast_total -= dropped;
             self.stats.dropped_no_peer += dropped as u64;
+            for item in q {
+                self.retire_packet(item.packet);
+            }
         }
     }
 
@@ -822,7 +950,7 @@ impl Node {
 
     /// Drops the peer heard from longest ago, preferring unvalidated or idle
     /// peers ahead of peers with active queued traffic.
-    fn evict_stalest(&mut self, out: &mut Vec<Action>) {
+    fn evict_stalest<'a, F: FnMut(ActionRef<'a>)>(&mut self, emit: &mut F) {
         let Some((mac, valid)) = self
             .peers
             .values()
@@ -838,11 +966,11 @@ impl Node {
         self.drop_peer_unicast(mac);
         self.stats.peers_evicted += 1;
         if valid {
-            out.push(Action::PeerDown(mac));
+            emit(ActionRef::PeerDown(mac));
         }
     }
 
-    fn tick(&mut self, now: Time, out: &mut Vec<Action>) {
+    fn tick<'a, F: FnMut(ActionRef<'a>)>(&mut self, now: Time, emit: &mut F) {
         let gone: Vec<(MacAddr, bool)> = self
             .peers
             .values()
@@ -853,7 +981,7 @@ impl Node {
             self.peers.remove(&mac);
             self.drop_peer_unicast(mac);
             if valid {
-                out.push(Action::PeerDown(mac));
+                emit(ActionRef::PeerDown(mac));
             }
         }
         let expired = |q: &Queued, limit: u64| now.since(q.at) >= limit;
@@ -1009,7 +1137,12 @@ impl Node {
         self.clock.next_slot_us(now) + guard
     }
 
-    fn send_multicast(&mut self, now: Time, sent: &mut usize, out: &mut Vec<Action>) {
+    fn send_multicast<'a, F: FnMut(ActionRef<'a>)>(
+        &mut self,
+        now: Time,
+        sent: &mut usize,
+        emit: &mut F,
+    ) {
         while *sent < self.cfg.burst_limit.max(1)
             && !self.multicast.is_empty()
             && self.multicast_wait(now) == 0
@@ -1018,15 +1151,17 @@ impl Node {
             let seq = self.next_seq();
             let awdl_seq = self.awdl_seq;
             self.awdl_seq = self.awdl_seq.wrapping_add(1);
-            let bytes =
-                frame::data_frame(self.cfg.addr, q.packet.dst, seq, awdl_seq, &q.packet.data);
+            let mut bytes = self.take_frame_buf();
+            let to = q.packet.dst;
+            frame::write_data_frame(&mut bytes, self.cfg.addr, to, seq, awdl_seq, &q.packet.data);
+            self.retire_packet(q.packet);
             self.stats.tx_multicast += 1;
             *sent += 1;
-            out.push(Action::Transmit {
+            emit(ActionRef::Transmit {
                 at: now,
                 frame: Frame {
                     bytes,
-                    to: q.packet.dst,
+                    to,
                     rate: self.cfg.rate.for_peer(None),
                     no_ack: false,
                 },
@@ -1046,7 +1181,12 @@ impl Node {
     const TX_ADDBA_MAX_ATTEMPTS: u8 = 4;
     const TX_ADDBA_COOLDOWN_US: u64 = 10_000_000;
 
-    fn maybe_initiate_addba(&mut self, now: Time, dst: MacAddr, out: &mut Vec<Action>) {
+    fn maybe_initiate_addba<'a, F: FnMut(ActionRef<'a>)>(
+        &mut self,
+        now: Time,
+        dst: MacAddr,
+        emit: &mut F,
+    ) {
         let (token, ssn) = {
             let Some(peer) = self.peers.get_mut(&dst) else {
                 return;
@@ -1086,7 +1226,7 @@ impl Node {
             ssn,
         );
         self.stats.tx_addba_req += 1;
-        out.push(Action::Transmit {
+        emit(ActionRef::Transmit {
             at: now,
             frame: Frame {
                 bytes,
@@ -1097,19 +1237,61 @@ impl Node {
         });
     }
 
-    fn send_unicast(&mut self, now: Time, sent: &mut usize, out: &mut Vec<Action>) {
-        if self.unicast_total == 0 {
+    fn send_unicast<'a, F: FnMut(ActionRef<'a>)>(
+        &mut self,
+        now: Time,
+        sent: &mut usize,
+        emit: &mut F,
+    ) {
+        let peer_count = self.unicast.len();
+        if self.unicast_total == 0 || peer_count == 0 {
             return;
         }
+        if peer_count <= STACK_TX_PEERS {
+            let mut order = [MacAddr([0; 6]); STACK_TX_PEERS];
+            for (slot, &mac) in order.iter_mut().zip(self.unicast.keys()) {
+                *slot = mac;
+            }
+            let mut peer_sent = [0usize; STACK_TX_PEERS];
+            let mut peer_blocked = [false; STACK_TX_PEERS];
+            self.send_unicast_round_robin(
+                now,
+                sent,
+                &mut order[..peer_count],
+                &mut peer_sent[..peer_count],
+                &mut peer_blocked[..peer_count],
+                emit,
+            );
+        } else {
+            let mut order: Vec<MacAddr> = self.unicast.keys().copied().collect();
+            let mut peer_sent = alloc::vec![0usize; peer_count];
+            let mut peer_blocked = alloc::vec![false; peer_count];
+            self.send_unicast_round_robin(
+                now,
+                sent,
+                &mut order,
+                &mut peer_sent,
+                &mut peer_blocked,
+                emit,
+            );
+        }
+    }
+
+    fn send_unicast_round_robin<'a, F: FnMut(ActionRef<'a>)>(
+        &mut self,
+        now: Time,
+        sent: &mut usize,
+        order: &mut [MacAddr],
+        peer_sent: &mut [usize],
+        peer_blocked: &mut [bool],
+        emit: &mut F,
+    ) {
         let budget = self.cfg.burst_limit.max(1);
-        let mut order: Vec<MacAddr> = self.unicast.keys().copied().collect();
         if let Some(cursor) = self.unicast_cursor
             && let Some(pos) = order.iter().position(|&mac| mac > cursor)
         {
             order.rotate_left(pos);
         }
-        let mut peer_sent = alloc::vec![0usize; order.len()];
-        let mut peer_blocked = alloc::vec![false; order.len()];
         while *sent < budget {
             let mut progressed = false;
             for (idx, &dst) in order.iter().enumerate() {
@@ -1145,7 +1327,10 @@ impl Node {
                     .map_or(AMSDU_DEFAULT_MAX, |h| h.max_amsdu())
                     .min(self.cfg.max_frame.saturating_sub(frame::HEADER_LEN + 2));
 
-                let mut batch = {
+                const NONE_QUEUED: Option<Queued> = None;
+                let mut batch = [NONE_QUEUED; AMSDU_PACKETS];
+                let mut batch_len;
+                {
                     let Some(q) = self.unicast.get_mut(&dst) else {
                         peer_blocked[idx] = true;
                         continue;
@@ -1155,12 +1340,15 @@ impl Node {
                         peer_blocked[idx] = true;
                         continue;
                     };
-                    let mut batch = Vec::from([first]);
+                    batch[0] = Some(first);
+                    batch_len = 1;
                     if amsdu_allowed {
-                        let first_len = frame::amsdu_subframe_len(batch[0].packet.data.len());
+                        let first_len = frame::amsdu_subframe_len(
+                            batch[0].as_ref().unwrap().packet.data.len(),
+                        );
                         let mut len = first_len;
                         let mut blocked_same_peer = false;
-                        while batch.len() < AMSDU_PACKETS {
+                        while batch_len < AMSDU_PACKETS {
                             let Some(next) = q.front() else {
                                 break;
                             };
@@ -1173,34 +1361,36 @@ impl Node {
                             }
                             let next = q.pop_front().expect("checked front");
                             len += add;
-                            batch.push(next);
+                            batch[batch_len] = Some(next);
+                            batch_len += 1;
                         }
-                        let oldest = &batch[0];
+                        let oldest = batch[0].as_ref().unwrap();
                         let can_grow = !blocked_same_peer
-                            && batch.len() < AMSDU_PACKETS
+                            && batch_len < AMSDU_PACKETS
                             && len + first_len + 3 <= peer_limit;
                         if can_grow
                             && Self::should_coalesce(&oldest.packet)
-                            && !batch.iter().any(|item| item.packet.pure_tcp_ack().is_some())
+                            && !batch[..batch_len]
+                                .iter()
+                                .flatten()
+                                .any(|item| item.packet.pure_tcp_ack().is_some())
                             && now.since(oldest.at) < self.cfg.amsdu_coalesce_us
                         {
-                            for item in batch.into_iter().rev() {
-                                q.push_front(item);
+                            for slot in batch[..batch_len].iter_mut().rev() {
+                                q.push_front(slot.take().unwrap());
                             }
                             peer_blocked[idx] = true;
                             continue;
                         }
                     }
-                    self.unicast_total -= batch.len();
+                    self.unicast_total -= batch_len;
                     if q.is_empty() {
                         self.unicast.remove(&dst);
                         peer_blocked[idx] = true;
                     }
-                    batch
-                };
-                let _ = &mut batch;
+                }
                 if self.cfg.initiate_addba {
-                    self.maybe_initiate_addba(now, dst, out);
+                    self.maybe_initiate_addba(now, dst, emit);
                 }
                 let seq = if self.cfg.initiate_addba {
                     if let Some(peer) = self.peers.get_mut(&dst) {
@@ -1212,31 +1402,49 @@ impl Node {
                     self.next_seq()
                 };
                 let awdl_seq = self.awdl_seq;
-                self.awdl_seq = self.awdl_seq.wrapping_add(batch.len() as u16);
-                let bytes = if batch.len() == 1 {
+                self.awdl_seq = self.awdl_seq.wrapping_add(batch_len as u16);
+                let mut bytes = self.take_frame_buf();
+                if batch_len == 1 {
+                    let data = &batch[0].as_ref().unwrap().packet.data;
                     if self.cfg.initiate_addba {
-                        frame::qos_data_frame(
+                        frame::write_qos_data_frame(
+                            &mut bytes,
                             self.cfg.addr,
                             dst,
                             seq,
                             awdl_seq,
-                            &batch[0].packet.data,
-                        )
+                            data,
+                        );
                     } else {
-                        frame::data_frame(self.cfg.addr, dst, seq, awdl_seq, &batch[0].packet.data)
+                        frame::write_data_frame(&mut bytes, self.cfg.addr, dst, seq, awdl_seq, data);
                     }
                 } else {
-                    let packets: Vec<&[u8]> =
-                        batch.iter().map(|item| item.packet.data.as_slice()).collect();
+                    let mut pkt_slices: [&[u8]; AMSDU_PACKETS] = [&[]; AMSDU_PACKETS];
+                    for (slot, dst_ref) in batch[..batch_len].iter().zip(&mut pkt_slices[..batch_len])
+                    {
+                        *dst_ref = slot.as_ref().unwrap().packet.data.as_slice();
+                    }
                     self.stats.tx_amsdu += 1;
-                    frame::amsdu_frame(self.cfg.addr, dst, seq, awdl_seq, &packets)
-                };
-                self.stats.tx_unicast += batch.len() as u64;
+                    frame::write_amsdu_frame(
+                        &mut bytes,
+                        self.cfg.addr,
+                        dst,
+                        seq,
+                        awdl_seq,
+                        &pkt_slices[..batch_len],
+                    );
+                }
+                for slot in &mut batch[..batch_len] {
+                    if let Some(item) = slot.take() {
+                        self.retire_packet(item.packet);
+                    }
+                }
+                self.stats.tx_unicast += batch_len as u64;
                 *sent += 1;
                 peer_sent[idx] += 1;
                 self.unicast_cursor = Some(dst);
                 progressed = true;
-                out.push(Action::Transmit {
+                emit(ActionRef::Transmit {
                     at: now,
                     frame: Frame {
                         bytes,

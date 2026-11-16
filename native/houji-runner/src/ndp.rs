@@ -35,81 +35,101 @@ pub fn icmpv6_checksum(src: Ipv6Addr, dst: Ipv6Addr, message: &[u8]) -> u16 {
     internet_checksum(src, dst, ICMPV6, message)
 }
 
-/// Rewrite inbound unicast mDNS responses addressed to `own_mac` so Linux
-/// delivers them to every socket joined to `ff02::fb` on `xos0` (avoiding
-/// system_server's device-bound NsdService socket stealing them from apps).
-pub fn fanout_unicast_mdns_response(packet: &mut Ipv6Packet, own_mac: MacAddr) -> bool {
-    if packet.data.len() < HEADER_LEN + 20 || (packet.data[0] >> 4) != 6 || packet.data[6] != UDP {
-        return false;
+fn check_unicast_mdns_response(data: &[u8], own_mac: MacAddr) -> Option<(Ipv6Addr, usize)> {
+    if data.len() < HEADER_LEN + 20 || (data[0] >> 4) != 6 || data[6] != UDP {
+        return None;
     }
-    let payload_len = usize::from(u16::from_be_bytes([packet.data[4], packet.data[5]]));
-    if payload_len < 20 || packet.data.len() < HEADER_LEN + payload_len {
-        return false;
+    let payload_len = usize::from(u16::from_be_bytes([data[4], data[5]]));
+    if payload_len < 20 || data.len() < HEADER_LEN + payload_len {
+        return None;
     }
-    let Ok(src_bytes) = <[u8; 16]>::try_from(&packet.data[8..24]) else {
-        return false;
-    };
-    let Ok(dst_bytes) = <[u8; 16]>::try_from(&packet.data[24..40]) else {
-        return false;
-    };
-    let src_ip = Ipv6Addr::from(src_bytes);
-    let dst_ip = Ipv6Addr::from(dst_bytes);
+    let src_ip = Ipv6Addr::from(<[u8; 16]>::try_from(&data[8..24]).ok()?);
+    let dst_ip = Ipv6Addr::from(<[u8; 16]>::try_from(&data[24..40]).ok()?);
     if dst_ip != own_mac.link_local() {
-        return false;
+        return None;
     }
 
-    let udp = &packet.data[HEADER_LEN..HEADER_LEN + payload_len];
+    let udp = &data[HEADER_LEN..HEADER_LEN + payload_len];
     let dport = u16::from_be_bytes([udp[2], udp[3]]);
     let udp_len = usize::from(u16::from_be_bytes([udp[4], udp[5]]));
     if dport != MDNS_PORT || udp_len < 20 || udp_len > payload_len {
-        return false;
+        return None;
     }
     // Only fan out DNS responses (QR=1 in DNS flags byte udp[10]), never queries or malformed checksums.
     if (udp[10] & 0x80) == 0 || (udp[6] == 0 && udp[7] == 0) {
-        return false;
+        return None;
     }
     if internet_checksum(src_ip, dst_ip, UDP, &udp[..udp_len]) != 0 {
-        return false;
+        return None;
     }
+    Some((src_ip, udp_len))
+}
 
+fn rewrite_mdns_payload_dst(data: &mut [u8], src_ip: Ipv6Addr, udp_len: usize) {
     let mdns_group = Ipv6Addr::new(0xff02, 0, 0, 0, 0, 0, 0, 0xfb);
-    packet.data[24..40].copy_from_slice(&mdns_group.octets());
-    packet.dst = MacAddr([0x33, 0x33, 0, 0, 0, 0xfb]);
-    packet.data[HEADER_LEN + 6..HEADER_LEN + 8].copy_from_slice(&[0, 0]);
+    data[24..40].copy_from_slice(&mdns_group.octets());
+    data[HEADER_LEN + 6..HEADER_LEN + 8].copy_from_slice(&[0, 0]);
     let mut sum = internet_checksum(
         src_ip,
         mdns_group,
         UDP,
-        &packet.data[HEADER_LEN..HEADER_LEN + udp_len],
+        &data[HEADER_LEN..HEADER_LEN + udp_len],
     );
     if sum == 0 {
         sum = 0xffff;
     }
-    packet.data[HEADER_LEN + 6..HEADER_LEN + 8].copy_from_slice(&sum.to_be_bytes());
+    data[HEADER_LEN + 6..HEADER_LEN + 8].copy_from_slice(&sum.to_be_bytes());
+}
+
+/// Zero-copy unicast mDNS response check + rewrite: returns `(dst, data)` untouched for all
+/// non-mDNS packets, only copying into `scratch` when an mDNS unicast response must be fanned out.
+pub fn maybe_fanout_mdns_slice<'a>(
+    dst: MacAddr,
+    data: &'a [u8],
+    own_mac: MacAddr,
+    scratch: &'a mut Vec<u8>,
+) -> (MacAddr, &'a [u8]) {
+    let Some((src_ip, udp_len)) = check_unicast_mdns_response(data, own_mac) else {
+        return (dst, data);
+    };
+    scratch.clear();
+    scratch.extend_from_slice(data);
+    rewrite_mdns_payload_dst(scratch, src_ip, udp_len);
+    (MacAddr([0x33, 0x33, 0, 0, 0, 0xfb]), scratch.as_slice())
+}
+
+/// Rewrite inbound unicast mDNS responses addressed to `own_mac` so Linux
+/// delivers them to every socket joined to `ff02::fb` on `xos0` (avoiding
+/// system_server's device-bound NsdService socket stealing them from apps).
+pub fn fanout_unicast_mdns_response(packet: &mut Ipv6Packet, own_mac: MacAddr) -> bool {
+    let Some((src_ip, udp_len)) = check_unicast_mdns_response(&packet.data, own_mac) else {
+        return false;
+    };
+    packet.dst = MacAddr([0x33, 0x33, 0, 0, 0, 0xfb]);
+    rewrite_mdns_payload_dst(&mut packet.data, src_ip, udp_len);
     true
 }
 
-/// Answer an OS-emitted ICMPv6 Neighbor Solicitation for an AWDL peer's EUI-64
-/// link-local address locally on a L2 TAP interface so TCP/UDP never stalls on NDP.
-pub fn synthesize_na_for_ns(packet: &Ipv6Packet, own_mac: MacAddr) -> Option<Vec<u8>> {
-    if packet.data.len() < HEADER_LEN + 24 || (packet.data[0] >> 4) != 6 || packet.data[6] != ICMPV6 {
+/// Slice variant of [`synthesize_na_for_ns`] avoiding `Ipv6Packet` ownership cloning.
+pub fn synthesize_na_for_ns_parts(src_mac: MacAddr, data: &[u8], own_mac: MacAddr) -> Option<Vec<u8>> {
+    if data.len() < HEADER_LEN + 24 || (data[0] >> 4) != 6 || data[6] != ICMPV6 {
         return None;
     }
-    let payload_len = usize::from(u16::from_be_bytes([packet.data[4], packet.data[5]]));
-    if payload_len < 24 || packet.data.len() < HEADER_LEN + payload_len {
+    let payload_len = usize::from(u16::from_be_bytes([data[4], data[5]]));
+    if payload_len < 24 || data.len() < HEADER_LEN + payload_len {
         return None;
     }
-    if packet.data[HEADER_LEN] != NS_TYPE || packet.data[HEADER_LEN + 1] != 0 {
+    if data[HEADER_LEN] != NS_TYPE || data[HEADER_LEN + 1] != 0 {
         return None;
     }
 
-    let target = Ipv6Addr::from(<[u8; 16]>::try_from(&packet.data[48..64]).ok()?);
+    let target = Ipv6Addr::from(<[u8; 16]>::try_from(&data[48..64]).ok()?);
     let target_mac = MacAddr::from_link_local(target)?;
     if target_mac == own_mac {
         return None;
     }
 
-    let src_ip = Ipv6Addr::from(<[u8; 16]>::try_from(&packet.data[8..24]).ok()?);
+    let src_ip = Ipv6Addr::from(<[u8; 16]>::try_from(&data[8..24]).ok()?);
     let (dst_ip, dst_mac, flags) = if src_ip.is_unspecified() {
         (
             Ipv6Addr::new(0xff02, 0, 0, 0, 0, 0, 0, 1),
@@ -117,7 +137,7 @@ pub fn synthesize_na_for_ns(packet: &Ipv6Packet, own_mac: MacAddr) -> Option<Vec
             [0x20, 0, 0, 0], // Override=1, Solicited=0 (RFC 4861 7.2.4)
         )
     } else {
-        (src_ip, packet.src, [0x60, 0, 0, 0]) // Solicited=1, Override=1
+        (src_ip, src_mac, [0x60, 0, 0, 0]) // Solicited=1, Override=1
     };
 
     let mut icmp = Vec::with_capacity(32);
@@ -130,23 +150,30 @@ pub fn synthesize_na_for_ns(packet: &Ipv6Packet, own_mac: MacAddr) -> Option<Vec
     let sum = icmpv6_checksum(target, dst_ip, &icmp);
     icmp[2..4].copy_from_slice(&sum.to_be_bytes());
 
-    let mut data = Vec::with_capacity(HEADER_LEN + icmp.len());
-    data.extend_from_slice(&[0x60, 0, 0, 0]);
-    data.extend_from_slice(&(icmp.len() as u16).to_be_bytes());
-    data.push(ICMPV6);
-    data.push(255); // RFC 4861 requires hop limit 255 on NA.
-    data.extend_from_slice(&target.octets());
-    data.extend_from_slice(&dst_ip.octets());
-    data.extend_from_slice(&icmp);
+    let mut out_data = Vec::with_capacity(HEADER_LEN + icmp.len());
+    out_data.extend_from_slice(&[0x60, 0, 0, 0]);
+    out_data.extend_from_slice(&(icmp.len() as u16).to_be_bytes());
+    out_data.push(ICMPV6);
+    out_data.push(255); // RFC 4861 requires hop limit 255 on NA.
+    out_data.extend_from_slice(&target.octets());
+    out_data.extend_from_slice(&dst_ip.octets());
+    out_data.extend_from_slice(&icmp);
 
     Some(
         Ipv6Packet {
             dst: dst_mac,
             src: target_mac,
-            data,
+            data: out_data,
         }
         .to_ethernet(),
     )
+}
+
+/// Answer an OS-emitted ICMPv6 Neighbor Solicitation for an AWDL peer's EUI-64
+/// link-local address locally on a L2 TAP interface so TCP/UDP never stalls on NDP.
+#[cfg(test)]
+pub fn synthesize_na_for_ns(packet: &Ipv6Packet, own_mac: MacAddr) -> Option<Vec<u8>> {
+    synthesize_na_for_ns_parts(packet.src, &packet.data, own_mac)
 }
 
 /// Build an `_airdrop._tcp.local.` mDNS PTR query over IPv6 link-local UDP (`ff02::fb:5353`).

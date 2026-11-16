@@ -51,7 +51,8 @@ pub use channel::{Channel, Sequence};
 pub use frame::Frame;
 pub use ip::Ipv6Packet;
 pub use node::{
-    Action, Config, Input, MAX_PEERS, Node, Presence, RadioConstraints, Stats, UNICAST_QUEUE,
+    Action, ActionRef, Config, Input, MAX_PEERS, Node, Presence, RadioConstraints, Stats,
+    UNICAST_QUEUE,
 };
 pub use peer::{PeerCaps, PeerInfo};
 pub use rate::TxRate;

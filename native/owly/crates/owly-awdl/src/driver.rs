@@ -23,7 +23,7 @@ use tokio::sync::watch;
 
 use crate::frame::Frame;
 use crate::{
-    Action, Config, Input, Ipv6Packet, MacAddr, Node, PeerCaps, PeerInfo, Time, UNICAST_QUEUE,
+    ActionRef, Config, Input, Ipv6Packet, MacAddr, Node, PeerCaps, PeerInfo, Time, UNICAST_QUEUE,
 };
 
 /// Unicast the radio couldn't take is kept for its peer's next slot, as
@@ -38,7 +38,8 @@ const RETRY_US: u64 = 100_000;
 /// How soon to try again once the radio's queue was full.
 const RETRY_PAUSE: Duration = Duration::from_micros(500);
 /// Bounded non-blocking drain per wakeup so bursts amortize syscalls without starving timers.
-const DRAIN_BATCH: usize = 32;
+const DRAIN_BATCH: usize = 64;
+const AIR_DRAIN_BATCH: usize = 256;
 /// Maximum queued retry frames and wall-clock microseconds per flush_retries pass.
 const FLUSH_BUDGET_FRAMES: usize = 64;
 const FLUSH_BUDGET_US: u64 = 2_000;
@@ -55,6 +56,14 @@ pub struct Received {
     pub rssi: Option<i8>,
 }
 
+/// Result of awaiting [`Air::wait_or_recv`].
+pub enum AirRx {
+    /// Legacy transports deliver an owned frame and drain more via `try_recv`.
+    Frame(Received),
+    /// Zero-copy transports signal that frames are ready to process in-place via `drain_rx`.
+    Ready,
+}
+
 /// Where the node's frames go out and the peers' come in: a radio that
 /// injects and captures 802.11 frames, wrapped however it needs them
 /// (radiotap, on a Linux monitor interface).
@@ -68,11 +77,50 @@ pub trait Air {
         Ok(None)
     }
 
+    /// Awaits incoming air readiness (zero-copy transports return [`AirRx::Ready`] and
+    /// dispatch slices synchronously in [`Air::drain_rx`]; default falls back to [`Air::recv`]).
+    fn wait_or_recv(&mut self) -> impl Future<Output = io::Result<AirRx>> {
+        async move { Ok(AirRx::Frame(self.recv().await?)) }
+    }
+
+    /// Synchronous in-place drain of up to `limit` available RX frames as borrowed 802.11 slices.
+    fn drain_rx<F>(&mut self, _limit: usize, _on_frame: F) -> io::Result<()>
+    where
+        F: FnMut(Option<i8>, &[u8]),
+    {
+        Ok(())
+    }
+
     /// Hands a frame to the radio without waiting, at its rate and with or
     /// without an ACK as it says. Gives it back when the radio's queue is
     /// full, to be tried again; a frame the radio refuses for any other
     /// reason is the radio's to log, and dropped.
     fn send(&mut self, frame: Frame) -> Result<(), Frame>;
+
+    /// Whether this radio supports coalesced batch transmission via `send_batch`.
+    fn supports_batch(&self) -> bool {
+        false
+    }
+
+    /// Sends frames from the front of `frames` until empty or full, returning `(sent, queue_full)`.
+    /// Accepted frames' `bytes` buffers may be returned into `recycled` for reuse.
+    fn send_batch(
+        &mut self,
+        frames: &mut VecDeque<(Time, Frame)>,
+        _recycled: &mut Vec<Vec<u8>>,
+    ) -> (usize, bool) {
+        let mut sent = 0;
+        while let Some((at, frame)) = frames.pop_front() {
+            match self.send(frame) {
+                Ok(()) => sent += 1,
+                Err(rejected) => {
+                    frames.push_front((at, rejected));
+                    return (sent, true);
+                }
+            }
+        }
+        (sent, false)
+    }
 }
 
 /// The host's end of the link: the network interface its IPv6 sockets use
@@ -90,6 +138,18 @@ pub trait Netif {
     /// Hands the host a packet from a peer. One it can't take now is
     /// dropped, as a full queue would drop it.
     fn deliver(&mut self, packet: Ipv6Packet);
+
+    /// Zero-copy packet delivery borrowing raw IPv6 bytes directly from an RX frame buffer.
+    fn deliver_slice(&mut self, dst: MacAddr, src: MacAddr, data: &[u8]) {
+        self.deliver(Ipv6Packet {
+            dst,
+            src,
+            data: data.to_vec(),
+        });
+    }
+
+    /// Accepts cleared TX `Ipv6Packet.data` buffers back into the host interface's reuse pool.
+    fn recycle_packet_buf(&mut self, _buf: Vec<u8>) {}
 
     /// A peer turned valid, and may be reached from now on: an interface
     /// that keeps neighbour entries gets one for its link-local address
@@ -165,6 +225,8 @@ where
                 stopped,
                 unicast: VecDeque::new(),
                 multicast: VecDeque::new(),
+                pending_tx: VecDeque::new(),
+                recycled_frames: Vec::new(),
                 full: false,
                 over_cap_stalled_reads: 0,
                 overlap: None,
@@ -240,6 +302,8 @@ struct Driver<A, N> {
     /// Data frames the radio had no room for, with when the node sent them.
     unicast: VecDeque<(Time, Frame)>,
     multicast: VecDeque<(Time, Frame)>,
+    pending_tx: VecDeque<(Time, Frame)>,
+    recycled_frames: Vec<Vec<u8>>,
     /// The radio's queue was full at the last try.
     full: bool,
     /// Consecutive outbound reads absorbed for already-saturated peers while at global queue cap.
@@ -251,27 +315,76 @@ struct Driver<A, N> {
     lateness: Lateness,
 }
 
-impl<A: Air, N: Netif> Driver<A, N> {
+/// Disjoint mutable borrow over everything in [`Driver`] except `air`,
+/// letting `air.drain_rx` drive zero-copy `Node::handle_with` and `Netif::deliver_slice`.
+struct DriverStep<'a, N> {
+    node: &'a mut Node,
+    epoch: &'a Instant,
+    netif: &'a mut N,
+    peers: &'a watch::Sender<Vec<PeerInfo>>,
+    unicast: &'a VecDeque<(Time, Frame)>,
+    pending_tx: &'a mut VecDeque<(Time, Frame)>,
+    over_cap_stalled_reads: &'a mut usize,
+    overlap: &'a mut Option<(MacAddr, u8)>,
+    timer: &'a mut Time,
+    lateness: &'a mut Lateness,
+}
+
+fn publish_peers_from(node: &Node, peers: &watch::Sender<Vec<PeerInfo>>) {
+    let valid: Vec<PeerInfo> = node.peers().filter(|p| p.valid).map(|p| p.info()).collect();
+    peers.send_if_modified(|p| {
+        let changed = *p != valid;
+        if changed {
+            p.clone_from(&valid);
+        }
+        changed
+    });
+}
+
+fn record_timer_lateness_at(lateness: &mut Lateness, timer: Time, now: Time) {
+    if now >= timer {
+        let late = now.since(timer);
+        lateness.count += 1;
+        lateness.total += late;
+        lateness.max = lateness.max.max(late);
+    }
+}
+
+impl<N: Netif> DriverStep<'_, N> {
     fn now(&self) -> Time {
         Time(self.epoch.elapsed().as_micros() as u64 + 1)
     }
 
-    fn instant(&self, t: Time) -> tokio::time::Instant {
-        tokio::time::Instant::from_std(self.epoch + Duration::from_micros(t.0.saturating_sub(1)))
+    fn queue_cap(&self) -> usize {
+        self.node.config().unicast_queue.max(UNICAST_QUEUE)
     }
 
-    fn handle(&mut self, input: Input) {
+    fn peer_backlog(&self, mac: MacAddr) -> usize {
+        self.node.peer_backlog(mac) + self.unicast.iter().filter(|(_, f)| f.to == mac).count()
+    }
+
+    fn process_input(&mut self, input: Input<'_>) {
+        // Any input arriving at or past `self.timer` runs `Node::service` and advances `self.timer`,
+        // bypassing `service_timer()`'s `Input::Timer` branch; reset the stalled-read budget here too.
+        let timer_due = match &input {
+            Input::Timer(_) => true,
+            Input::Frame { rx_time, .. } => *rx_time >= *self.timer,
+            Input::Outbound { now, .. } => *now >= *self.timer,
+        };
+        if timer_due {
+            *self.over_cap_stalled_reads = 0;
+        }
         match &input {
-            Input::Timer(_) => {
-                self.over_cap_stalled_reads = 0;
+            Input::Timer(_) => {}
+            Input::Frame { rx_time, .. } => {
+                record_timer_lateness_at(self.lateness, *self.timer, *rx_time);
             }
-            Input::Frame { rx_time, .. } => self.record_timer_lateness(*rx_time),
             Input::Outbound { now, packet } => {
-                self.record_timer_lateness(*now);
+                record_timer_lateness_at(self.lateness, *self.timer, *now);
                 let cap = self.queue_cap();
                 let total = self.node.backlog() + self.unicast.len();
                 if total < cap {
-                    self.over_cap_stalled_reads = 0;
+                    *self.over_cap_stalled_reads = 0;
                 } else {
                     let valid_count = self.node.peers().filter(|p| p.valid).count().max(1);
                     let per_peer_headroom = (cap / valid_count).max(1);
@@ -279,58 +392,64 @@ impl<A: Air, N: Netif> Driver<A, N> {
                         && self.node.peers().any(|p| p.valid && p.mac == packet.dst)
                         && self.peer_backlog(packet.dst) < per_peer_headroom;
                     if healthy {
-                        self.over_cap_stalled_reads = 0;
+                        *self.over_cap_stalled_reads = 0;
                     } else {
-                        self.over_cap_stalled_reads =
+                        *self.over_cap_stalled_reads =
                             self.over_cap_stalled_reads.saturating_add(1);
                     }
                 }
             }
         }
-        let actions: Vec<Action> = self.node.handle(input).collect();
-        for a in actions {
-            match a {
-                Action::Transmit { at, frame } => self.transmit(at, frame),
-                Action::ArmTimer(t) => self.timer = t,
-                Action::PeerUp(p) => {
-                    tracing::info!(
-                        "add peer {} ({}) caps: ht={} vht={} nss={} bw={} mcs={} sgi={} ldpc={}",
-                        p.mac,
-                        p.name,
-                        p.caps.ht,
-                        p.caps.vht,
-                        p.caps.nss,
-                        p.caps.bw,
-                        p.caps.max_mcs,
-                        p.caps.sgi,
-                        p.caps.ldpc
-                    );
-                    self.netif.peer_up_caps(p.mac, p.caps);
-                    self.publish_peers();
-                }
-                Action::PeerCaps(m, caps) => {
-                    tracing::info!(
-                        "update peer {m} caps: ht={} vht={} nss={} bw={} mcs={} sgi={} ldpc={}",
-                        caps.ht,
-                        caps.vht,
-                        caps.nss,
-                        caps.bw,
-                        caps.max_mcs,
-                        caps.sgi,
-                        caps.ldpc
-                    );
-                    self.netif.peer_caps(m, caps);
-                    self.publish_peers();
-                }
-                Action::PeerDown(m) => {
-                    tracing::info!("remove peer {m}");
-                    self.netif.peer_down(m);
-                    self.publish_peers();
-                }
-                Action::Deliver(p) => self.netif.deliver(p),
+        let mut peer_list_dirty = false;
+        self.node.handle_with(input, |a| match a {
+            ActionRef::Transmit { at, frame } => self.pending_tx.push_back((at, frame)),
+            ActionRef::ArmTimer(t) => *self.timer = t,
+            ActionRef::PeerUp(p) => {
+                tracing::info!(
+                    "add peer {} ({}) caps: ht={} vht={} nss={} bw={} mcs={} sgi={} ldpc={}",
+                    p.mac,
+                    p.name,
+                    p.caps.ht,
+                    p.caps.vht,
+                    p.caps.nss,
+                    p.caps.bw,
+                    p.caps.max_mcs,
+                    p.caps.sgi,
+                    p.caps.ldpc
+                );
+                self.netif.peer_up_caps(p.mac, p.caps);
+                peer_list_dirty = true;
             }
+            ActionRef::PeerCaps(m, caps) => {
+                tracing::info!(
+                    "update peer {m} caps: ht={} vht={} nss={} bw={} mcs={} sgi={} ldpc={}",
+                    caps.ht,
+                    caps.vht,
+                    caps.nss,
+                    caps.bw,
+                    caps.max_mcs,
+                    caps.sgi,
+                    caps.ldpc
+                );
+                self.netif.peer_caps(m, caps);
+                peer_list_dirty = true;
+            }
+            ActionRef::PeerDown(m) => {
+                tracing::info!("remove peer {m}");
+                self.netif.peer_down(m);
+                peer_list_dirty = true;
+            }
+            ActionRef::DeliverSlice { dst, src, data } => {
+                self.netif.deliver_slice(dst, src, data);
+            }
+            ActionRef::Deliver(p) => self.netif.deliver(p),
+        });
+        if peer_list_dirty {
+            publish_peers_from(self.node, self.peers);
         }
         self.log_overlap();
+        self.node
+            .drain_recycled_packets(|buf| self.netif.recycle_packet_buf(buf));
     }
 
     /// Says when a shared radio's channel stops or starts overlapping the
@@ -338,7 +457,7 @@ impl<A: Air, N: Netif> Driver<A, N> {
     /// never addresses us, and nothing else explains the silence.
     fn log_overlap(&mut self) {
         let now = self.node.no_overlap();
-        if now == self.overlap {
+        if now == *self.overlap {
             return;
         }
         match now {
@@ -348,51 +467,106 @@ impl<A: Air, N: Netif> Driver<A, N> {
             ),
             None => tracing::info!("overlap with the master's sequence again"),
         }
-        self.overlap = now;
+        *self.overlap = now;
+    }
+}
+
+impl<A: Air, N: Netif> Driver<A, N> {
+    fn now(&self) -> Time {
+        Time(self.epoch.elapsed().as_micros() as u64 + 1)
     }
 
-    fn transmit(&mut self, at: Time, frame: Frame) {
-        if frame.is_action() {
-            // Built for this moment, its sync TLVs and timestamp with it: by
-            // the next try it would be stale, and the next PSF or MIF is
-            // never far off. Legacy dropped them too.
-            if self.air.send(frame).is_err() {
-                self.full = true;
-                self.tx.again += 1;
-                self.tx.dropped += 1;
-            }
-            return;
+    fn instant(&self, t: Time) -> tokio::time::Instant {
+        tokio::time::Instant::from_std(self.epoch + Duration::from_micros(t.0.saturating_sub(1)))
+    }
+
+    fn step(&mut self) -> DriverStep<'_, N> {
+        DriverStep {
+            node: &mut self.node,
+            epoch: &self.epoch,
+            netif: &mut self.netif,
+            peers: &self.peers,
+            unicast: &self.unicast,
+            pending_tx: &mut self.pending_tx,
+            over_cap_stalled_reads: &mut self.over_cap_stalled_reads,
+            overlap: &mut self.overlap,
+            timer: &mut self.timer,
+            lateness: &mut self.lateness,
         }
-        let now = self.now();
-        let Some(wait) = self.node.send_wait(frame.to, now) else {
-            self.tx.dropped += 1;
-            return;
-        };
-        let queue_nonempty = if frame.to.is_multicast() {
-            !self.multicast.is_empty()
-        } else {
-            self.unicast.iter().any(|(_, queued)| queued.to == frame.to)
-        };
-        if queue_nonempty || self.full || wait > 0 {
-            // In order behind those already waiting, or deferred when the slot closed mid-batch.
-            let queue = if frame.to.is_multicast() {
-                &mut self.multicast
-            } else {
-                &mut self.unicast
-            };
-            queue.push_back((at, frame));
-            return;
+    }
+
+    fn handle(&mut self, input: Input<'_>) {
+        self.step().process_input(input);
+        self.flush_pending_tx();
+    }
+
+    fn drain_recycled_frame_bufs(&mut self) {
+        for buf in self.recycled_frames.drain(..) {
+            self.node.recycle_frame_buf(buf);
         }
-        if let Err(frame) = self.air.send(frame) {
+    }
+
+    fn send_ready_batch(&mut self, ready: &mut VecDeque<(Time, Frame)>) -> usize {
+        if ready.is_empty() {
+            return 0;
+        }
+        let (sent, full) = self.air.send_batch(ready, &mut self.recycled_frames);
+        self.drain_recycled_frame_bufs();
+        if full {
             self.full = true;
             self.tx.again += 1;
-            let queue = if frame.to.is_multicast() {
-                &mut self.multicast
-            } else {
-                &mut self.unicast
-            };
-            queue.push_back((at, frame));
+            while let Some((at, frame)) = ready.pop_front() {
+                if frame.is_action() {
+                    self.tx.dropped += 1;
+                    self.node.recycle_frame_buf(frame.bytes);
+                } else {
+                    let queue = if frame.to.is_multicast() {
+                        &mut self.multicast
+                    } else {
+                        &mut self.unicast
+                    };
+                    queue.push_back((at, frame));
+                }
+            }
         }
+        sent
+    }
+
+    fn flush_pending_tx(&mut self) {
+        let mut ready = VecDeque::new();
+        while let Some((at, frame)) = self.pending_tx.pop_front() {
+            if frame.is_action() {
+                ready.push_back((at, frame));
+                continue;
+            }
+            let now = self.now();
+            let Some(wait) = self.node.send_wait(frame.to, now) else {
+                self.tx.dropped += 1;
+                self.node.recycle_frame_buf(frame.bytes);
+                continue;
+            };
+            let queue_nonempty = if frame.to.is_multicast() {
+                !self.multicast.is_empty()
+            } else {
+                self.unicast.iter().any(|(_, queued)| queued.to == frame.to)
+            };
+            if queue_nonempty || self.full || wait > 0 {
+                // Keep any in-flight ready batch for the same destination strictly ahead
+                // before appending to the deferred queue so per-peer FIFO never inverts.
+                if ready.iter().any(|(_, queued)| queued.to == frame.to) {
+                    self.send_ready_batch(&mut ready);
+                }
+                let queue = if frame.to.is_multicast() {
+                    &mut self.multicast
+                } else {
+                    &mut self.unicast
+                };
+                queue.push_back((at, frame));
+            } else {
+                ready.push_back((at, frame));
+            }
+        }
+        self.send_ready_batch(&mut ready);
     }
 
     /// Tries again what the radio had no room for, re-checking current time and
@@ -406,6 +580,7 @@ impl<A: Air, N: Netif> Driver<A, N> {
             // Only while its slot lasts.
             if now.since(at) > RETRY_US || !self.node.may_send(frame.to, now) {
                 self.tx.dropped += 1;
+                self.node.recycle_frame_buf(frame.bytes);
                 continue;
             }
             if sent >= FLUSH_BUDGET_FRAMES || now.since(started) >= FLUSH_BUDGET_US {
@@ -424,33 +599,80 @@ impl<A: Air, N: Netif> Driver<A, N> {
         // a peer is retained, no later frame for the same peer may overtake it in this pass.
         let mut retained_peers: Vec<MacAddr> = Vec::new();
         let mut kept = VecDeque::new();
-        while let Some((at, frame)) = self.unicast.pop_front() {
-            let now = self.now();
-            match self.node.send_wait(frame.to, now) {
-                None => self.tx.dropped += 1,
-                Some(_) if now.since(at) > UNICAST_HOLD_US => self.tx.dropped += 1,
-                Some(wait) => {
-                    let already_retained = retained_peers.contains(&frame.to);
-                    if wait == 0 && !self.full && !already_retained {
-                        if sent >= FLUSH_BUDGET_FRAMES || now.since(started) >= FLUSH_BUDGET_US {
-                            retained_peers.push(frame.to);
-                            kept.push_back((at, frame));
-                            kept.extend(self.unicast.drain(..));
-                            break;
-                        }
-                        if let Err(frame) = self.air.send(frame) {
-                            self.full = true;
-                            self.tx.again += 1;
-                            retained_peers.push(frame.to);
-                            kept.push_back((at, frame));
+        if self.air.supports_batch() {
+            let mut ready = VecDeque::new();
+            while let Some((at, frame)) = self.unicast.pop_front() {
+                let now = self.now();
+                match self.node.send_wait(frame.to, now) {
+                    None => {
+                        self.tx.dropped += 1;
+                        self.node.recycle_frame_buf(frame.bytes);
+                    }
+                    Some(_) if now.since(at) > UNICAST_HOLD_US => {
+                        self.tx.dropped += 1;
+                        self.node.recycle_frame_buf(frame.bytes);
+                    }
+                    Some(wait) => {
+                        let already_retained = retained_peers.contains(&frame.to);
+                        if wait == 0 && !self.full && !already_retained {
+                            if sent + ready.len() >= FLUSH_BUDGET_FRAMES
+                                || now.since(started) >= FLUSH_BUDGET_US
+                            {
+                                retained_peers.push(frame.to);
+                                kept.push_back((at, frame));
+                                kept.extend(self.unicast.drain(..));
+                                break;
+                            }
+                            ready.push_back((at, frame));
                         } else {
-                            sent += 1;
+                            if !already_retained {
+                                retained_peers.push(frame.to);
+                            }
+                            kept.push_back((at, frame));
                         }
-                    } else {
-                        if !already_retained {
-                            retained_peers.push(frame.to);
+                    }
+                }
+            }
+            if !ready.is_empty() {
+                let (batch_sent, full) = self.air.send_batch(&mut ready, &mut self.recycled_frames);
+                self.drain_recycled_frame_bufs();
+                sent += batch_sent;
+                if full {
+                    self.full = true;
+                    self.tx.again += 1;
+                    kept.extend(ready);
+                }
+            }
+        } else {
+            while let Some((at, frame)) = self.unicast.pop_front() {
+                let now = self.now();
+                match self.node.send_wait(frame.to, now) {
+                    None => self.tx.dropped += 1,
+                    Some(_) if now.since(at) > UNICAST_HOLD_US => self.tx.dropped += 1,
+                    Some(wait) => {
+                        let already_retained = retained_peers.contains(&frame.to);
+                        if wait == 0 && !self.full && !already_retained {
+                            if sent >= FLUSH_BUDGET_FRAMES || now.since(started) >= FLUSH_BUDGET_US
+                            {
+                                retained_peers.push(frame.to);
+                                kept.push_back((at, frame));
+                                kept.extend(self.unicast.drain(..));
+                                break;
+                            }
+                            if let Err(frame) = self.air.send(frame) {
+                                self.full = true;
+                                self.tx.again += 1;
+                                retained_peers.push(frame.to);
+                                kept.push_back((at, frame));
+                            } else {
+                                sent += 1;
+                            }
+                        } else {
+                            if !already_retained {
+                                retained_peers.push(frame.to);
+                            }
+                            kept.push_back((at, frame));
                         }
-                        kept.push_back((at, frame));
                     }
                 }
             }
@@ -497,31 +719,19 @@ impl<A: Air, N: Netif> Driver<A, N> {
         if self.full || self.over_cap_stalled_reads >= OVER_CAP_STALLED_BURST {
             return false;
         }
-        let valid_peers: Vec<MacAddr> =
-            self.node.peers().filter(|p| p.valid).map(|p| p.mac).collect();
-        if valid_peers.len() <= 1 {
+        let valid_count = self.node.peers().filter(|p| p.valid).count();
+        if valid_count <= 1 {
             return false;
         }
-        let per_peer_headroom = (cap / valid_peers.len()).max(1);
-        valid_peers
-            .into_iter()
-            .any(|mac| self.peer_backlog(mac) < per_peer_headroom)
+        let per_peer_headroom = (cap / valid_count).max(1);
+        self.node
+            .peers()
+            .filter(|p| p.valid)
+            .any(|p| self.peer_backlog(p.mac) < per_peer_headroom)
     }
 
     fn publish_peers(&self) {
-        let peers: Vec<PeerInfo> = self
-            .node
-            .peers()
-            .filter(|p| p.valid)
-            .map(|p| p.info())
-            .collect();
-        self.peers.send_if_modified(|p| {
-            let changed = *p != peers;
-            if changed {
-                p.clone_from(&peers);
-            }
-            changed
-        });
+        publish_peers_from(&self.node, &self.peers);
     }
 
     fn log_stats(&mut self) {
@@ -556,22 +766,82 @@ impl<A: Air, N: Netif> Driver<A, N> {
         self.lateness = Lateness::default();
     }
 
-    fn record_timer_lateness(&mut self, now: Time) {
-        if now >= self.timer {
-            let late = now.since(self.timer);
-            let l = &mut self.lateness;
-            l.count += 1;
-            l.total += late;
-            l.max = l.max.max(late);
-        }
-    }
-
     fn service_timer(&mut self) {
         let now = self.now();
         if now >= self.timer {
-            self.record_timer_lateness(now);
+            record_timer_lateness_at(&mut self.lateness, self.timer, now);
             self.handle(Input::Timer(now));
         }
+    }
+    fn drain_air_rx(&mut self, first: AirRx) -> Result<(), String> {
+        match first {
+            AirRx::Frame(rx) => {
+                let now = self.now();
+                self.step().process_input(Input::Frame {
+                    rx_time: now,
+                    rssi: rx.rssi,
+                    bytes: &rx.bytes,
+                });
+                for _ in 1..AIR_DRAIN_BATCH {
+                    match self.air.try_recv() {
+                        Ok(Some(rx)) => {
+                            let now = self.now();
+                            self.step().process_input(Input::Frame {
+                                rx_time: now,
+                                rssi: rx.rssi,
+                                bytes: &rx.bytes,
+                            });
+                        }
+                        Ok(None) => break,
+                        Err(e) => return Err(e.to_string()),
+                    }
+                }
+            }
+            AirRx::Ready => {
+                let mut ctx = DriverStep {
+                    node: &mut self.node,
+                    epoch: &self.epoch,
+                    netif: &mut self.netif,
+                    peers: &self.peers,
+                    unicast: &self.unicast,
+                    pending_tx: &mut self.pending_tx,
+                    over_cap_stalled_reads: &mut self.over_cap_stalled_reads,
+                    overlap: &mut self.overlap,
+                    timer: &mut self.timer,
+                    lateness: &mut self.lateness,
+                };
+                self.air
+                    .drain_rx(AIR_DRAIN_BATCH, |rssi, bytes| {
+                        let now = ctx.now();
+                        ctx.process_input(Input::Frame {
+                            rx_time: now,
+                            rssi,
+                            bytes,
+                        });
+                    })
+                    .map_err(|e| e.to_string())?;
+            }
+        }
+        Ok(())
+    }
+
+    fn drain_netif_tx(&mut self, first: Ipv6Packet) -> Result<(), String> {
+        let now = self.now();
+        self.step().process_input(Input::Outbound { now, packet: first });
+        for _ in 1..DRAIN_BATCH {
+            if !self.takes_outbound() {
+                break;
+            }
+            match self.netif.try_recv() {
+                Ok(Some(packet)) => {
+                    let now = self.now();
+                    self.step().process_input(Input::Outbound { now, packet });
+                }
+                Ok(None) => break,
+                Err(e) => return Err(e.to_string()),
+            }
+        }
+        Ok(())
     }
 }
 
@@ -585,51 +855,39 @@ async fn run<A: Air, N: Netif>(mut d: Driver<A, N>) -> Result<(), String> {
             Some(retry) => d.instant(d.timer).min(retry),
             None => d.instant(d.timer),
         };
-        tokio::select! {
-            _ = d.stopped.changed() => {
+        enum Arm {
+            Stop,
+            Air(AirRx),
+            Netif(Ipv6Packet),
+            Timer,
+            Stats,
+            Peers,
+        }
+        let takes_outbound = d.takes_outbound();
+        let arm = tokio::select! {
+            _ = d.stopped.changed() => Arm::Stop,
+            r = d.air.wait_or_recv() => Arm::Air(r.map_err(|e| e.to_string())?),
+            r = d.netif.recv(), if takes_outbound => Arm::Netif(r.map_err(|e| e.to_string())?),
+            _ = tokio::time::sleep_until(wake) => Arm::Timer,
+            _ = stats.tick() => Arm::Stats,
+            _ = peers.tick() => Arm::Peers,
+        };
+        match arm {
+            Arm::Stop => {
                 d.log_stats();
                 return Ok(());
             }
-            r = d.air.recv() => match r {
-                Ok(rx) => {
-                    let now = d.now();
-                    d.handle(Input::Frame { rx_time: now, rssi: rx.rssi, bytes: &rx.bytes });
-                    for _ in 1..DRAIN_BATCH {
-                        match d.air.try_recv() {
-                            Ok(Some(rx)) => {
-                                let now = d.now();
-                                d.handle(Input::Frame { rx_time: now, rssi: rx.rssi, bytes: &rx.bytes });
-                            }
-                            Ok(None) => break,
-                            Err(e) => return Err(e.to_string()),
-                        }
-                    }
-                }
-                Err(e) => return Err(e.to_string()),
-            },
-            r = d.netif.recv(), if d.takes_outbound() => match r {
-                Ok(packet) => {
-                    let now = d.now();
-                    d.handle(Input::Outbound { now, packet });
-                    for _ in 1..DRAIN_BATCH {
-                        if !d.takes_outbound() {
-                            break;
-                        }
-                        match d.netif.try_recv() {
-                            Ok(Some(packet)) => {
-                                let now = d.now();
-                                d.handle(Input::Outbound { now, packet });
-                            }
-                            Ok(None) => break,
-                            Err(e) => return Err(e.to_string()),
-                        }
-                    }
-                }
-                Err(e) => return Err(e.to_string()),
-            },
-            _ = tokio::time::sleep_until(wake) => {}
-            _ = stats.tick() => d.log_stats(),
-            _ = peers.tick() => d.publish_peers(),
+            Arm::Air(first) => {
+                d.drain_air_rx(first)?;
+                d.flush_pending_tx();
+            }
+            Arm::Netif(first) => {
+                d.drain_netif_tx(first)?;
+                d.flush_pending_tx();
+            }
+            Arm::Timer => {}
+            Arm::Stats => d.log_stats(),
+            Arm::Peers => d.publish_peers(),
         }
         d.service_timer();
         d.flush_retries();
@@ -738,6 +996,8 @@ mod tests {
             stopped,
             unicast: VecDeque::new(),
             multicast: VecDeque::new(),
+            pending_tx: VecDeque::new(),
+            recycled_frames: Vec::new(),
             full: false,
             over_cap_stalled_reads: 0,
             overlap: None,
@@ -818,6 +1078,8 @@ mod tests {
             stopped,
             unicast: VecDeque::new(),
             multicast: VecDeque::new(),
+            pending_tx: VecDeque::new(),
+            recycled_frames: Vec::new(),
             full: false,
             over_cap_stalled_reads: 0,
             overlap: None,
@@ -867,6 +1129,8 @@ mod tests {
             stopped,
             unicast: VecDeque::new(),
             multicast: VecDeque::new(),
+            pending_tx: VecDeque::new(),
+            recycled_frames: Vec::new(),
             full: false,
             over_cap_stalled_reads: 0,
             overlap: None,
@@ -1017,6 +1281,8 @@ mod tests {
             stopped,
             unicast: VecDeque::new(),
             multicast: VecDeque::new(),
+            pending_tx: VecDeque::new(),
+            recycled_frames: Vec::new(),
             full: false,
             over_cap_stalled_reads: 0,
             overlap: None,
@@ -1076,11 +1342,13 @@ mod tests {
         assert!(d.unicast.is_empty());
     }
 
-    #[test]
-    fn review_driver_admits_healthy_peer_when_other_peer_queue_is_full() {
-        let us = MacAddr([2, 0, 0, 0, 0, 1]);
-        let stalled_peer = MacAddr([2, 0, 0, 0, 0, 2]);
-        let healthy_peer = MacAddr([2, 0, 0, 0, 0, 3]);
+    fn multi_peer_capture_driver(
+        us: MacAddr,
+        stalled_peer: MacAddr,
+        stalled_seq: Sequence,
+        healthy_peer: MacAddr,
+        start_at: Time,
+    ) -> Driver<CaptureAir, NullNet> {
         let mut cfg = Config::new(
             us,
             "test",
@@ -1092,64 +1360,39 @@ mod tests {
         cfg.neighbour_echo = false;
         let mut node = Node::new(cfg, Time(1));
 
-        // Stalled peer occupies ch 6 (no overlap with ch 149); healthy peer fixed on ch 149.
-        let mut seq_s = Sequence::fixed(Channel(6));
-        seq_s.slots[0] = Channel(149).slot();
-        let el_s = Election::own(stalled_peer);
-        let own_s = tlv::Own {
-            addr: stalled_peer,
-            name: "stalled",
-            devclass: tlv::devclass::IOS,
-            channel: 6,
-            master_channel: Channel(6),
-            next_tu: 64,
-            aw_counter: 0,
-            psf_interval_tu: 110,
-            sequence: &seq_s,
-            election: &el_s,
-            ht: Some(tlv::HtCapabilities::ONE_STREAM),
-            advertise_vht80_1ss: false,
+        let register = |node: &mut Node, addr: MacAddr, name: &str, ch: u8, seq: &Sequence| {
+            let el = Election::own(addr);
+            let own = tlv::Own {
+                addr,
+                name,
+                devclass: tlv::devclass::IOS,
+                channel: ch,
+                master_channel: Channel(ch),
+                next_tu: 64,
+                aw_counter: 0,
+                psf_interval_tu: 110,
+                sequence: seq,
+                election: &el,
+                ht: Some(tlv::HtCapabilities::ONE_STREAM),
+                advertise_vht80_1ss: false,
+            };
+            let bytes = frame::action_frame(addr, 1, frame::subtype::MIF, 0, |out| {
+                tlv::put_all(out, &own, true)
+            });
+            node.handle(Input::Frame {
+                rx_time: Time(1),
+                rssi: Some(-40),
+                bytes: &bytes,
+            })
+            .for_each(drop);
         };
-        let bytes_s = frame::action_frame(stalled_peer, 1, frame::subtype::MIF, 0, |out| {
-            tlv::put_all(out, &own_s, true)
-        });
-        node.handle(Input::Frame {
-            rx_time: Time(1),
-            rssi: Some(-40),
-            bytes: &bytes_s,
-        })
-        .for_each(drop);
+        register(&mut node, stalled_peer, "stalled", 6, &stalled_seq);
+        register(&mut node, healthy_peer, "healthy", 149, &Sequence::fixed(Channel(149)));
 
-        let seq_h = Sequence::fixed(Channel(149));
-        let el_h = Election::own(healthy_peer);
-        let own_h = tlv::Own {
-            addr: healthy_peer,
-            name: "healthy",
-            devclass: tlv::devclass::IOS,
-            channel: 149,
-            master_channel: Channel(149),
-            next_tu: 64,
-            aw_counter: 0,
-            psf_interval_tu: 110,
-            sequence: &seq_h,
-            election: &el_h,
-            ht: Some(tlv::HtCapabilities::ONE_STREAM),
-            advertise_vht80_1ss: false,
-        };
-        let bytes_h = frame::action_frame(healthy_peer, 1, frame::subtype::MIF, 0, |out| {
-            tlv::put_all(out, &own_h, true)
-        });
-        node.handle(Input::Frame {
-            rx_time: Time(1),
-            rssi: Some(-40),
-            bytes: &bytes_h,
-        })
-        .for_each(drop);
-
-        let epoch = Instant::now() - Duration::from_micros(100_000);
+        let epoch = Instant::now() - Duration::from_micros(start_at.0.saturating_sub(1));
         let (_, stopped) = watch::channel(false);
         let (peers, _) = watch::channel(Vec::new());
-        let mut d = Driver {
+        Driver {
             node,
             epoch,
             air: CaptureAir {
@@ -1161,15 +1404,27 @@ mod tests {
             stopped,
             unicast: VecDeque::new(),
             multicast: VecDeque::new(),
+            pending_tx: VecDeque::new(),
+            recycled_frames: Vec::new(),
             full: false,
             over_cap_stalled_reads: 0,
             overlap: None,
             tx: TxStats::default(),
             timer: Time(1),
             lateness: Lateness::default(),
-        };
-        // Fill shared queue entirely with stalled_peer packets at slot-closed time (t ~ 100ms, ch 6).
+        }
+    }
+
+    #[test]
+    fn review_driver_admits_healthy_peer_when_other_peer_queue_is_full() {
+        let us = MacAddr([2, 0, 0, 0, 0, 1]);
+        let stalled_peer = MacAddr([2, 0, 0, 0, 0, 2]);
+        let healthy_peer = MacAddr([2, 0, 0, 0, 0, 3]);
+        // Stalled peer occupies ch 6 (no overlap with ch 149 except slot 0); healthy peer fixed on ch 149.
+        let mut seq_s = Sequence::fixed(Channel(6));
+        seq_s.slots[0] = Channel(149).slot();
         let t_closed = Time(100_000);
+        let mut d = multi_peer_capture_driver(us, stalled_peer, seq_s, healthy_peer, t_closed);
         assert_ne!(d.node.send_wait(stalled_peer, t_closed), Some(0));
         for seq in 0..UNICAST_QUEUE {
             let p = Ipv6Packet::echo_request(us, stalled_peer, 1, seq as u16, &[seq as u8; 16]);
@@ -1219,5 +1474,261 @@ mod tests {
         d.full = true;
         assert!(!d.takes_outbound());
         let _ = d.air.epoch;
+    }
+
+    #[test]
+    fn rx_past_deadline_resets_over_cap_stalled_reads() {
+        let us = MacAddr([2, 0, 0, 0, 0, 1]);
+        let stalled_peer = MacAddr([2, 0, 0, 0, 0, 2]);
+        let healthy_peer = MacAddr([2, 0, 0, 0, 0, 3]);
+        let t_start = Time(100_000);
+        let mut d = multi_peer_capture_driver(
+            us,
+            stalled_peer,
+            Sequence::fixed(Channel(6)),
+            healthy_peer,
+            t_start,
+        );
+
+        // Fill node backlog with stalled_peer, then exhaust OVER_CAP_STALLED_BURST so takes_outbound() locks false.
+        for seq in 0..(UNICAST_QUEUE + OVER_CAP_STALLED_BURST) {
+            assert!(d.takes_outbound());
+            d.handle(Input::Outbound {
+                now: t_start,
+                packet: Ipv6Packet::echo_request(us, stalled_peer, 1, seq as u16, &[seq as u8; 8]),
+            });
+        }
+        assert_eq!(d.node.backlog(), UNICAST_QUEUE);
+        assert!(!d.takes_outbound());
+
+        // Preempt multiple deadlines with RX frames before service_timer() runs, matching Driver::run() order.
+        let mut seq = 0u16;
+        while d.timer.0 < 1_000_000 {
+            let rx_time = d.timer.plus(2_000);
+            d.epoch = Instant::now() - Duration::from_micros(rx_time.0 - 1);
+            d.air.epoch = d.epoch;
+            let pkt = Ipv6Packet::echo_request(healthy_peer, us, 1, seq, b"rx-preempt-timer");
+            let bytes = frame::qos_data_frame(healthy_peer, us, seq, seq, &pkt.data);
+            d.handle(Input::Frame {
+                rx_time,
+                rssi: Some(-40),
+                bytes: &bytes,
+            });
+            // service_timer() now observes now < d.timer and skips Input::Timer; RX must already have rearmed reads.
+            d.service_timer();
+            d.flush_retries();
+            assert!(d.takes_outbound(), "RX servicing due deadline must rearm outbound reads");
+
+            // Healthy peer transmits immediately (node evicts one stalled packet to admit it).
+            let sent_before = d.air.sent.len();
+            d.handle(Input::Outbound {
+                now: rx_time,
+                packet: Ipv6Packet::echo_request(us, healthy_peer, 2, seq, b"healthy-ack"),
+            });
+            assert_eq!(d.air.sent.len(), sent_before + 1);
+            assert_eq!(d.node.backlog(), UNICAST_QUEUE - 1);
+
+            // Top stalled_peer back up to cap, then re-exhaust stalled burst until next RX deadline.
+            d.handle(Input::Outbound {
+                now: rx_time,
+                packet: Ipv6Packet::echo_request(us, stalled_peer, 3, seq, b"top-off"),
+            });
+            assert_eq!(d.node.backlog(), UNICAST_QUEUE);
+            for j in 0..OVER_CAP_STALLED_BURST {
+                assert!(d.takes_outbound());
+                d.handle(Input::Outbound {
+                    now: rx_time,
+                    packet: Ipv6Packet::echo_request(us, stalled_peer, 3, seq.wrapping_add((j + 1) as u16), b"s"),
+                });
+            }
+            assert!(!d.takes_outbound());
+            seq += 1;
+        }
+        assert!(seq > 5);
+
+        // An Outbound arriving past d.timer also resets the old burst instead of remaining pinned at cap.
+        let due_outbound = d.timer.plus(1_000);
+        d.handle(Input::Outbound {
+            now: due_outbound,
+            packet: Ipv6Packet::echo_request(us, stalled_peer, 4, 1, b"single-stalled"),
+        });
+        assert_eq!(d.over_cap_stalled_reads, 1);
+        assert!(d.takes_outbound());
+    }
+
+    #[tokio::test]
+    async fn zero_copy_batch_air_and_netif_recycle_path() {
+        use std::sync::{Arc, Mutex};
+
+        let us = MacAddr([2, 0, 0, 0, 0, 1]);
+        let peer = MacAddr([2, 0, 0, 0, 0, 2]);
+        let mut cfg = Config::new(
+            us,
+            "zc",
+            RadioConstraints {
+                channel: Channel(149),
+                presence: Presence::Fixed,
+            },
+        );
+        cfg.neighbour_echo = false;
+        cfg.initiate_addba = true;
+        cfg.amsdu = true;
+        cfg.amsdu_coalesce_us = 0;
+        let mut node = Node::new(cfg, Time(1));
+
+        let seq = Sequence::fixed(Channel(149));
+        let el = Election::own(peer);
+        let own = tlv::Own {
+            addr: peer,
+            name: "peer",
+            devclass: tlv::devclass::IOS,
+            channel: 149,
+            master_channel: Channel(149),
+            next_tu: 64,
+            aw_counter: 0,
+            psf_interval_tu: 110,
+            sequence: &seq,
+            election: &el,
+            ht: Some(tlv::HtCapabilities::ONE_STREAM),
+            advertise_vht80_1ss: false,
+        };
+        let mif = frame::action_frame(peer, 1, frame::subtype::MIF, 0, |out| {
+            tlv::put_all(out, &own, true)
+        });
+        node.handle(Input::Frame {
+            rx_time: Time(1),
+            rssi: Some(-35),
+            bytes: &mif,
+        })
+        .for_each(drop);
+
+        struct BatchAir {
+            rx_frames: Vec<Vec<u8>>,
+            sent_batches: Arc<Mutex<Vec<usize>>>,
+            fail_on_second: bool,
+        }
+        impl Air for BatchAir {
+            async fn recv(&mut self) -> io::Result<Received> {
+                unreachable!("wait_or_recv / drain_rx path used instead")
+            }
+            async fn wait_or_recv(&mut self) -> io::Result<AirRx> {
+                if self.rx_frames.is_empty() {
+                    std::future::pending().await
+                } else {
+                    Ok(AirRx::Ready)
+                }
+            }
+            fn drain_rx<F>(&mut self, limit: usize, mut on_frame: F) -> io::Result<()>
+            where
+                F: FnMut(Option<i8>, &[u8]),
+            {
+                for bytes in self.rx_frames.drain(..self.rx_frames.len().min(limit)) {
+                    on_frame(Some(-35), &bytes);
+                }
+                Ok(())
+            }
+            fn send(&mut self, _: Frame) -> Result<(), Frame> {
+                Ok(())
+            }
+            fn supports_batch(&self) -> bool {
+                true
+            }
+            fn send_batch(
+                &mut self,
+                frames: &mut VecDeque<(Time, Frame)>,
+                recycled: &mut Vec<Vec<u8>>,
+            ) -> (usize, bool) {
+                let n = frames.len();
+                let accept = if self.fail_on_second && n >= 2 { 1 } else { n };
+                self.sent_batches.lock().unwrap().push(accept);
+                for _ in 0..accept {
+                    if let Some((_, mut f)) = frames.pop_front() {
+                        f.bytes.clear();
+                        recycled.push(f.bytes);
+                    }
+                }
+                (accept, accept < n)
+            }
+        }
+
+        #[derive(Default)]
+        struct SliceNet {
+            delivered_slices: usize,
+            recycled_bufs: usize,
+        }
+        impl Netif for SliceNet {
+            async fn recv(&mut self) -> io::Result<Ipv6Packet> {
+                std::future::pending().await
+            }
+            fn deliver(&mut self, _: Ipv6Packet) {
+                panic!("owned deliver should not be used for direct RX slice");
+            }
+            fn deliver_slice(&mut self, dst: MacAddr, src: MacAddr, data: &[u8]) {
+                assert_eq!(dst, MacAddr([2, 0, 0, 0, 0, 1]));
+                assert_eq!(src, MacAddr([2, 0, 0, 0, 0, 2]));
+                assert!(!data.is_empty());
+                self.delivered_slices += 1;
+            }
+            fn recycle_packet_buf(&mut self, _buf: Vec<u8>) {
+                self.recycled_bufs += 1;
+            }
+        }
+
+        let pkt1 = Ipv6Packet::echo_request(peer, us, 1, 1, b"slice-1");
+        let pkt2 = Ipv6Packet::echo_request(peer, us, 1, 2, b"slice-2");
+        let amsdu = frame::amsdu_frame(peer, us, 7, 1, &[&pkt1.data, &pkt2.data]);
+
+        let epoch = Instant::now() - Duration::from_micros(100_000);
+        let (_, stopped) = watch::channel(false);
+        let (peers, _) = watch::channel(Vec::new());
+        let sent_batches = Arc::new(Mutex::new(Vec::new()));
+        let mut d = Driver {
+            node,
+            epoch,
+            air: BatchAir {
+                rx_frames: std::vec![amsdu],
+                sent_batches: sent_batches.clone(),
+                fail_on_second: true,
+            },
+            netif: SliceNet::default(),
+            peers,
+            stopped,
+            unicast: VecDeque::new(),
+            multicast: VecDeque::new(),
+            pending_tx: VecDeque::new(),
+            recycled_frames: Vec::new(),
+            full: false,
+            over_cap_stalled_reads: 0,
+            overlap: None,
+            tx: TxStats::default(),
+            timer: Time(1),
+            lateness: Lateness::default(),
+        };
+
+        let first = d.air.wait_or_recv().await.unwrap();
+        assert!(matches!(first, AirRx::Ready));
+        d.drain_air_rx(first).unwrap();
+        assert_eq!(d.netif.delivered_slices, 2);
+
+        // Two outbound packets coalesce/transmit via send_batch; 2nd triggers partial EAGAIN deferral,
+        // while 1st returns its packet buffer to Netif and its frame buffer to Node!
+        for seq in 0..2u16 {
+            let now = d.now();
+            let mut data = Vec::with_capacity(512);
+            data.extend_from_slice(&Ipv6Packet::echo_request(us, peer, 2, seq, &[0xaa; 64]).data);
+            d.step().process_input(Input::Outbound {
+                now,
+                packet: Ipv6Packet { dst: peer, src: us, data },
+            });
+        }
+        d.flush_pending_tx();
+        assert_eq!(d.netif.recycled_bufs, 2);
+        // pending_tx held [ADDBA Req, Data #1, Data #2]; BatchAir accepted 1st and deferred 2 data frames.
+        assert_eq!(d.unicast.len(), 2);
+        assert!(d.full);
+        d.air.fail_on_second = false;
+        d.flush_retries();
+        assert!(d.unicast.is_empty());
+        assert!(!d.full);
     }
 }

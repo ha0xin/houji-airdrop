@@ -122,39 +122,48 @@ pub fn rx_header(freq: Option<u16>, rssi: Option<i8>) -> Vec<u8> {
     out
 }
 
-/// A radiotap header for injecting a frame at `rate`, without ACK and
-/// retries when `no_ack`, as legacy wrote it.
-pub fn tx_header(rate: TxRate, no_ack: bool) -> Vec<u8> {
+/// Writes a transmit radiotap header into `out` with zero heap allocation, returning its byte length.
+pub fn write_tx_header(rate: TxRate, no_ack: bool, out: &mut [u8; 16]) -> usize {
     let mut present = 0u32;
-    let mut fields = Vec::with_capacity(8);
+    let mut at = 8usize;
     match rate {
         TxRate::Legacy(r) => {
             present |= 1 << RATE;
-            fields.push(r);
+            out[at] = r;
+            at += 1;
             if no_ack {
                 // TX flags are a u16 at an even offset: the header is 8.
-                fields.push(0);
+                out[at] = 0;
+                at += 1;
                 present |= 1 << TX_FLAGS;
-                fields.extend_from_slice(&F_TX_NOACK.to_le_bytes());
+                out[at..at + 2].copy_from_slice(&F_TX_NOACK.to_le_bytes());
+                at += 2;
             }
         }
         TxRate::Ht { mcs, sgi } => {
             if no_ack {
                 present |= 1 << TX_FLAGS;
-                fields.extend_from_slice(&F_TX_NOACK.to_le_bytes());
+                out[at..at + 2].copy_from_slice(&F_TX_NOACK.to_le_bytes());
+                at += 2;
             }
             present |= 1 << MCS;
             // Known: bandwidth, MCS, guard interval. 20 MHz.
-            fields.extend_from_slice(&[0x07, if sgi { 0x04 } else { 0 }, mcs]);
+            out[at..at + 3].copy_from_slice(&[0x07, if sgi { 0x04 } else { 0 }, mcs]);
+            at += 3;
         }
     }
-    let len = 8 + fields.len();
-    let mut out = Vec::with_capacity(len);
-    out.extend_from_slice(&[0, 0]);
-    out.extend_from_slice(&(len as u16).to_le_bytes());
-    out.extend_from_slice(&present.to_le_bytes());
-    out.extend_from_slice(&fields);
-    out
+    out[0..2].copy_from_slice(&[0, 0]);
+    out[2..4].copy_from_slice(&(at as u16).to_le_bytes());
+    out[4..8].copy_from_slice(&present.to_le_bytes());
+    at
+}
+
+/// A radiotap header for injecting a frame at `rate`, without ACK and
+/// retries when `no_ack`, as legacy wrote it.
+pub fn tx_header(rate: TxRate, no_ack: bool) -> Vec<u8> {
+    let mut buf = [0u8; 16];
+    let len = write_tx_header(rate, no_ack, &mut buf);
+    buf[..len].to_vec()
 }
 
 #[cfg(test)]

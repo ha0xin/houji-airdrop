@@ -37,20 +37,7 @@ impl Ipv6Packet {
 
     /// Fixed 14-byte Ethernet header for this packet (with RFC 2464 multicast mapping).
     pub fn ethernet_header(&self) -> [u8; 14] {
-        // Apple AWDL multicast frames carry 802.11 broadcast addr1, which
-        // Linux ip6_rcv_core drops unless mapped to RFC 2464 Ethernet multicast.
-        let dst = match self.addrs() {
-            Some((_, dst)) if dst.is_multicast() => {
-                let o = dst.octets();
-                MacAddr([0x33, 0x33, o[12], o[13], o[14], o[15]])
-            }
-            _ => self.dst,
-        };
-        let mut hdr = [0u8; 14];
-        hdr[0..6].copy_from_slice(&dst.0);
-        hdr[6..12].copy_from_slice(&self.src.0);
-        hdr[12..14].copy_from_slice(&ETHERTYPE_IPV6);
-        hdr
+        ethernet_header_for(self.dst, self.src, &self.data)
     }
 
     pub fn to_ethernet(&self) -> Vec<u8> {
@@ -87,18 +74,7 @@ impl Ipv6Packet {
     /// A TCP SYN to `local` carrying nothing else: the start of a
     /// connection, as a peer opens one.
     pub fn is_bare_syn_to(&self, local: MacAddr) -> bool {
-        if self.dst != local {
-            return false;
-        }
-        let Some(tcp) = upper(&self.data, TCP) else {
-            return false;
-        };
-        if tcp.len() < 20 {
-            return false;
-        }
-        let flags = tcp[13] & 0x17; // FIN, SYN, RST, ACK
-        let offset = (tcp[12] >> 4) as usize * 4;
-        flags == 0x02 && offset >= 20 && tcp.len() == offset
+        is_bare_syn_data(self.dst, local, &self.data)
     }
 
     /// The TCP 4-tuple, when this packet carries a TCP segment without IPv6
@@ -167,9 +143,48 @@ impl Ipv6Packet {
 
     /// Whether this is an ICMPv6 echo reply with identifier `id`.
     pub fn is_echo_reply(&self, id: u16) -> bool {
-        upper(&self.data, ICMPV6)
-            .is_some_and(|m| m.len() >= 8 && m[0] == 129 && m[4..6] == id.to_be_bytes())
+        is_echo_reply_data(&self.data, id)
     }
+}
+
+/// Fixed 14-byte Ethernet header for raw IPv6 `data` (with RFC 2464 multicast mapping).
+pub fn ethernet_header_for(dst: MacAddr, src: MacAddr, data: &[u8]) -> [u8; 14] {
+    // Apple AWDL multicast frames carry 802.11 broadcast addr1, which
+    // Linux ip6_rcv_core drops unless mapped to RFC 2464 Ethernet multicast.
+    let dst = match addrs(data) {
+        Some((_, ip_dst)) if ip_dst.is_multicast() => {
+            let o = ip_dst.octets();
+            MacAddr([0x33, 0x33, o[12], o[13], o[14], o[15]])
+        }
+        _ => dst,
+    };
+    let mut hdr = [0u8; 14];
+    hdr[0..6].copy_from_slice(&dst.0);
+    hdr[6..12].copy_from_slice(&src.0);
+    hdr[12..14].copy_from_slice(&ETHERTYPE_IPV6);
+    hdr
+}
+
+/// Whether raw IPv6 `data` sent to `dst` is a bare TCP SYN targeting `local`.
+pub fn is_bare_syn_data(dst: MacAddr, local: MacAddr, data: &[u8]) -> bool {
+    if dst != local {
+        return false;
+    }
+    let Some(tcp) = upper(data, TCP) else {
+        return false;
+    };
+    if tcp.len() < 20 {
+        return false;
+    }
+    let flags = tcp[13] & 0x17; // FIN, SYN, RST, ACK
+    let offset = (tcp[12] >> 4) as usize * 4;
+    flags == 0x02 && offset >= 20 && tcp.len() == offset
+}
+
+/// Whether raw IPv6 `data` is an ICMPv6 echo reply with identifier `id`.
+pub fn is_echo_reply_data(data: &[u8], id: u16) -> bool {
+    upper(data, ICMPV6)
+        .is_some_and(|m| m.len() >= 8 && m[0] == 129 && m[4..6] == id.to_be_bytes())
 }
 
 fn addrs(data: &[u8]) -> Option<(Ipv6Addr, Ipv6Addr)> {
