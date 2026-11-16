@@ -112,6 +112,10 @@ qdf_nbuf_t dp_tx_send_passthru(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 qdf_nbuf_t
 dp_tx_send_passthru_identity(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 			    qdf_nbuf_t nbuf, struct dp_vdev *expected);
+qdf_nbuf_t
+dp_tx_send_passthru_identity_status(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
+				   qdf_nbuf_t nbuf, struct dp_vdev *expected,
+				   enum cdp_pt_tx_status *status);
 #endif
 #endif
 

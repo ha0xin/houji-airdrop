@@ -35,7 +35,8 @@ impl Ipv6Packet {
         })
     }
 
-    pub fn to_ethernet(&self) -> Vec<u8> {
+    /// Fixed 14-byte Ethernet header for this packet (with RFC 2464 multicast mapping).
+    pub fn ethernet_header(&self) -> [u8; 14] {
         // Apple AWDL multicast frames carry 802.11 broadcast addr1, which
         // Linux ip6_rcv_core drops unless mapped to RFC 2464 Ethernet multicast.
         let dst = match self.addrs() {
@@ -45,10 +46,17 @@ impl Ipv6Packet {
             }
             _ => self.dst,
         };
-        let mut out = Vec::with_capacity(14 + self.data.len());
-        out.extend_from_slice(&dst.0);
-        out.extend_from_slice(&self.src.0);
-        out.extend_from_slice(&ETHERTYPE_IPV6);
+        let mut hdr = [0u8; 14];
+        hdr[0..6].copy_from_slice(&dst.0);
+        hdr[6..12].copy_from_slice(&self.src.0);
+        hdr[12..14].copy_from_slice(&ETHERTYPE_IPV6);
+        hdr
+    }
+
+    pub fn to_ethernet(&self) -> Vec<u8> {
+        let hdr = self.ethernet_header();
+        let mut out = Vec::with_capacity(hdr.len() + self.data.len());
+        out.extend_from_slice(&hdr);
         out.extend_from_slice(&self.data);
         out
     }
@@ -323,6 +331,7 @@ mod tests {
         v4[12..14].copy_from_slice(&[0x08, 0x00]);
         assert_eq!(Ipv6Packet::from_ethernet(&v4), None);
         assert_eq!(Ipv6Packet::from_ip(p.data.clone()), Some(p.clone()));
+        assert_eq!(p.ethernet_header(), eth[..14]);
         let mut mdns = p.data;
         mdns[24..40].copy_from_slice(&"ff02::fb".parse::<Ipv6Addr>().unwrap().octets());
         let m = Ipv6Packet::from_ip(mdns).unwrap();
@@ -335,6 +344,10 @@ mod tests {
         assert_eq!(
             broadcast_mcast.to_ethernet()[0..6],
             [0x33, 0x33, 0, 0, 0, 0xfb]
+        );
+        assert_eq!(
+            broadcast_mcast.ethernet_header(),
+            broadcast_mcast.to_ethernet()[..14]
         );
     }
 }

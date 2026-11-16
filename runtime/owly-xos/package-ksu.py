@@ -36,8 +36,14 @@ def load_manifest() -> dict:
     audit = json.loads((REPO / manifest["audit_file"]).read_text())
     if manifest["blobs"]["qca_cld3_kiwi_v2"]["sha256"] != audit["candidate_sha256"]:
         raise SystemExit("Manifest/audit candidate_sha256 mismatch")
-    if int(manifest["audit_import_count"]) != int(audit["candidate_import_count"]) or int(manifest["audit_import_count"]) != 567:
-        raise SystemExit("Manifest/audit import count mismatch (expected 567)")
+    if int(manifest["audit_import_count"]) != int(audit["candidate_import_count"]) or int(manifest["audit_import_count"]) != 570:
+        raise SystemExit("Manifest/audit import count mismatch (expected 570)")
+    if not all(audit.get("checks", {}).values()) or audit.get("unresolved_imports"):
+        raise SystemExit("Audit checks failed or unresolved imports present")
+    if "modules" in audit:
+        for mod_key in ("qca_cld3_kiwi_v2", "wonder", "houji_wonder_bridge"):
+            if manifest["blobs"][mod_key]["sha256"] != audit["modules"][mod_key]["sha256"]:
+                raise SystemExit(f"Manifest/audit {mod_key} sha256 mismatch")
     return manifest
 
 
@@ -92,7 +98,7 @@ def build_share_guide(zip_name: str, zip_sha: str, mishare_sha: str, compat_sha:
 - 文件名：`{zip_name}`
 - SHA-256：`{zip_sha}`
 - 内置组件：
-  - `owly-xos` 高速后端运行时（`owly-awdl` VHT80 2SS MCS9 + 三星提取 `ezif` 多对端硬件 TX A-MPDU 固件 + 经 567 符号 CRC 审计的内核模块 + `XosBridge` AIDL 服务）
+  - `owly-xos` 高速后端运行时（`owly-awdl` VHT80 2SS MCS9 + 三星提取 `ezif` 多对端硬件 TX A-MPDU 固件 + 经 570 符号 CRC 审计的内核模块 + `XosBridge` AIDL 服务）
   - 小米 18 Pro Max 提取原厂平台签名 `MIShare.apk`（`5.4.2_20260923_1315`，SHA-256 `{mishare_sha[:16]}...`，无需核心破解即可直接升级系统互传）
   - `Owly-XOS 小米互传兼容` LSPosed 模块（`org.houji.xoscompat`，SHA-256 `{compat_sha[:16]}...`，已声明默认推荐作用域）
 

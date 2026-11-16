@@ -20,9 +20,10 @@ XosBridge.java (app_process + bridge-supervisor.sh)
     ▼
 radio.sh (enter / restore + 退出快照 & Wi-Fi 重连恢复 + 独占锁，实测冷启动 ~3.16s)
     │ 绑定已预部署的 ezif-amss20.bin + qca_cld3_kiwi_v2 (pt_exclusive=1, pt_remote_multi=1,
-    │ pt_tx_ampdu=1, pt_rx_msdu_buf=1, pt_rx_ezif_marked=1, pt_remote_reo=2 win=256)
+    │ pt_tx_ampdu=1, pt_dynamic_rate=1, pt_single_ring=0, pt_tx_backpressure=1,
+    │ pt_rx_msdu_buf=1, pt_rx_ezif_marked=1, pt_remote_reo=2 win=256)
     ▼
-owly-xosd xos0 amsdu ack (纯 L2 守护，零独立 App 依赖；HOUJI_OWLY_TX_ADDBA=1, max_peers=8, fast_discovery=true)
+owly-xosd xos0 amsdu ack (纯 L2 守护，零独立 App 依赖；HOUJI_OWLY_TX_ADDBA=2, max_peers=8, fast_discovery=true)
     ├── owly-awdl fast_discovery（启动即发 PSF+MIF，遇未知/未确认对端立即触发受限频次 MIF）
     ├── KernelPeerSync 异步写 sysfs pt_remote_peer_ctl (add/del/clear，不阻塞定时器)
     ├── PeerUp 双向 mDNS 触发（立即外发 QU _airdrop._tcp PTR 查询 + 定时向 xos0 注入入向 PTR 提示）
@@ -72,7 +73,7 @@ owly-xosd xos0 amsdu ack (纯 L2 守护，零独立 App 依赖；HOUJI_OWLY_TX_A
 
 ## 系统、内核与运行环境要求
 
-本目录加载的树外内核模块（`qca_cld3_kiwi_v2-three-findings.ko`、`houji_wonder_bridge.ko`、`wonder.ko`）已完成 **567 个导出符号 CRC** 严格审计，仅在完全匹配的目标内核与原厂固件环境下放行运行（安装脚本 `customize.sh`、开机守护 `service.sh` 与切换脚本 `radio.sh` 均执行硬校验，OTA 变更内核后会自动安全停用）：
+本目录加载的树外内核模块（`blobs/local/qca_cld3_kiwi_v2-owly-xos.ko`、`houji_wonder_bridge-owly-xos.ko`、`wonder-owly-xos.ko`）已完成 **570 个导入符号 CRC** 严格审计（见 [`audit-f2-f6-f10.json`](audit-f2-f6-f10.json)），仅在完全匹配的目标内核与原厂固件环境下放行运行（安装脚本 `customize.sh`、开机守护 `service.sh` 与切换脚本 `radio.sh` 均执行硬校验，OTA 变更内核后会自动安全停用）：
 
 | 检查项 | 要求值 | 说明 |
 |---|---|---|

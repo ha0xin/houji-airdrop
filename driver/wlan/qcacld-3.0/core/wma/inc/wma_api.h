@@ -952,10 +952,43 @@ QDF_STATUS wma_cleanup_vdev_status(struct wlan_objmgr_vdev *vdev);
  */
 QDF_STATUS wma_passthru_reap_failed_deletes(void);
 #ifdef DRIVER_PASSTHRU_OWNER
+struct wma_pt_peer_caps {
+	bool ht;
+	bool vht;
+	u8 nss;
+	u8 bw;
+	u8 max_mcs;
+	bool sgi;
+	bool ldpc;
+	bool has_ht_bw40;
+	bool ht_bw40;
+	bool has_ht_sgi20;
+	bool ht_sgi20;
+	bool has_ht_sgi40;
+	bool ht_sgi40;
+	bool has_ht_ldpc;
+	bool ht_ldpc;
+	bool has_vht_sgi80;
+	bool vht_sgi80;
+	bool has_vht_ldpc;
+	bool vht_ldpc;
+	u16 max_mpdu;
+	bool has_ampdu_exp;
+	u8 ampdu_exp;
+	u8 mpdu_density;
+	u16 ht_mcs_mask;
+};
+
 int wma_pt_remote_peer_setup(struct wlan_objmgr_vdev *vdev, u64 generation,
 			     const u8 *remote_mac, u32 enable_reo, bool is_2ss);
+int wma_pt_remote_peer_setup_caps(struct wlan_objmgr_vdev *vdev, u64 generation,
+				  const u8 *remote_mac, u32 enable_reo,
+				  const struct wma_pt_peer_caps *caps);
 int wma_pt_remote_peer_add(struct wlan_objmgr_vdev *vdev, u64 generation,
 			   const u8 *remote_mac, u32 enable_reo, bool is_2ss);
+int wma_pt_remote_peer_add_caps(struct wlan_objmgr_vdev *vdev, u64 generation,
+				const u8 *remote_mac, u32 enable_reo,
+				const struct wma_pt_peer_caps *caps);
 int wma_pt_remote_peer_del(struct wlan_objmgr_vdev *vdev, u64 generation,
 			   const u8 *remote_mac);
 int wma_pt_remote_peer_clear(struct wlan_objmgr_vdev *vdev, u64 generation);

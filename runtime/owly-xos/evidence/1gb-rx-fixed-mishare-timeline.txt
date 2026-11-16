@@ -1,0 +1,63 @@
+# Anonymized MIShare logcat timeline for post-fix 2026-11-15 22:52:43-22:53:26 1 GiB (1,073,741,824 B) AirDrop RX run.
+# Upload body EOF: 1,073,775,414 B in 43,286 ms (24.81 MB/s); PERF_TRANSFER: duration=43,569 ms, speedBps=24,644,628 (24.64 MB/s).
+# Note: earlier progress lines in Android ring buffer wrapped before final pull; sampled progress milestones across 868..1004 MiB + exact Upload EOF / PERF_TRANSFER totals are preserved verbatim (all 87 progress intervals captured mid-run from 676..1024 MiB measured P50=27.59, P90=41.53, max=50.53 MB/s).
+# Personal device names, peer link-local IIDs, request UUIDs, task IDs, and spool filenames redacted per docs/PRIVACY.md.
+
+11-15 22:53:18.299 20991 20991 D MiShare:AirDropService: AirDrop BLE device detected
+11-15 22:53:18.299 20991 20991 D MiShare:AirDropBleScanner: AirDrop BLE detected from <hidden>
+11-15 22:53:18.315 20991 22524 I MiShare:AirDropServer: request=<request-uuid> connection=<conn-2> state=UPLOADING Upload body progress bytes=910164286/1073741824 spoolSize=910164286
+11-15 22:53:19.313 20991 22524 I MiShare:AirDropServer: request=<request-uuid> connection=<conn-2> state=UPLOADING Upload body progress bytes=935330110/1073741824 spoolSize=935330110
+11-15 22:53:20.274 20991 22524 I MiShare:AirDropServer: request=<request-uuid> connection=<conn-2> state=UPLOADING Upload body progress bytes=960495934/1073741824 spoolSize=960495934
+11-15 22:53:20.421 20991 22524 I MiShare:AirDropServer: request=<request-uuid> connection=<conn-2> state=UPLOADING Upload body progress bytes=964690238/1073741824 spoolSize=964690238
+11-15 22:53:20.628 20991 22524 I MiShare:AirDropServer: request=<request-uuid> connection=<conn-2> state=UPLOADING Upload body progress bytes=968884542/1073741824 spoolSize=968884542
+11-15 22:53:20.830 20991 22524 I MiShare:AirDropServer: request=<request-uuid> connection=<conn-2> state=UPLOADING Upload body progress bytes=973078846/1073741824 spoolSize=973078846
+11-15 22:53:21.129 20991 22524 I MiShare:AirDropServer: request=<request-uuid> connection=<conn-2> state=UPLOADING Upload body progress bytes=977273150/1073741824 spoolSize=977273150
+11-15 22:53:21.334 20991 22524 I MiShare:AirDropServer: request=<request-uuid> connection=<conn-2> state=UPLOADING Upload body progress bytes=981467454/1073741824 spoolSize=981467454
+11-15 22:53:22.645 20991 22524 I MiShare:AirDropServer: request=<request-uuid> connection=<conn-2> state=UPLOADING Upload body progress bytes=1002438974/1073741824 spoolSize=1002438974
+11-15 22:53:24.099 20991 22524 I MiShare:AirDropServer: request=<request-uuid> connection=<conn-2> state=UPLOADING Upload body progress bytes=1027604798/1073741824 spoolSize=1027604798
+11-15 22:53:25.341 20991 22524 I MiShare:AirDropServer: request=<request-uuid> connection=<conn-2> state=UPLOADING Upload body progress bytes=1052770622/1073741824 spoolSize=1052770622
+11-15 22:53:26.566 20991 22524 I MiShare:AirDropServer: request=<request-uuid> connection=<conn-2> state=UPLOADING Upload framing trailers-complete count=0 COMPLETE chunkIndex=73733 remaining=0 sizeLineBytes=0 previousCrlf=true zeroChunk=true trailersComplete=true payloadBytes=1073775414
+11-15 22:53:26.566 20991 22524 I MiShare:AirDropServer: request=<request-uuid> connection=<conn-2> state=UPLOADING Upload framing zero-chunk-parsed trailers-start READ_TRAILERS chunkIndex=73733 remaining=0 sizeLineBytes=0 previousCrlf=true zeroChunk=true trailersComplete=false payloadBytes=1073775414
+11-15 22:53:26.567 20991 22524 I MiShare:AirDropServer: request=<request-uuid> connection=<conn-2> state=UPLOADING Upload body read EOF waitMs=0 bytes=1073775414 socket=local=/[fe80::200:ff:fe00:104%xos0]:40723 remote=/[fe80::200:ff:fe00:12%xos0]:49199 connected=true closed=false inputShutdown=false outputShutdown=false
+11-15 22:53:26.567 20991 22524 I MiShare:AirDropServer: request=<request-uuid> connection=<conn-2> state=UPLOADING Upload body EOF bytes=1073775414 expected=1073741824 elapsedMs=43286
+11-15 22:53:26.764 20991 22524 I MiShare:AirDropServer: Upload spool complete file=/data/user/0/com.miui.mishare.connectivity/cache/airdrop-upload-<id>.spool bytes=1073775414
+11-15 22:53:26.765 20991 22524 I MiShare:AirDropServer: request=<request-uuid> connection=<conn-2> state=UPLOADING Upload spool complete bytes=1073775414
+11-15 22:53:26.766 20991 22569 I MiShare:AirDropServer: request=<request-uuid> connection=<conn-2> state=UPLOADING Upload extract complete files=1 spoolSize=1073775414 archiveBytes=1073742848 trailer=true blockBoundary=true decoderFrame=true
+11-15 22:53:26.767 20991 22569 I MiShare:AirDropServer: request=<request-uuid> connection=<conn-2> state=UPLOADING Upload final chunk compatibility not-eligible chunked=true contentType=true extraction=true trailer=true blockBoundary=true decoderFrame=true archiveBytes=1073742848 metadata=true spoolConsumed=true bodyFailed=false completion=NORMAL_HTTP
+11-15 22:53:26.767 20991 22569 I MiShare:AirDropServer: request=<request-uuid> connection=<conn-2> state=UPLOADING Upload awaitComplete start spoolSize=1073775414
+11-15 22:53:26.767 20991 22569 I MiShare:AirDropServer: request=<request-uuid> connection=<conn-2> state=UPLOADING Upload awaitComplete complete spoolSize=1073775414
+11-15 22:53:26.767 20991 22569 I MiShare:AirDropServer: Upload spool await complete file=/data/user/0/com.miui.mishare.connectivity/cache/airdrop-upload-<id>.spool bytes=1073775414
+11-15 22:53:26.789 20991 22569 I MiShare:AirDropServer: request=<request-uuid> connection=<conn-2> state=UPLOADING Upload response 200 start
+11-15 22:53:26.789 20991 22569 I MiShare:AirDropServer: request=<request-uuid> connection=<conn-2> state=UPLOADING Upload files committed count=1
+11-15 22:53:26.790 20991 22569 I MiShare:AirDropServer: request=<request-uuid> connection=<conn-2> state=UPLOADING response 200 bytes=2
+11-15 22:53:26.790 20991 22569 I MiShare:AirDropServer: request=<request-uuid> connection=<conn-2> state=UPLOADING Upload response 200 complete
+11-15 22:53:26.791 20991 22569 D MiShare:AirDropService: notifyTransferEnd: skipped — AirDrop transfer still active
+11-15 22:53:26.791 20991 22569 D MiShare:AirDropService: BLE idle window expired — skipped while AirDrop page is active
+11-15 22:53:26.791 20991 22569 D MiShare:AirDropService: reconnectWlanIfIdle: skipped — AirDrop page active
+11-15 22:53:26.794 20991 22569 I MiShare:AirDropServer: request=<request-uuid> connection=<conn-2> state=TERMINATED terminate reason=COMPLETED from=UPLOADING message=1 files received bytes=1073775414 readPending=false readWaitMs=226 framing=trailers-complete count=0 COMPLETE chunkIndex=73733 remaining=0 sizeLineBytes=0 previousCrlf=true zeroChunk=true trailersComplete=true payloadBytes=1073775414 socketBeforeClose=local=/[fe80::200:ff:fe00:104%xos0]:40723 remote=/[fe80::200:ff:fe00:12%xos0]:49199 connected=true closed=false inputShutdown=false outputShutdown=false
+11-15 22:53:26.804 20991 20991 I MiShare:TaskInner: [Trace] event=PERF_TRANSFER taskId=<task-id> duration=43569 totalSize=1073741824 speedBps=24644628
+11-15 22:53:26.804 20991 20991 I MiShare:TaskInner: [Trace] event=TASK_SUCCESS taskId=<task-id> count=1 send=false device=airdrop-recv-1794754361140
+11-15 22:53:28.460 20991 20991 D MiShare:AirDropBleScanner: AirDrop BLE detected from <hidden>
+11-15 22:53:28.462 20991 20991 D MiShare:AirDropService: AirDrop BLE device detected
+11-15 22:53:36.819 20991 20991 D MiShare:AirDropShareBridge: isBusy: businessBusy=false, ownerActive=true, sessionActive=true, resourceBusy=false, serviceAlive=true
+11-15 22:53:38.537 20991 20991 D MiShare:AirDropBleScanner: AirDrop BLE detected from <hidden>
+11-15 22:53:38.539 20991 20991 D MiShare:AirDropService: AirDrop BLE device detected
+11-15 22:53:48.598 20991 20991 D MiShare:AirDropService: AirDrop BLE device detected
+11-15 22:53:48.598 20991 20991 D MiShare:AirDropBleScanner: AirDrop BLE detected from <hidden>
+11-15 22:53:48.637 20991 20991 I MiShare:AirDropService: requestStopStartedServiceWhenIdle: startId=1, businessBusy=false
+11-15 22:53:48.637 20991 20991 I MiShare:AirDropService: stopSharopSession: stopping page session sends=0 receives=0 waitingAccept=false
+11-15 22:53:48.639 20991 20991 D MiShare:AirDropShareBridge: stopSharopServer: scheduling delayed stop
+11-15 22:53:48.639 20991 20991 D MiShare:AirDropShareBridge: releaseReceiveAuthorization count=0
+11-15 22:53:48.641 20991 20991 I MiShare:AirDropService: stopStartedServiceIfIdle: startId=1, stopped=true
+11-15 22:53:48.641 20991 20991 D MiShare:AirDropShareBridge: doStopReceiving: stopping receive discovery
+11-15 22:53:48.648 20991 22480 I MiShare:AirDropBleScanner: BLE scanning stopped
+11-15 22:53:48.648 20991 22480 I MiShare:AirDropService: stopSharopServer: advertiser.stop() calling...
+11-15 22:53:48.652 20991 22480 I MiShare:AirDropService: stopSharopServer: advertiser.stop() returned
+11-15 22:53:48.693 20991 22480 I MiShare:AirDropService: Scheduling XOS delayed release (1000ms)
+11-15 22:53:48.693 20991 22480 I MiShare:AirDropServer: Server stopped
+11-15 22:53:48.694 20991 20991 D MiShare:AirDropShareBridge: AirDrop state changed: false
+11-15 22:53:48.694 20991 22480 I MiShare:AirDropService: AirDrop receiving stopped
+11-15 22:53:49.695 20991 20991 I MiShare:AirDropService: AWDL delayed release — executing
+11-15 22:53:58.640 20991 20991 D MiShare:AirDropShareBridge: isBusy: businessBusy=false, ownerActive=false, sessionActive=false, resourceBusy=false, serviceAlive=true
+11-15 22:53:58.643 20991 20991 I MiShare:AirDropService: clearDiscoveredPeers: cleared 0 peer(s)
+11-15 22:53:58.643 20991 20991 I MiShare:AirDropShareBridge: prepareModuleDisable: generation=8, snapshot=businessBusy=false, ownerActive=false, sessionActive=false, resourceBusy=false, serviceAlive=true

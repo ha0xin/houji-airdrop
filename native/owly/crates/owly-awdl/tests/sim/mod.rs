@@ -98,6 +98,7 @@ impl Sim {
                 }
                 Action::ArmTimer(t) => n.timer = t,
                 Action::PeerUp(p) => n.up.push((self.now, p)),
+                Action::PeerCaps(..) => {}
                 Action::PeerDown(m) => n.down.push((self.now, m)),
                 Action::Deliver(p) => n.delivered.push((self.now, p)),
             }

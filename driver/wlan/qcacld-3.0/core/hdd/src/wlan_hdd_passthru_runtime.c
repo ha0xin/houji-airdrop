@@ -1181,6 +1181,40 @@ struct hdd_pt_peer_ctl_req {
 	u8 mac[ETH_ALEN];
 	u32 enable_reo;
 	bool is_2ss;
+	bool has_ht;
+	bool has_vht;
+	bool has_nss;
+	bool has_bw;
+	bool has_mcs;
+	bool has_sgi;
+	bool has_ldpc;
+	bool has_ht_bw40;
+	bool has_ht_sgi20;
+	bool has_ht_sgi40;
+	bool has_ht_ldpc;
+	bool has_vht_sgi80;
+	bool has_vht_ldpc;
+	bool has_max_mpdu;
+	bool has_ampdu_exp;
+	bool has_mpdu_density;
+	bool has_ht_mcs;
+	bool cap_ht;
+	bool cap_vht;
+	u8 cap_nss;
+	u8 cap_bw;
+	u8 cap_mcs;
+	bool cap_sgi;
+	bool cap_ldpc;
+	bool cap_ht_bw40;
+	bool cap_ht_sgi20;
+	bool cap_ht_sgi40;
+	bool cap_ht_ldpc;
+	bool cap_vht_sgi80;
+	bool cap_vht_ldpc;
+	u16 cap_max_mpdu;
+	u8 cap_ampdu_exp;
+	u8 cap_mpdu_density;
+	u16 cap_ht_mcs;
 };
 
 static const char *hdd_pt_skip_ws(const char *s)
@@ -1188,6 +1222,154 @@ static const char *hdd_pt_skip_ws(const char *s)
 	while (*s == ' ' || *s == '\t' || *s == '\n' || *s == '\r')
 		s++;
 	return s;
+}
+
+static bool hdd_pt_is_ws(char c)
+{
+	return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\0';
+}
+
+static int hdd_pt_parse_u16_token(const char *s, size_t len, u16 *out)
+{
+	unsigned int v = 0;
+	size_t i;
+
+	if (!len)
+		return -EINVAL;
+	if (len >= 3 && s[0] == '0' && (s[1] == 'x' || s[1] == 'X')) {
+		if (len > 6)
+			return -EINVAL;
+		for (i = 2; i < len; i++) {
+			char c = s[i];
+			unsigned int d;
+
+			if (c >= '0' && c <= '9')
+				d = c - '0';
+			else if (c >= 'a' && c <= 'f')
+				d = 10 + (c - 'a');
+			else if (c >= 'A' && c <= 'F')
+				d = 10 + (c - 'A');
+			else
+				return -EINVAL;
+			v = (v << 4) | d;
+		}
+	} else {
+		if (len > 5)
+			return -EINVAL;
+		for (i = 0; i < len; i++) {
+			if (s[i] < '0' || s[i] > '9')
+				return -EINVAL;
+			v = v * 10 + (s[i] - '0');
+		}
+	}
+	if (v > 65535)
+		return -EINVAL;
+	*out = (u16)v;
+	return 0;
+}
+
+static int hdd_pt_set_bool_cap(bool *has, bool *val, u16 num)
+{
+	if (*has || num > 1)
+		return -EINVAL;
+	*has = true;
+	*val = num != 0;
+	return 0;
+}
+
+static int hdd_pt_parse_peer_cap_kv(struct hdd_pt_peer_ctl_req *req,
+				    const char *tok, size_t len)
+{
+	const char *eq = memchr(tok, '=', len);
+	const char *val;
+	size_t klen, vlen;
+	u16 num = 0;
+
+	if (!eq)
+		return -EINVAL;
+	klen = eq - tok;
+	val = eq + 1;
+	vlen = len - klen - 1;
+	if (!klen || !vlen || hdd_pt_parse_u16_token(val, vlen, &num))
+		return -EINVAL;
+
+	if (klen == 3 && !strncmp(tok, "nss", 3)) {
+		if (req->has_nss || (num != 1 && num != 2))
+			return -EINVAL;
+		req->has_nss = true;
+		req->cap_nss = (u8)num;
+		return 0;
+	}
+	if (klen == 2 && !strncmp(tok, "bw", 2)) {
+		if (req->has_bw || (num != 20 && num != 40 && num != 80))
+			return -EINVAL;
+		req->has_bw = true;
+		req->cap_bw = (u8)num;
+		return 0;
+	}
+	if (klen == 3 && !strncmp(tok, "mcs", 3)) {
+		if (req->has_mcs || num < 7 || num > 9)
+			return -EINVAL;
+		req->has_mcs = true;
+		req->cap_mcs = (u8)num;
+		return 0;
+	}
+	if (klen == 3 && !strncmp(tok, "vht", 3))
+		return hdd_pt_set_bool_cap(&req->has_vht, &req->cap_vht, num);
+	if (klen == 2 && !strncmp(tok, "ht", 2))
+		return hdd_pt_set_bool_cap(&req->has_ht, &req->cap_ht, num);
+	if (klen == 3 && !strncmp(tok, "sgi", 3))
+		return hdd_pt_set_bool_cap(&req->has_sgi, &req->cap_sgi, num);
+	if (klen == 4 && !strncmp(tok, "ldpc", 4))
+		return hdd_pt_set_bool_cap(&req->has_ldpc, &req->cap_ldpc, num);
+	if (klen == 7 && !strncmp(tok, "ht_bw40", 7))
+		return hdd_pt_set_bool_cap(&req->has_ht_bw40,
+					   &req->cap_ht_bw40, num);
+	if (klen == 8 && !strncmp(tok, "ht_sgi20", 8))
+		return hdd_pt_set_bool_cap(&req->has_ht_sgi20,
+					   &req->cap_ht_sgi20, num);
+	if (klen == 8 && !strncmp(tok, "ht_sgi40", 8))
+		return hdd_pt_set_bool_cap(&req->has_ht_sgi40,
+					   &req->cap_ht_sgi40, num);
+	if (klen == 7 && !strncmp(tok, "ht_ldpc", 7))
+		return hdd_pt_set_bool_cap(&req->has_ht_ldpc,
+					   &req->cap_ht_ldpc, num);
+	if (klen == 9 && !strncmp(tok, "vht_sgi80", 9))
+		return hdd_pt_set_bool_cap(&req->has_vht_sgi80,
+					   &req->cap_vht_sgi80, num);
+	if (klen == 8 && !strncmp(tok, "vht_ldpc", 8))
+		return hdd_pt_set_bool_cap(&req->has_vht_ldpc,
+					   &req->cap_vht_ldpc, num);
+	if (klen == 8 && !strncmp(tok, "max_mpdu", 8)) {
+		if (req->has_max_mpdu ||
+		    (num != 3895 && num != 7991 && num != 11454))
+			return -EINVAL;
+		req->has_max_mpdu = true;
+		req->cap_max_mpdu = num;
+		return 0;
+	}
+	if (klen == 9 && !strncmp(tok, "ampdu_exp", 9)) {
+		if (req->has_ampdu_exp || num > 7)
+			return -EINVAL;
+		req->has_ampdu_exp = true;
+		req->cap_ampdu_exp = (u8)num;
+		return 0;
+	}
+	if (klen == 12 && !strncmp(tok, "mpdu_density", 12)) {
+		if (req->has_mpdu_density || num > 7)
+			return -EINVAL;
+		req->has_mpdu_density = true;
+		req->cap_mpdu_density = (u8)num;
+		return 0;
+	}
+	if (klen == 6 && !strncmp(tok, "ht_mcs", 6)) {
+		if (req->has_ht_mcs)
+			return -EINVAL;
+		req->has_ht_mcs = true;
+		req->cap_ht_mcs = num;
+		return 0;
+	}
+	return -EINVAL;
 }
 
 static int hdd_pt_parse_peer_ctl(const char *val,
@@ -1216,8 +1398,27 @@ static int hdd_pt_parse_peer_ctl(const char *val,
 	if (strnlen(p, 18) < 17 || !mac_pton(p, req->mac) ||
 	    !is_valid_ether_addr(req->mac))
 		return -EINVAL;
-	p = hdd_pt_skip_ws(p + 17);
-	return *p ? -EINVAL : 0;
+	p += 17;
+	if (!hdd_pt_is_ws(*p))
+		return -EINVAL;
+	p = hdd_pt_skip_ws(p);
+	if (req->op == HDD_PT_PEER_CTL_DEL)
+		return *p ? -EINVAL : 0;
+
+	while (*p) {
+		const char *end = p;
+
+		while (*end && !hdd_pt_is_ws(*end))
+			end++;
+		if (hdd_pt_parse_peer_cap_kv(req, p, end - p))
+			return -EINVAL;
+		p = hdd_pt_skip_ws(end);
+	}
+	if (req->has_vht && req->cap_vht && req->has_ht && !req->cap_ht)
+		return -EINVAL;
+	if (req->has_vht && !req->cap_vht && req->has_bw && req->cap_bw > 40)
+		return -EINVAL;
+	return 0;
 }
 
 static int hdd_pt_remote_peer_op_cb(struct wlan_objmgr_vdev *vdev,
@@ -1226,9 +1427,41 @@ static int hdd_pt_remote_peer_op_cb(struct wlan_objmgr_vdev *vdev,
 	struct hdd_pt_peer_ctl_req *req = context;
 
 	switch (req->op) {
-	case HDD_PT_PEER_CTL_ADD:
+	case HDD_PT_PEER_CTL_ADD: {
+#ifndef HOUJI_PT_RUNTIME_HOST_TEST
+		struct wma_pt_peer_caps caps = {
+			.ht = req->cap_ht,
+			.vht = req->cap_vht,
+			.nss = req->cap_nss,
+			.bw = req->cap_bw,
+			.max_mcs = req->cap_mcs,
+			.sgi = req->cap_sgi,
+			.ldpc = req->cap_ldpc,
+			.has_ht_bw40 = true,
+			.ht_bw40 = req->cap_ht_bw40,
+			.has_ht_sgi20 = true,
+			.ht_sgi20 = req->cap_ht_sgi20,
+			.has_ht_sgi40 = true,
+			.ht_sgi40 = req->cap_ht_sgi40,
+			.has_ht_ldpc = true,
+			.ht_ldpc = req->cap_ht_ldpc,
+			.has_vht_sgi80 = true,
+			.vht_sgi80 = req->cap_vht_sgi80,
+			.has_vht_ldpc = true,
+			.vht_ldpc = req->cap_vht_ldpc,
+			.max_mpdu = req->cap_max_mpdu,
+			.has_ampdu_exp = req->has_ampdu_exp,
+			.ampdu_exp = req->cap_ampdu_exp,
+			.mpdu_density = req->cap_mpdu_density,
+			.ht_mcs_mask = req->cap_ht_mcs,
+		};
+		return wma_pt_remote_peer_add_caps(vdev, generation, req->mac,
+						   req->enable_reo, &caps);
+#else
 		return wma_pt_remote_peer_add(vdev, generation, req->mac,
 					      req->enable_reo, req->is_2ss);
+#endif
+	}
 	case HDD_PT_PEER_CTL_DEL:
 		return wma_pt_remote_peer_del(vdev, generation, req->mac);
 	case HDD_PT_PEER_CTL_CLEAR:
@@ -1236,6 +1469,123 @@ static int hdd_pt_remote_peer_op_cb(struct wlan_objmgr_vdev *vdev,
 	default:
 		return -EINVAL;
 	}
+}
+
+static void hdd_pt_resolve_peer_caps(struct hdd_pt_peer_ctl_req *req,
+				     const struct wondertap_init_params *params)
+{
+	bool local_vht80 = hdd_pt_control_params_vht80(params);
+	bool local_2ss = hdd_pt_control_params_is_2ss(params);
+	bool ht = req->has_ht ? req->cap_ht : true;
+	bool vht = req->has_vht ? req->cap_vht : local_vht80;
+	u8 nss = req->has_nss ? req->cap_nss : (local_2ss ? 2 : 1);
+	u8 bw = req->has_bw ? req->cap_bw : (vht ? 80 : 20);
+	u8 mcs = req->has_mcs ? req->cap_mcs : (vht ? 9 : 7);
+	bool separated_sgi = req->has_ht_sgi20 || req->has_ht_sgi40 ||
+			     req->has_vht_sgi80;
+	bool separated_ldpc = req->has_ht_ldpc || req->has_vht_ldpc;
+	bool base_sgi = req->has_sgi ? req->cap_sgi : true;
+	bool base_ldpc = req->has_ldpc ? req->cap_ldpc : true;
+	bool ht_bw40;
+	bool ht_sgi20;
+	bool ht_sgi40;
+	bool vht_sgi80;
+	bool ht_ldpc;
+	bool vht_ldpc;
+	bool sgi;
+	bool ldpc;
+	u8 exp_cap;
+
+	if (!local_vht80) {
+		vht = false;
+		bw = 20;
+		nss = 1;
+		mcs = 7;
+	} else if (!local_2ss && nss > 1) {
+		nss = 1;
+	}
+	if (vht)
+		ht = true;
+	else if (bw > 40)
+		bw = 40;
+	if (!ht && !vht) {
+		nss = 1;
+		bw = 20;
+		mcs = 7;
+	} else if (!vht) {
+		mcs = 7;
+	}
+
+	ht_bw40 = ht && local_vht80 &&
+		  (req->has_ht_bw40 ? req->cap_ht_bw40 : (bw >= 40));
+
+	if (!ht && !vht) {
+		ht_sgi20 = false;
+		ht_sgi40 = false;
+		vht_sgi80 = false;
+		ht_ldpc = false;
+		vht_ldpc = false;
+		sgi = false;
+		ldpc = false;
+	} else {
+		if (separated_sgi) {
+			ht_sgi20 = ht && req->has_ht_sgi20 && req->cap_ht_sgi20;
+			ht_sgi40 = ht && ht_bw40 && req->has_ht_sgi40 &&
+				   req->cap_ht_sgi40;
+			vht_sgi80 = vht && bw >= 80 && req->has_vht_sgi80 &&
+				    req->cap_vht_sgi80;
+		} else {
+			ht_sgi20 = ht && base_sgi;
+			ht_sgi40 = ht && ht_bw40 && base_sgi;
+			vht_sgi80 = vht && bw >= 80 && base_sgi;
+		}
+		if (separated_ldpc) {
+			ht_ldpc = ht && req->has_ht_ldpc && req->cap_ht_ldpc;
+			vht_ldpc = vht && req->has_vht_ldpc && req->cap_vht_ldpc;
+		} else {
+			ht_ldpc = ht && base_ldpc;
+			vht_ldpc = vht && base_ldpc;
+		}
+		if (vht) {
+			if (bw >= 80)
+				sgi = vht_sgi80;
+			else if (bw >= 40)
+				sgi = req->has_ht_sgi40 ? ht_sgi40 : base_sgi;
+			else
+				sgi = req->has_ht_sgi20 ? ht_sgi20 : base_sgi;
+			ldpc = vht_ldpc;
+		} else {
+			sgi = (bw >= 40) ? ht_sgi40 : ht_sgi20;
+			ldpc = ht_ldpc;
+		}
+	}
+
+	req->cap_ht = ht;
+	req->cap_vht = vht;
+	req->cap_nss = nss;
+	req->cap_bw = bw;
+	req->cap_mcs = mcs;
+	req->cap_sgi = sgi;
+	req->cap_ldpc = ldpc;
+	req->cap_ht_bw40 = ht_bw40;
+	req->cap_ht_sgi20 = ht_sgi20;
+	req->cap_ht_sgi40 = ht_sgi40;
+	req->cap_ht_ldpc = ht_ldpc;
+	req->cap_vht_sgi80 = vht_sgi80;
+	req->cap_vht_ldpc = vht_ldpc;
+	req->cap_max_mpdu = req->has_max_mpdu ? req->cap_max_mpdu : 3895U;
+	exp_cap = vht ? 7U : 3U;
+	if (req->has_ampdu_exp)
+		req->cap_ampdu_exp = req->cap_ampdu_exp > exp_cap ?
+				     exp_cap : req->cap_ampdu_exp;
+	else
+		req->cap_ampdu_exp = exp_cap;
+	req->cap_mpdu_density = req->has_mpdu_density ?
+				(req->cap_mpdu_density > 7 ?
+				 7 : req->cap_mpdu_density) : 0;
+	req->cap_ht_mcs = ht ? (req->has_ht_mcs ? req->cap_ht_mcs :
+				(nss >= 2 ? 0xffffU : 0x00ffU)) : 0U;
+	req->is_2ss = nss >= 2;
 }
 
 static int hdd_pt_remote_peer_ctl_set(const char *val,
@@ -1264,7 +1614,7 @@ static int hdd_pt_remote_peer_ctl_set(const char *val,
 		goto out;
 	}
 	req.enable_reo = hdd_pt_control_remote_reo_mode();
-	req.is_2ss = hdd_pt_control_params_is_2ss(&rt->params);
+	hdd_pt_resolve_peer_caps(&req, &rt->params);
 	ret = hdd_pt_with_active(&rt->registry, rt->registry.generation,
 				 hdd_pt_remote_peer_op_cb, &req);
 out:
@@ -1283,5 +1633,5 @@ static const struct kernel_param_ops hdd_pt_peer_ctl_ops = {
 	.get = hdd_pt_remote_peer_ctl_get,
 };
 module_param_cb(pt_remote_peer_ctl, &hdd_pt_peer_ctl_ops, NULL, 0600);
-MODULE_PARM_DESC(pt_remote_peer_ctl, "Dynamic PASSTHRU remote peer control: add/del <mac> or clear");
+MODULE_PARM_DESC(pt_remote_peer_ctl, "Dynamic PASSTHRU remote peer control: add <mac> [nss= bw= mcs= vht= ht= sgi= ldpc=], del <mac>, or clear");
 #endif

@@ -1,0 +1,140 @@
+# Anonymized owly-xosd runner telemetry from the 2026-11-15 21:57:41-21:58:31 1 GiB AirDrop TX session (20.42 MB/s).
+# Personal peer MACs, UUIDs, and xos0 EUI-64 redacted per docs/PRIVACY.md; STATS/OWLY_RX_GAPS/peer churn/timer spikes unmodified.
+
+OWLY_PT_PEER_CTL enabled=true
+OWLY_AF_PACKET_BUF rcvbuf=16777216 sndbuf=8388608
+OWLY_COALESCE_US=1000
+OWLY_OUTGOING_VHT=2
+OWLY_ACCEPT_ADDBA=2
+OWLY_TX_ADDBA=1
+OWLY_READY iface=xos0 addr=fe80::200:ff:fe00:103 peer=00:00:00:00:00:00 channel=149 amsdu=true noack=false ba=true dynamic_peers=true
+OWLY_PSF_SUBMITTED_HT_CAPABILITIES=00006f001fffff0000
+OWLY_PSF_SUBMITTED_VHT_CONTAINER=bf0c30008003faff0000faff0000
+OWLY_MIF_SUBMITTED_HT_CAPABILITIES=00006f001fffff0000
+OWLY_MIF_SUBMITTED_VHT_CONTAINER=bf0c30008003faff0000faff0000
+ INFO owly_awdl::driver: add peer 02:00:00:00:00:11 (<peer-uuid-1>)
+OWLY_PEERS count=1
+OWLY_TX_ADDBA_REQ_SENT token=1 params=0x1003 ssn=0
+ INFO owly_awdl::driver: STATS tx_action 3 tx_unicast 0 tx_multicast 2 tx_amsdu 0 | radio full 0 gave up 0 | rx_action 2 rx_data 0 rx_malformed 0 rx_dup 0 delivered 0 | addba req 0 resp 0 tx_req 1 rx_resp 0 | dropped no_peer 0 queue 0 expired 0 | syn held 0 released 0 | no_overlap 0 | timer late avg 0 µs max 0 µs
+ INFO owly_awdl::driver: add peer 02:00:00:00:00:12 (<peer-uuid-2>)
+OWLY_PT_PEER_CTL op=add active=1 rc=ok
+OWLY_PEERS count=2
+OWLY_TX_ADDBA_REQ_SENT token=1 params=0x1003 ssn=0
+OWLY_PT_PEER_CTL op=add active=2 rc=ok
+ INFO owly_awdl::driver: add peer 02:00:00:00:00:13 (<peer-uuid-3>)
+OWLY_PEERS count=3
+OWLY_TX_ADDBA_REQ_SENT token=1 params=0x1003 ssn=0
+OWLY_PT_PEER_CTL op=add active=3 rc=ok
+ INFO owly_awdl::driver: add peer 02:00:00:00:00:14 (<peer-uuid-4>)
+OWLY_PEERS count=4
+OWLY_TX_ADDBA_REQ_SENT token=1 params=0x1003 ssn=0
+OWLY_PT_PEER_CTL op=add active=4 rc=ok
+OWLY_PEERS count=4
+OWLY_PEERS count=4
+OWLY_TX_ADDBA_REQ_SENT token=2 params=0x1003 ssn=0
+OWLY_PEERS count=4
+OWLY_TX_ADDBA_REQ_SENT token=3 params=0x1003 ssn=1
+OWLY_TX_ADDBA_REQ_SENT token=2 params=0x1003 ssn=0
+OWLY_TX_ADDBA_REQ_SENT token=2 params=0x1003 ssn=0
+OWLY_PEERS count=4
+ INFO owly_awdl::driver: add peer 02:00:00:00:00:15 (<peer-uuid-5>)
+OWLY_PEERS count=5
+OWLY_PT_PEER_CTL op=add active=5 rc=ok
+OWLY_PEERS count=5
+OWLY_PEERS count=5
+OWLY_PEERS count=5
+OWLY_PEERS count=5
+OWLY_PEERS count=5
+ INFO owly_awdl::driver: STATS tx_action 247 tx_unicast 51 tx_multicast 17 tx_amsdu 8 | radio full 0 gave up 0 | rx_action 269 rx_data 48 rx_malformed 0 rx_dup 0 delivered 58 | addba req 0 resp 0 tx_req 19 rx_resp 0 | dropped no_peer 0 queue 0 expired 0 | syn held 0 released 0 | no_overlap 0 | timer late avg 1343 µs max 5544 µs
+OWLY_PEERS count=5
+OWLY_PEERS count=5
+OWLY_PEERS count=5
+OWLY_PEERS count=5
+OWLY_PEERS count=5
+OWLY_PEERS count=5
+OWLY_PEERS count=5
+OWLY_PEERS count=5
+OWLY_PEERS count=5
+ INFO owly_awdl::driver: remove peer 02:00:00:00:00:15
+OWLY_PT_PEER_CTL op=del active=4 rc=ok
+OWLY_PEERS count=4
+ INFO owly_awdl::driver: STATS tx_action 488 tx_unicast 156748 tx_multicast 18 tx_amsdu 31663 | radio full 0 gave up 0 | rx_action 558 rx_data 3144 rx_malformed 0 rx_dup 1 delivered 4013 | addba req 0 resp 0 tx_req 20 rx_resp 0 | dropped no_peer 0 queue 0 expired 0 | syn held 0 released 0 | no_overlap 0 | timer late avg 925 µs max 3927 µs
+OWLY_PEERS count=4
+OWLY_PEERS count=4
+OWLY_PEERS count=4
+ INFO owly_awdl::driver: add peer 02:00:00:00:00:15 (<peer-uuid-5>)
+OWLY_PEERS count=5
+OWLY_PT_PEER_CTL op=add active=5 rc=ok
+OWLY_PEERS count=5
+OWLY_PEERS count=5
+OWLY_PEERS count=5
+OWLY_PEERS count=5
+OWLY_PEERS count=5
+OWLY_PEERS count=5
+OWLY_PEERS count=5
+ INFO owly_awdl::driver: remove peer 02:00:00:00:00:15
+OWLY_PT_PEER_CTL op=del active=4 rc=ok
+ INFO owly_awdl::driver: STATS tx_action 732 tx_unicast 310625 tx_multicast 21 tx_amsdu 62890 | radio full 0 gave up 0 | rx_action 859 rx_data 6506 rx_malformed 0 rx_dup 3 delivered 7970 | addba req 0 resp 0 tx_req 23 rx_resp 0 | dropped no_peer 0 queue 0 expired 0 | syn held 0 released 0 | no_overlap 0 | timer late avg 868 µs max 6019 µs
+OWLY_PEERS count=4
+OWLY_PEERS count=4
+OWLY_PEERS count=4
+OWLY_PEERS count=4
+OWLY_PEERS count=4
+OWLY_PEERS count=4
+OWLY_PEERS count=4
+OWLY_PEERS count=4
+ INFO owly_awdl::driver: add peer 02:00:00:00:00:15 ()
+OWLY_PEERS count=5
+OWLY_PT_PEER_CTL op=add active=5 rc=ok
+OWLY_PEERS count=5
+OWLY_PEERS count=5
+ INFO owly_awdl::driver: STATS tx_action 974 tx_unicast 450962 tx_multicast 23 tx_amsdu 91389 | radio full 0 gave up 0 | rx_action 1168 rx_data 9724 rx_malformed 0 rx_dup 7 delivered 11684 | addba req 0 resp 0 tx_req 25 rx_resp 0 | dropped no_peer 0 queue 0 expired 0 | syn held 0 released 0 | no_overlap 0 | timer late avg 878 µs max 3710 µs
+OWLY_PEERS count=5
+OWLY_PEERS count=5
+OWLY_PEERS count=5
+ INFO owly_awdl::driver: remove peer 02:00:00:00:00:15
+OWLY_PT_PEER_CTL op=del active=4 rc=ok
+OWLY_PEERS count=4
+OWLY_PEERS count=4
+OWLY_PEERS count=4
+ INFO owly_awdl::driver: add peer 02:00:00:00:00:15 ()
+OWLY_PEERS count=5
+OWLY_PT_PEER_CTL op=add active=5 rc=ok
+OWLY_PEERS count=5
+OWLY_PEERS count=5
+ INFO owly_awdl::driver: STATS tx_action 1214 tx_unicast 631083 tx_multicast 25 tx_amsdu 127786 | radio full 0 gave up 0 | rx_action 1473 rx_data 13234 rx_malformed 0 rx_dup 11 delivered 15874 | addba req 0 resp 0 tx_req 28 rx_resp 0 | dropped no_peer 0 queue 0 expired 0 | syn held 0 released 0 | no_overlap 0 | timer late avg 893 µs max 19963 µs
+OWLY_PEERS count=5
+OWLY_PEERS count=5
+OWLY_PEERS count=5
+OWLY_PEERS count=5
+OWLY_PEERS count=5
+OWLY_PEERS count=5
+OWLY_PEERS count=5
+OWLY_PEERS count=5
+ INFO owly_awdl::driver: remove peer 02:00:00:00:00:13
+OWLY_PT_PEER_CTL op=del active=4 rc=ok
+OWLY_PEERS count=4
+OWLY_PEERS count=4
+ INFO owly_awdl::driver: STATS tx_action 1456 tx_unicast 782270 tx_multicast 26 tx_amsdu 158343 | radio full 0 gave up 0 | rx_action 1768 rx_data 15962 rx_malformed 0 rx_dup 11 delivered 18784 | addba req 0 resp 0 tx_req 30 rx_resp 0 | dropped no_peer 0 queue 0 expired 0 | syn held 0 released 0 | no_overlap 0 | timer late avg 872 µs max 6404 µs
+OWLY_PEERS count=4
+OWLY_PEERS count=4
+ INFO owly_awdl::driver: remove peer 02:00:00:00:00:15
+OWLY_PT_PEER_CTL op=del active=3 rc=ok
+OWLY_PEERS count=3
+ INFO owly_awdl::driver: add peer 02:00:00:00:00:15 (<peer-uuid-5>)
+OWLY_PEERS count=4
+OWLY_PT_PEER_CTL op=add active=4 rc=ok
+OWLY_PEERS count=4
+OWLY_PEERS count=4
+OWLY_PEERS count=4
+OWLY_PEERS count=4
+OWLY_PEERS count=4
+ INFO owly_awdl::driver: remove peer 02:00:00:00:00:12
+OWLY_PT_PEER_CTL op=del active=3 rc=ok
+OWLY_PEERS count=3
+OWLY_PEERS count=3
+ INFO owly_awdl::driver: STATS tx_action 1678 tx_unicast 782282 tx_multicast 30 tx_amsdu 158343 | radio full 0 gave up 0 | rx_action 1965 rx_data 15970 rx_malformed 0 rx_dup 12 delivered 18788 | addba req 0 resp 0 tx_req 33 rx_resp 0 | dropped no_peer 0 queue 0 expired 0 | syn held 0 released 0 | no_overlap 0 | timer late avg 1425 µs max 13034 µs
+OWLY_RX_GAPS schema=1 matched=5 missing=0 equal=0 backwards=0 host_delayed=0 equal_host_delayed=0 host_caught_up=0 bounds_us=[250, 1000, 4000, 16000, 32000, 64000, 128000, 256000] radio_count=[0, 0, 0, 0, 0, 1, 0, 0, 3] radio_us=[0, 0, 0, 0, 0, 32272, 0, 0, 4166320] host_count=[0, 0, 0, 0, 0, 1, 0, 0, 3] host_us=[0, 0, 0, 0, 0, 32042, 0, 0, 4166208]
+ INFO houji_runner::android: monitor totals air_rx_invalid=0 air_rx_kernel_packets=17947 air_rx_kernel_drops=0 air_tx_fatal=0 air_tx_backpressure=0 air_tx_submitted=161775 air_tx_amsdu_mpdu=158343 air_tx_amsdu_msdu=780591
+ INFO houji_runner::android: tap totals tap_rx_invalid=0 tap_delivery_drops=0
+OWLY_PT_PEER_CTL op=clear active=0 rc=ok

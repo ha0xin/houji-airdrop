@@ -660,7 +660,11 @@ static void wonder_tx(struct ieee80211_hw *hw,
 	struct ieee80211_radiotap_header *radhdr;
 	struct ieee80211_hdr *hdr;
 	struct wonder_txd *txd;
+	struct ieee80211_sta *sta;
+	struct ieee80211_tx_info tx_info = { 0 };
 	unsigned int room;
+	unsigned int pkt_len;
+	int xmit_rc;
 
 	if (!wonder_tx_enter(wonder)) {
 		/* Closed admission owns only skb, never a borrowed netdev/stat pointer. */
@@ -714,21 +718,27 @@ static void wonder_tx(struct ieee80211_hw *hw,
 	radhdr->it_len = sizeof(struct ieee80211_radiotap_header) + 1;
 	/* Assign the skb to the physical device for transmission */
 	skb->dev = pdev;
-	/* Report Fake TX status to adjust Rate and AMSDU length */
-	if (1)
-		wonder_txs_direct_report(hw, control->sta, skb);
-	else
-		wonder_txs_enqueue(control->sta, skb);
 
-	if (unlikely(!netif_running(pdev) || !netif_device_present(pdev))) {
-		vdev->stats.tx_dropped++;
+	if (unlikely(!netif_running(pdev) || !netif_device_present(pdev)))
 		goto drop;
-	} else {
-		dev_sw_netstats_tx_add(vdev, 1, skb->len);
+
+	/* Snapshot before dev_queue_xmit transfers/frees skb; never touch skb after. */
+	sta = control ? control->sta : NULL;
+	if (unlikely(sta))
+		tx_info = *IEEE80211_SKB_CB(skb);
+	pkt_len = skb->len;
+	/* Unidirectional passthru submit: rc reflects qdisc admission only, not air ACK. */
+	xmit_rc = dev_queue_xmit(skb);
+	if (xmit_rc == NET_XMIT_SUCCESS || xmit_rc == NET_XMIT_CN) {
+		dev_sw_netstats_tx_add(vdev, 1, pkt_len);
 		vdev->stats.tx_packets++;
-		vdev->stats.tx_bytes += skb->len;
-		/* Call the physical device's transmit handler */
-		dev_queue_xmit(skb);
+		vdev->stats.tx_bytes += pkt_len;
+		if (unlikely(sta))
+			wonder_txs_direct_report_info(hw, sta, &tx_info, true);
+	} else {
+		dev_core_stats_tx_dropped_inc(vdev);
+		if (unlikely(sta))
+			wonder_txs_direct_report_info(hw, sta, &tx_info, false);
 	}
 	wonder_tx_leave(wonder);
 	cnss_wonder_call_put(&lease);

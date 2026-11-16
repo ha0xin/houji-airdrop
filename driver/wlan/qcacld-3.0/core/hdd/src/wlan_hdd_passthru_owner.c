@@ -3,10 +3,17 @@
 #include "wlan_hdd_wonder_handoff.h"
 #include "wlan_hdd_passthru_vdev.h"
 #ifndef HOUJI_PT_OWNER_HOST_TEST
+#include <linux/cache.h>
 #include <linux/etherdevice.h>
 #include <linux/delay.h>
+#include <linux/hrtimer.h>
+#include <linux/irqflags.h>
+#include <linux/ktime.h>
+#include <linux/moduleparam.h>
 #include <linux/mutex.h>
+#include <linux/netdevice.h>
 #include <linux/refcount.h>
+#include <linux/smp.h>
 #include <linux/workqueue.h>
 #include <linux/slab.h>
 #include "wlan_hdd_main.h"
@@ -20,6 +27,169 @@
 
 #define HDD_PT_RECHECK_MS 20
 #define HDD_PT_STOP_MS 6000
+#define HDD_PT_TX_WAKE_US 250
+
+#ifndef HOUJI_PT_OWNER_HOST_TEST
+static bool pt_tx_backpressure = true;
+module_param(pt_tx_backpressure, bool, 0644);
+MODULE_PARM_DESC(pt_tx_backpressure,
+		 "Pause wondertap0 TXQ via NETDEV_TX_BUSY on transient DP ring/desc exhaustion");
+
+struct hdd_pt_hdd_tx_counts {
+	u64 inactive;
+	u64 drop_validate;
+	u64 drop_vdev;
+	u64 drop_dma;
+	u64 busy_desc;
+	u64 busy_hw_enq;
+	u64 requeue;
+	u64 wake_cb;
+	u64 wake_skip_closing;
+};
+
+struct hdd_pt_hdd_tx_cpu {
+	struct hdd_pt_hdd_tx_counts c;
+} ____cacheline_aligned_in_smp;
+
+static struct hdd_pt_hdd_tx_cpu hdd_pt_tx_cpu[NR_CPUS];
+
+enum hdd_pt_tx_stat_kind {
+	HDD_PT_STAT_INACTIVE,
+	HDD_PT_STAT_DROP_VALIDATE,
+	HDD_PT_STAT_DROP_VDEV,
+	HDD_PT_STAT_DROP_DMA,
+	HDD_PT_STAT_BUSY_DESC,
+	HDD_PT_STAT_BUSY_HW_ENQ,
+	HDD_PT_STAT_REQUEUE,
+	HDD_PT_STAT_WAKE_CB,
+	HDD_PT_STAT_WAKE_SKIP_CLOSING,
+};
+
+static inline void hdd_pt_tx_stat_inc(enum hdd_pt_tx_stat_kind kind)
+{
+	unsigned long flags;
+	unsigned int cpu;
+
+	local_irq_save(flags);
+	cpu = smp_processor_id();
+	if (likely(cpu < ARRAY_SIZE(hdd_pt_tx_cpu))) {
+		struct hdd_pt_hdd_tx_counts *c = &hdd_pt_tx_cpu[cpu].c;
+
+		switch (kind) {
+		case HDD_PT_STAT_INACTIVE:
+			WRITE_ONCE(c->inactive, c->inactive + 1);
+			break;
+		case HDD_PT_STAT_DROP_VALIDATE:
+			WRITE_ONCE(c->drop_validate, c->drop_validate + 1);
+			break;
+		case HDD_PT_STAT_DROP_VDEV:
+			WRITE_ONCE(c->drop_vdev, c->drop_vdev + 1);
+			break;
+		case HDD_PT_STAT_DROP_DMA:
+			WRITE_ONCE(c->drop_dma, c->drop_dma + 1);
+			break;
+		case HDD_PT_STAT_BUSY_DESC:
+			WRITE_ONCE(c->busy_desc, c->busy_desc + 1);
+			break;
+		case HDD_PT_STAT_BUSY_HW_ENQ:
+			WRITE_ONCE(c->busy_hw_enq, c->busy_hw_enq + 1);
+			break;
+		case HDD_PT_STAT_REQUEUE:
+			WRITE_ONCE(c->requeue, c->requeue + 1);
+			break;
+		case HDD_PT_STAT_WAKE_CB:
+			WRITE_ONCE(c->wake_cb, c->wake_cb + 1);
+			break;
+		case HDD_PT_STAT_WAKE_SKIP_CLOSING:
+			WRITE_ONCE(c->wake_skip_closing,
+				   c->wake_skip_closing + 1);
+			break;
+		}
+	}
+	local_irq_restore(flags);
+}
+
+static inline void hdd_pt_netstats_tx(struct hdd_pt_registry *registry,
+				      bool ok, unsigned int bytes)
+{
+	unsigned long flags;
+	unsigned int cpu;
+
+	if (!registry)
+		return;
+	local_irq_save(flags);
+	cpu = smp_processor_id();
+	if (likely(cpu < ARRAY_SIZE(registry->netstats))) {
+		struct hdd_pt_netstats *s = &registry->netstats[cpu];
+
+		if (ok) {
+			WRITE_ONCE(s->tx_packets, s->tx_packets + 1);
+			WRITE_ONCE(s->tx_bytes, s->tx_bytes + bytes);
+		} else {
+			WRITE_ONCE(s->tx_dropped, s->tx_dropped + 1);
+		}
+	}
+	local_irq_restore(flags);
+}
+
+static inline void hdd_pt_netstats_rx(struct hdd_pt_registry *registry,
+				      bool ok, unsigned int bytes)
+{
+	unsigned long flags;
+	unsigned int cpu;
+
+	if (!registry)
+		return;
+	local_irq_save(flags);
+	cpu = smp_processor_id();
+	if (likely(cpu < ARRAY_SIZE(registry->netstats))) {
+		struct hdd_pt_netstats *s = &registry->netstats[cpu];
+
+		if (ok) {
+			WRITE_ONCE(s->rx_packets, s->rx_packets + 1);
+			WRITE_ONCE(s->rx_bytes, s->rx_bytes + bytes);
+		} else {
+			WRITE_ONCE(s->rx_dropped, s->rx_dropped + 1);
+		}
+	}
+	local_irq_restore(flags);
+}
+
+static int hdd_pt_hdd_tx_stats_get(char *buf, const struct kernel_param *kp)
+{
+	struct hdd_pt_hdd_tx_counts tot;
+	unsigned int cpu;
+
+	(void)kp;
+	memset(&tot, 0, sizeof(tot));
+	for (cpu = 0; cpu < ARRAY_SIZE(hdd_pt_tx_cpu); cpu++) {
+		const struct hdd_pt_hdd_tx_counts *c = &hdd_pt_tx_cpu[cpu].c;
+
+		tot.inactive += READ_ONCE(c->inactive);
+		tot.drop_validate += READ_ONCE(c->drop_validate);
+		tot.drop_vdev += READ_ONCE(c->drop_vdev);
+		tot.drop_dma += READ_ONCE(c->drop_dma);
+		tot.busy_desc += READ_ONCE(c->busy_desc);
+		tot.busy_hw_enq += READ_ONCE(c->busy_hw_enq);
+		tot.requeue += READ_ONCE(c->requeue);
+		tot.wake_cb += READ_ONCE(c->wake_cb);
+		tot.wake_skip_closing += READ_ONCE(c->wake_skip_closing);
+	}
+	return scnprintf(buf, PAGE_SIZE,
+			 "backpressure=%u inactive=%llu drop_validate=%llu "
+			 "drop_vdev=%llu drop_dma=%llu busy_desc=%llu "
+			 "busy_hw_enq=%llu requeue=%llu wake_cb=%llu "
+			 "wake_skip_closing=%llu\n",
+			 READ_ONCE(pt_tx_backpressure), tot.inactive,
+			 tot.drop_validate, tot.drop_vdev, tot.drop_dma,
+			 tot.busy_desc, tot.busy_hw_enq, tot.requeue,
+			 tot.wake_cb, tot.wake_skip_closing);
+}
+static const struct kernel_param_ops hdd_pt_tx_stats_ops = {
+	.get = hdd_pt_hdd_tx_stats_get,
+};
+module_param_cb(pt_hdd_tx_stats, &hdd_pt_tx_stats_ops, NULL, 0444);
+#endif
 
 struct hdd_pt_owner {
 	refcount_t refs;
@@ -30,6 +200,11 @@ struct hdd_pt_owner {
 	bool recovery_collected;
 	struct hdd_pt_vdev_record *record;
 	struct delayed_work work;
+#ifndef HOUJI_PT_OWNER_HOST_TEST
+	struct hrtimer tx_wake_timer;
+	struct net_device *tx_dev;
+	atomic_t tx_wake_armed;
+#endif
 	struct hdd_wh_gate gate;
 	struct hdd_pt_registry *registry;
 	struct wlan_hdd_link_info *link;
@@ -119,12 +294,20 @@ static void hdd_pt_rx(void *context, qdf_nbuf_t skb)
 		return;
 	}
 	if (!smp_load_acquire(&owner->active)) {
+#ifndef HOUJI_PT_OWNER_HOST_TEST
+		hdd_pt_netstats_rx(owner->registry, false, 0);
+#endif
 		qdf_nbuf_free(skb);
 	} else {
 		/* DP already supplied radiotap + raw 802.11, not Ethernet.
 		 * The physical netdev's registered Wonder RX handler consumes it.
 		 * Never retain/call a pointer into Wonder's context or module.
 		 */
+#ifndef HOUJI_PT_OWNER_HOST_TEST
+		unsigned int rx_len = qdf_nbuf_len(skb);
+
+		hdd_pt_netstats_rx(owner->registry, true, rx_len);
+#endif
 		skb->dev = owner->gate.sink;
 		skb->protocol = htons(ETH_P_802_2);
 		skb_reset_mac_header(skb);
@@ -134,6 +317,26 @@ static void hdd_pt_rx(void *context, qdf_nbuf_t skb)
 	}
 	hdd_wh_leave(&ticket);
 }
+
+#ifndef HOUJI_PT_OWNER_HOST_TEST
+static enum hrtimer_restart hdd_pt_tx_wake_cb(struct hrtimer *timer)
+{
+	struct hdd_pt_owner *owner =
+		container_of(timer, struct hdd_pt_owner, tx_wake_timer);
+
+	if (atomic_cmpxchg(&owner->tx_wake_armed, 1, 0) == 1) {
+		smp_mb__after_atomic();
+		if (atomic_read(&owner->closing) ||
+		    !smp_load_acquire(&owner->active)) {
+			hdd_pt_tx_stat_inc(HDD_PT_STAT_WAKE_SKIP_CLOSING);
+		} else if (owner->tx_dev && netif_running(owner->tx_dev)) {
+			hdd_pt_tx_stat_inc(HDD_PT_STAT_WAKE_CB);
+			netif_tx_wake_all_queues(owner->tx_dev);
+		}
+	}
+	return HRTIMER_NORESTART;
+}
+#endif
 
 static const struct wlan_dp_passthru_owner_ops hdd_pt_dp_ops = {
 	.get = hdd_pt_get,
@@ -158,6 +361,12 @@ static void hdd_pt_close_owner(struct hdd_pt_owner *owner,
 	hdd_wh_close(&owner->gate, owner->gate.generation, country, reason);
 	atomic_set(&owner->closing, 1);
 	smp_store_release(&owner->active, false);
+#ifndef HOUJI_PT_OWNER_HOST_TEST
+	atomic_set(&owner->tx_wake_armed, 2);
+	hrtimer_try_to_cancel(&owner->tx_wake_timer);
+	if (owner->tx_dev && netif_running(owner->tx_dev))
+		netif_tx_wake_all_queues(owner->tx_dev);
+#endif
 }
 
 static void hdd_pt_block(struct hdd_pt_owner *owner, int error)
@@ -379,6 +588,10 @@ static void hdd_pt_work(struct work_struct *work)
 	 * Network backlog is handled by that real unregister, not this flag.
 	 */
 	hdd_wh_finish(&claim, true);
+#ifndef HOUJI_PT_OWNER_HOST_TEST
+	atomic_set(&owner->tx_wake_armed, 2);
+	hrtimer_cancel(&owner->tx_wake_timer);
+#endif
 	hdd_wh_release(&owner->gate);
 	owner->phase = HDD_PT_DRAINED;
 	goto out;
@@ -436,6 +649,13 @@ int hdd_pt_start_record(struct hdd_pt_registry *registry,
 	atomic_set(&owner->recovering, 0);
 	owner->record = record;
 	INIT_DELAYED_WORK(&owner->work, hdd_pt_work);
+#ifndef HOUJI_PT_OWNER_HOST_TEST
+	hrtimer_init(&owner->tx_wake_timer, CLOCK_MONOTONIC,
+		     HRTIMER_MODE_REL_SOFT);
+	owner->tx_wake_timer.function = hdd_pt_tx_wake_cb;
+	owner->tx_dev = link->adapter->dev;
+	atomic_set(&owner->tx_wake_armed, 0);
+#endif
 	atomic_set(&owner->closing, 0);
 	owner->registry = registry;
 	owner->link = link;
@@ -883,6 +1103,106 @@ bool hdd_pt_data_ready(struct hdd_pt_registry *registry, u64 generation)
 	return ready;
 }
 
+#ifndef HOUJI_PT_OWNER_HOST_TEST
+netdev_tx_t hdd_pt_tx_net(struct hdd_pt_registry *registry, u64 generation,
+			  struct net_device *dev, struct sk_buff *skb)
+{
+	struct hdd_pt_owner *owner = hdd_pt_acquire(registry, generation);
+	struct hdd_wh_ticket ticket = {0};
+	enum cdp_pt_tx_status tx_st = CDP_PT_TX_DROP_VDEV;
+	struct sk_buff *rem = skb;
+	unsigned int pkt_len = skb ? skb->len : 0;
+
+	if (!skb) {
+		if (owner)
+			hdd_pt_release(registry);
+		return NETDEV_TX_OK;
+	}
+	if (owner && !hdd_wh_enter(&owner->gate, generation, &ticket)) {
+		if (smp_load_acquire(&owner->active) &&
+		    !atomic_read(&owner->closing)) {
+			rem = ucfg_dp_passthru_tx_status(owner->endpoint, skb,
+							 &tx_st);
+			if (!rem) {
+				hdd_pt_netstats_tx(registry, true, pkt_len);
+				hdd_wh_leave(&ticket);
+				hdd_pt_release(registry);
+				return NETDEV_TX_OK;
+			}
+			if ((tx_st == CDP_PT_TX_BUSY_DESC ||
+			     tx_st == CDP_PT_TX_BUSY_HW_ENQ) &&
+			    !qdf_nbuf_next(rem) &&
+			    READ_ONCE(pt_tx_backpressure) && dev &&
+			    netif_running(dev) &&
+			    !atomic_read(&owner->closing) &&
+			    smp_load_acquire(&owner->active) &&
+			    atomic_read(&owner->tx_wake_armed) != 2) {
+				int prev_wake;
+
+				netif_tx_stop_all_queues(dev);
+				smp_mb();
+				if (atomic_read(&owner->closing) ||
+				    !smp_load_acquire(&owner->active) ||
+				    !netif_running(dev) ||
+				    atomic_read(&owner->tx_wake_armed) == 2) {
+					netif_tx_wake_all_queues(dev);
+				} else {
+					prev_wake = atomic_cmpxchg(
+						&owner->tx_wake_armed, 0, 1);
+					if (prev_wake == 2) {
+						netif_tx_wake_all_queues(dev);
+					} else {
+						if (prev_wake == 0)
+							hrtimer_start(
+								&owner->tx_wake_timer,
+								ns_to_ktime(HDD_PT_TX_WAKE_US *
+									    NSEC_PER_USEC),
+								HRTIMER_MODE_REL_SOFT);
+						hdd_pt_tx_stat_inc(
+							tx_st == CDP_PT_TX_BUSY_DESC ?
+							HDD_PT_STAT_BUSY_DESC :
+							HDD_PT_STAT_BUSY_HW_ENQ);
+						hdd_pt_tx_stat_inc(
+							HDD_PT_STAT_REQUEUE);
+						hdd_wh_leave(&ticket);
+						hdd_pt_release(registry);
+						return NETDEV_TX_BUSY;
+					}
+				}
+			}
+			switch (tx_st) {
+			case CDP_PT_TX_DROP_VALIDATE:
+				hdd_pt_tx_stat_inc(HDD_PT_STAT_DROP_VALIDATE);
+				break;
+			case CDP_PT_TX_DROP_DMA:
+				hdd_pt_tx_stat_inc(HDD_PT_STAT_DROP_DMA);
+				break;
+			case CDP_PT_TX_BUSY_DESC:
+				hdd_pt_tx_stat_inc(HDD_PT_STAT_BUSY_DESC);
+				break;
+			case CDP_PT_TX_BUSY_HW_ENQ:
+				hdd_pt_tx_stat_inc(HDD_PT_STAT_BUSY_HW_ENQ);
+				break;
+			case CDP_PT_TX_DROP_VDEV:
+			default:
+				hdd_pt_tx_stat_inc(HDD_PT_STAT_DROP_VDEV);
+				break;
+			}
+		} else {
+			hdd_pt_tx_stat_inc(HDD_PT_STAT_INACTIVE);
+		}
+		hdd_wh_leave(&ticket);
+	} else {
+		hdd_pt_tx_stat_inc(HDD_PT_STAT_INACTIVE);
+	}
+	hdd_pt_netstats_tx(registry, false, 0);
+	hdd_pt_free_list(rem);
+	if (owner)
+		hdd_pt_release(registry);
+	return NETDEV_TX_OK;
+}
+#endif
+
 void hdd_pt_tx(struct hdd_pt_registry *registry, u64 generation,
 	       struct sk_buff *head)
 {
@@ -1052,6 +1372,10 @@ int hdd_pt_recovery_reap(struct hdd_pt_registry *registry, u64 generation)
 		state = HDD_WH_DRAINED;
 	}
 	if (state == HDD_WH_DRAINED) {
+#ifndef HOUJI_PT_OWNER_HOST_TEST
+		atomic_set(&owner->tx_wake_armed, 2);
+		hrtimer_cancel(&owner->tx_wake_timer);
+#endif
 		ret = hdd_wh_release(&owner->gate);
 		if (ret)
 			goto unlock;

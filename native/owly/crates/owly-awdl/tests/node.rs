@@ -720,38 +720,59 @@ fn tcp_ack_to_phone(ack_num: u32, window: u16, options: &[u8]) -> Ipv6Packet {
 }
 
 #[test]
-fn cumulative_pure_tcp_acks_coalesce_and_supersede_within_hold_window() {
+fn pure_tcp_ack_sends_immediately_when_slot_is_open() {
     let mut node = coalescing_node(3839);
     let now = meet(&mut node, &seq([149; SLOTS])).plus(100);
+    let ts_opt = [1, 1, 8, 10, 0, 0, 0, 1, 0, 0, 0, 1];
+    let ack = tcp_ack_to_phone(1000, 4096, &ts_opt);
+    let sent = outgoing(&mut node, now, ack.clone());
+    assert_eq!(transmits(&sent).iter().filter(|f| f.to == PHONE).count(), 1);
+    assert_eq!(phone_payloads(&sent), [ack.data]);
+    assert_eq!(node.backlog(), 0);
+}
+
+#[test]
+fn cumulative_pure_tcp_acks_coalesce_and_supersede_while_waiting_for_slot() {
+    let mut node = coalescing_node(3839);
+    let start = meet(&mut node, &seq(PHONE_SEQ));
+    let closed = (0..1100)
+        .map(|i| start.plus(i * 1000))
+        .find(|t| node.send_wait(PHONE, *t).unwrap() > 1500)
+        .expect("closed window");
     let ts_opt = [1, 1, 8, 10, 0, 0, 0, 1, 0, 0, 0, 1];
     let ack1 = tcp_ack_to_phone(1000, 4096, &ts_opt);
     let ack2 = tcp_ack_to_phone(2000, 4095, &ts_opt);
     let ack3 = tcp_ack_to_phone(3000, 4094, &ts_opt);
-    assert!(phone_payloads(&outgoing(&mut node, now, ack1)).is_empty());
-    assert!(phone_payloads(&outgoing(&mut node, now.plus(300), ack2)).is_empty());
-    assert!(phone_payloads(&outgoing(&mut node, now.plus(600), ack3.clone())).is_empty());
+    assert!(phone_payloads(&outgoing(&mut node, closed, ack1)).is_empty());
+    assert!(phone_payloads(&outgoing(&mut node, closed.plus(300), ack2)).is_empty());
+    assert!(phone_payloads(&outgoing(&mut node, closed.plus(600), ack3.clone())).is_empty());
     assert_eq!(node.backlog(), 1);
-    assert!(phone_payloads(&tick(&mut node, now.plus(999))).is_empty());
-    let sent = tick(&mut node, now.plus(1000));
+    let reopen = next_shared(&node, closed.plus(600));
+    let sent = tick(&mut node, reopen);
     assert_eq!(transmits(&sent).iter().filter(|f| f.to == PHONE).count(), 1);
     assert_eq!(phone_payloads(&sent), [ack3.data]);
 }
 
 #[test]
-fn duplicate_and_sack_tcp_acks_are_kept_and_aggregated() {
+fn duplicate_and_sack_tcp_acks_are_kept_and_aggregated_while_waiting_for_slot() {
     let mut node = coalescing_node(3839);
-    let now = meet(&mut node, &seq([149; SLOTS])).plus(100);
+    let start = meet(&mut node, &seq(PHONE_SEQ));
+    let closed = (0..1100)
+        .map(|i| start.plus(i * 1000))
+        .find(|t| node.send_wait(PHONE, *t).unwrap() > 1500)
+        .expect("closed window");
     let ts_opt = [1, 1, 8, 10, 0, 0, 0, 1, 0, 0, 0, 1];
     let sack_opt = [1, 1, 5, 10, 0, 0, 8, 0, 0, 0, 12, 0];
     let ack1 = tcp_ack_to_phone(1000, 4096, &ts_opt);
     let dup2 = tcp_ack_to_phone(1000, 4096, &ts_opt);
     let sack3 = tcp_ack_to_phone(1000, 4096, &sack_opt);
     let expected = [ack1.data.clone(), dup2.data.clone(), sack3.data.clone()];
-    assert!(phone_payloads(&outgoing(&mut node, now, ack1)).is_empty());
-    assert!(phone_payloads(&outgoing(&mut node, now.plus(200), dup2)).is_empty());
-    assert!(phone_payloads(&outgoing(&mut node, now.plus(400), sack3)).is_empty());
+    assert!(phone_payloads(&outgoing(&mut node, closed, ack1)).is_empty());
+    assert!(phone_payloads(&outgoing(&mut node, closed.plus(200), dup2)).is_empty());
+    assert!(phone_payloads(&outgoing(&mut node, closed.plus(400), sack3)).is_empty());
     assert_eq!(node.backlog(), 3);
-    let sent = tick(&mut node, now.plus(1000));
+    let reopen = next_shared(&node, closed.plus(400));
+    let sent = tick(&mut node, reopen);
     assert_eq!(transmits(&sent).iter().filter(|f| f.to == PHONE).count(), 1);
     assert_eq!(phone_payloads(&sent), expected);
 }
@@ -931,4 +952,150 @@ fn fast_discovery_emits_startup_psf_and_reactive_mif() {
         })
         .collect();
     assert_eq!(rx3_subtypes, [subtype::MIF]);
+}
+
+#[test]
+fn delba_tears_down_tx_ba_and_reinitiates_after_retry_cooldown() {
+    let radio = RadioConstraints {
+        channel: Channel(149),
+        presence: Presence::Fixed,
+    };
+    let mut cfg = Config::new(US, "owly", radio);
+    cfg.amsdu = true;
+    cfg.no_ack = false;
+    cfg.initiate_addba = true;
+    cfg.neighbour_echo = false;
+    let mut node = Node::new(cfg, START);
+    let t = START.plus(100_000);
+    let a = feed(&mut node, t, &phone_frame(subtype::MIF, &seq([149; SLOTS]), 400, 64));
+    let token = transmits(&a)
+        .into_iter()
+        .find(|f| f.bytes.len() == 33 && f.bytes[24..26] == [3, 0])
+        .unwrap()
+        .bytes[26];
+    let resp = frame::addba_response_with_amsdu(PHONE, US, 21, token, 0x1003, 0, true);
+    feed(&mut node, t.plus(100), &resp);
+    assert_eq!(node.stats().tx_addba_req, 1);
+
+    let delba = frame::delba(PHONE, US, 22, 0, false, 37);
+    feed(&mut node, t.plus(200), &delba);
+    assert_eq!(node.stats().rx_delba, 1);
+
+    // Within 250 ms cooldown: wait cleanly without immediate ADDBA storm.
+    outgoing(&mut node, t.plus(100_000), Ipv6Packet::echo_request(US, PHONE, 1, 1, b"early"));
+    assert_eq!(node.stats().tx_addba_req, 1);
+
+    // After 250 ms cooldown: next packet triggers a fresh ADDBA setup attempt.
+    outgoing(&mut node, t.plus(300_000), Ipv6Packet::echo_request(US, PHONE, 1, 2, b"reinit"));
+    assert_eq!(node.stats().tx_addba_req, 2);
+}
+
+#[test]
+fn ba_amsdu_denied_suppresses_software_amsdu_when_tx_ba_active() {
+    let radio = RadioConstraints {
+        channel: Channel(149),
+        presence: Presence::Fixed,
+    };
+    let mut cfg = Config::new(US, "owly", radio);
+    cfg.amsdu = true;
+    cfg.no_ack = false;
+    cfg.initiate_addba = true;
+    cfg.neighbour_echo = false;
+    cfg.amsdu_coalesce_us = 1000;
+    cfg.max_frame = 7935;
+    let mut node = Node::new(cfg, START);
+    let t = START.plus(100_000);
+    let a = feed(&mut node, t, &phone_frame(subtype::MIF, &seq([149; SLOTS]), 400, 64));
+    let token = transmits(&a)
+        .into_iter()
+        .find(|f| f.bytes.len() == 33 && f.bytes[24..26] == [3, 0])
+        .unwrap()
+        .bytes[26];
+    let resp = frame::addba_response_with_amsdu(PHONE, US, 21, token, 0x1002, 0, false);
+    feed(&mut node, t.plus(100), &resp);
+
+    let p1 = Ipv6Packet::echo_request(US, PHONE, 1, 1, &[1; 1000]);
+    let p2 = Ipv6Packet::echo_request(US, PHONE, 1, 2, &[2; 1000]);
+    let out1 = outgoing(&mut node, t.plus(200), p1);
+    let out2 = outgoing(&mut node, t.plus(300), p2);
+    let combined: Vec<_> = out1.into_iter().chain(out2).collect();
+    let data_frames: Vec<_> = transmits(&combined)
+        .into_iter()
+        .filter_map(|f| match frame::parse(&f.bytes) {
+            Ok(frame::Received::Data { amsdu, .. }) => Some(amsdu),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(data_frames, [false, false]);
+    assert_eq!(node.stats().tx_amsdu, 0);
+}
+
+#[test]
+fn addba_recovers_after_four_unanswered_attempts_and_long_cooldown() {
+    let radio = RadioConstraints {
+        channel: Channel(149),
+        presence: Presence::Fixed,
+    };
+    let mut cfg = Config::new(US, "owly", radio);
+    cfg.no_ack = false;
+    cfg.initiate_addba = true;
+    cfg.neighbour_echo = false;
+    let mut node = Node::new(cfg, START);
+    let mut t = START.plus(100_000);
+    feed(&mut node, t, &phone_frame(subtype::MIF, &seq([149; SLOTS]), 400, 64));
+    for _ in 0..5 {
+        t = t.plus(300_000);
+        feed(&mut node, t, &phone_frame(subtype::MIF, &seq([149; SLOTS]), 400, 64));
+        outgoing(&mut node, t.plus(100), Ipv6Packet::echo_request(US, PHONE, 1, 1, b"wait"));
+    }
+    assert_eq!(node.stats().tx_addba_req, 4);
+
+    t = t.plus(10_500_000);
+    feed(&mut node, t, &phone_frame(subtype::MIF, &seq([149; SLOTS]), 400, 64));
+    outgoing(&mut node, t.plus(100), Ipv6Packet::echo_request(US, PHONE, 1, 2, b"retry"));
+    assert_eq!(node.stats().tx_addba_req, 5);
+}
+
+#[test]
+fn per_peer_queues_isolate_stalled_peer_and_protect_active_peer_from_unvalidated_eviction() {
+    let peer2 = MacAddr([0x86, 0x08, 0x04, 0x8a, 0x2b, 0x99]);
+    let peer3 = MacAddr([0x86, 0x08, 0x04, 0x8a, 0x2b, 0xaa]);
+    let radio = RadioConstraints {
+        channel: Channel(149),
+        presence: Presence::Fixed,
+    };
+    let mut cfg = Config::new(US, "owly", radio);
+    cfg.neighbour_echo = false;
+    cfg.unicast_queue = 4;
+    cfg.max_peers = 3;
+    let mut node = Node::new(cfg, START);
+
+    // PHONE uses a channel sequence that is currently off-channel (closed), while peer2 is always on 149.
+    let closed_seq = seq([6; SLOTS]);
+    let open_seq = seq([149; SLOTS]);
+    let t = START.plus(100_000);
+    feed(&mut node, t, &phone_frame(subtype::MIF, &closed_seq, 400, 64));
+    feed(&mut node, t.plus(100), &frame_from(peer2, subtype::MIF, &open_seq, 400, 64));
+
+    // Fill unicast queue capacity with 4 packets to stalled PHONE.
+    for i in 0..4u16 {
+        outgoing(&mut node, t.plus(200 + u64::from(i)), Ipv6Packet::echo_request(US, PHONE, 1, i, b"stalled"));
+    }
+    assert_eq!(node.backlog(), 4);
+
+    // Outbound packet to peer2 must still be admitted and transmitted immediately!
+    let p2 = Ipv6Packet::echo_request(US, peer2, 2, 1, b"healthy");
+    let out = outgoing(&mut node, t.plus(300), p2.clone());
+    assert!(transmits(&out).iter().any(|f| f.to == peer2));
+    assert_eq!(node.stats().dropped_queue_full, 1);
+
+    // Add unvalidated PSF-only peer3, then add another peer4; unvalidated peer3 should be evicted
+    // instead of active PHONE or peer2.
+    let peer4 = MacAddr([0x86, 0x08, 0x04, 0x8a, 0x2b, 0xbb]);
+    feed(&mut node, t.plus(400), &frame_from(peer3, subtype::PSF, &open_seq, 400, 64));
+    assert_eq!(node.peers().count(), 3);
+    feed(&mut node, t.plus(500), &frame_from(peer4, subtype::MIF, &open_seq, 400, 64));
+    assert!(node.peer(PHONE).is_some());
+    assert!(node.peer(peer2).is_some());
+    assert!(node.peer(peer3).is_none());
 }

@@ -54,7 +54,7 @@ if [ "$ACTUAL_SDK" != "$EXPECTED_SDK" ]; then
 fi
 
 if [ "$ACTUAL_KERNEL" != "$EXPECTED_KERNEL" ]; then
-  ui_print "! 内核版本不匹配（567 个导出符号 CRC 仅针对目标内核审计）："
+  ui_print "! 内核版本不匹配（570 个导出符号 CRC 仅针对目标内核审计）："
   ui_print "  需要: ${EXPECTED_KERNEL}"
   ui_print "  当前: ${ACTUAL_KERNEL}"
   abort "! 已中止安装，未对系统做任何修改"

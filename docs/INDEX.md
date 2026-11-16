@@ -25,7 +25,7 @@
 
 ## 优先查看的实测证据
 
-- [原生小米互传 `owly-xos` 实测日志与遥测归档](../runtime/owly-xos/evidence/README.md)、[第 34 篇专题报告](airdrop/34-owly-xos-validation.md) 及 [持续优化待办（OWLY-XOS-TODO）](OWLY-XOS-TODO.md)。
+- [原生小米互传 `owly-xos` 实测日志与遥测归档](../runtime/owly-xos/evidence/README.md)、[第 34 篇专题报告](airdrop/34-owly-xos-validation.md)、[第 35 篇高 `NO_ACK` 与延迟审计专题报告](airdrop/35-rx-no-ack-and-latency-audit.md)、[第 36 篇修复与 `1 GiB` RX 回归验证报告](airdrop/36-rx-no-ack-fix-and-verification.md) 及 [持续优化待办（OWLY-XOS-TODO）](OWLY-XOS-TODO.md)。
 - [双 5 GHz 两轮 16 MiB](../experiments/three-findings-validation/runs/coexist-5g40-16m-20261111)：`1/result.json`、`2/result.json`、`rx-stats-final.txt`、`manual-recovery.log`、`stock-after.txt`。
 - [2.4 GHz + 5 GHz 两轮 16 MiB](../experiments/three-findings-validation/runs/coexist-marked-16m-20261111)。
 - [App 安装产物身份](../clients/owly-app/evidence/installed-artifacts.json)。

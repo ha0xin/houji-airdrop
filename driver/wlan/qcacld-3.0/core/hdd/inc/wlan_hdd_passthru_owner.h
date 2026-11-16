@@ -4,10 +4,15 @@
 
 #ifdef HOUJI_PT_OWNER_HOST_TEST
 #include "owner_host.h"
+#define HDD_PT_NETSTATS_CPUS 1
 #else
+#include <linux/cache.h>
+#include <linux/netdevice.h>
 #include <linux/spinlock.h>
 #include <linux/wait.h>
 #include <linux/types.h>
+#include <linux/threads.h>
+#define HDD_PT_NETSTATS_CPUS NR_CPUS
 #endif
 
 struct wlan_hdd_link_info;
@@ -31,6 +36,19 @@ enum hdd_pt_phase {
  * alive until retire + reap finish AND the normal driver teardown fences run.
  * A registry or objmgr reference is not a replacement for those lifetimes.
  */
+struct hdd_pt_netstats {
+	u64 tx_packets;
+	u64 tx_bytes;
+	u64 tx_dropped;
+	u64 rx_packets;
+	u64 rx_bytes;
+	u64 rx_dropped;
+#ifndef HOUJI_PT_OWNER_HOST_TEST
+} ____cacheline_aligned_in_smp;
+#else
+};
+#endif
+
 struct hdd_pt_registry {
 	spinlock_t lock;
 	wait_queue_head_t idle;
@@ -39,6 +57,7 @@ struct hdd_pt_registry {
 	unsigned int users;
 	bool closed;
 	bool reaping;
+	struct hdd_pt_netstats netstats[HDD_PT_NETSTATS_CPUS];
 };
 
 struct hdd_pt_status {
@@ -133,6 +152,12 @@ bool hdd_pt_data_ready(struct hdd_pt_registry *registry, u64 generation);
 /* Always consumes the entire skb list, also on stale/closed/error paths. */
 void hdd_pt_tx(struct hdd_pt_registry *registry, u64 generation,
 	       struct sk_buff *head);
+
+#ifndef HOUJI_PT_OWNER_HOST_TEST
+/* Consumes skb unless returning NETDEV_TX_BUSY with txq stopped and timer armed. */
+netdev_tx_t hdd_pt_tx_net(struct hdd_pt_registry *registry, u64 generation,
+			  struct net_device *dev, struct sk_buff *skb);
+#endif
 
 /* Non-waiting, preallocated handoff, usable from Wonder void deinit.
  * Wonder must first close TX and synchronously unregister its RX handler.

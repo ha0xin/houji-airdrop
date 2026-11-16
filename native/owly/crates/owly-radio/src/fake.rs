@@ -100,6 +100,7 @@ impl Fake {
                 name: String::new(),
                 devclass: 0,
                 rssi: None,
+                caps: Default::default(),
             })
             .collect()
     }

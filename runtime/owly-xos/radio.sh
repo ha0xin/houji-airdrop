@@ -20,9 +20,9 @@ PCI=/sys/bus/pci/devices/0000:01:00.0/power/control
 ORIG=4db7b0e1aa7e4ec071708359c9d0db8d3d7872390cd8e88ffa0bbb30d560bcc8
 CANDIDATE=37d409044902fb5e4eb47aff5c543adb0dfd6a56e4e38ff723feb823bc8b522f
 NOTE=a3e9bd62646444e1ecbe0f421c95ec46e6caf69a78323efb2f6ebe00e6b2bd8b
-QCA_SHA=e81c4a90fd2f5d6e40cef5f2e282b3cad095c79a3e9a03dad1788f92306f4262
-BRIDGE_SHA=9a8345d87ec1186a29b413935b4efdbd38566e7e22374e70a7a85510b2970e9a
-WONDER_SHA=9d60988f896669604ff2e8cdfa1ba91a7047c1ddd2210b1fa494f506f5eb039c
+QCA_SHA=e425dbfa4a07e8abe786300efd8e2c873025c7d5f925f4e19e9b461f9e8d8344
+BRIDGE_SHA=0ab5c986cac01f8b6bb9eefd38088bd350a2fc68ea1a3efeff478b88b4e74ead
+WONDER_SHA=24ca5401ea776069c273260eb0521c3783574710a616a4bae6a50407b019f2b1
 TABLE=10074
 IFACE=xos0
 
@@ -106,15 +106,28 @@ clean_routes() {
  ip -6 route flush table "$TABLE" 2>/dev/null || true
 }
 
+ensure_rule() {
+ prio="$1"
+ pattern="$2"
+ shift 2
+ matches=$(printf '%s\n' "$rules_dump" | grep -cE "^$prio:[[:space:]].*$pattern" || true)
+ total=$(printf '%s\n' "$rules_dump" | grep -cE "^$prio:[[:space:]]" || true)
+ if test "$matches" = 1 && test "$total" = 1; then
+  return 0
+ fi
+ while ip -6 rule del priority "$prio" 2>/dev/null; do :; done
+ ip -6 rule add priority "$prio" "$@"
+}
+
 routes() {
- clean_routes
  addr=$(ip -6 -o addr show dev "$IFACE" scope link 2>/dev/null | grep -vE 'tentative|dadfailed' | awk '$3=="inet6"{sub(/\/.*/, "", $4); print $4; exit}')
  case "$addr" in fe80:*) ;; *) return 1 ;; esac
  ip -6 route replace fe80::/64 dev "$IFACE" table "$TABLE"
  ip -6 route replace ff00::/8 dev "$IFACE" table "$TABLE"
- ip -6 rule add priority 10980 to fe80::/64 oif "$IFACE" uidrange 0-0 lookup "$TABLE"
- ip -6 rule add priority 10981 to ff00::/8 oif "$IFACE" uidrange 0-0 lookup "$TABLE"
- ip -6 rule add priority 10982 from "$addr/128" lookup "$TABLE"
+ rules_dump=$(ip -6 rule show 2>/dev/null || true)
+ ensure_rule 10980 "to fe80::/64[[:space:]].*oif $IFACE[[:space:]].*uidrange 0-0[[:space:]].*lookup $TABLE([[:space:]]|$)" to fe80::/64 oif "$IFACE" uidrange 0-0 lookup "$TABLE"
+ ensure_rule 10981 "to ff00::/8[[:space:]].*oif $IFACE[[:space:]].*uidrange 0-0[[:space:]].*lookup $TABLE([[:space:]]|$)" to ff00::/8 oif "$IFACE" uidrange 0-0 lookup "$TABLE"
+ ensure_rule 10982 "from $addr(/128)?[[:space:]].*lookup $TABLE([[:space:]]|$)" from "$addr/128" lookup "$TABLE"
 }
 
 runner_alive() {
@@ -249,7 +262,7 @@ capture_session_stats() {
    cp "$STATE/last-session-stats.txt" "$STATE/prev-session-stats.txt" || true
   fi
   {
-   for p in pt_remote_rx_window pt_fw_caps pt_rate_stats pt_ampdu_peak pt_rx_msdu_stats pt_remote_peer_ctl pt_remote_peer_stats; do
+   for p in pt_remote_rx_window pt_fw_caps pt_rate_stats pt_ampdu_peak pt_rx_msdu_stats pt_remote_peer_ctl pt_remote_peer_stats pt_tx_stats pt_hdd_tx_stats pt_tx_observe; do
     if test -r "$W/parameters/$p"; then
      printf '== %s ==\n' "$p"
      cat "$W/parameters/$p" || true
@@ -318,7 +331,8 @@ start_xos() {
   exec "$BB" setsid env \
    HOUJI_OWLY_OUTGOING_VHT=2 \
    HOUJI_OWLY_ACCEPT_ADDBA=2 \
-   HOUJI_OWLY_TX_ADDBA=1 \
+   HOUJI_OWLY_TX_ADDBA=2 \
+   HOUJI_OWLY_RX_GAPS="${HOUJI_OWLY_RX_GAPS:-0}" \
    OWLY_COALESCE_US=1000 \
    "$R/owly-xosd" "$IFACE" amsdu ack </dev/null >"$STATE/runner.log" 2>&1
  ) &
@@ -368,14 +382,19 @@ enter() {
  snapshot
  trap 'rc=$?; trap - EXIT; if test "$rc" != 0; then echo "ENTER_FAILED=$rc"; restore || setstate RESTORE_FAILED; fi; exit "$rc"' EXIT
  setstate ENTERING
- if ! test -f "$RADIO/amss20.bin" || ! check "$CANDIDATE" "$RADIO/amss20.bin" >/dev/null 2>&1; then
+ amss_ok=0
+ if test -f "$RADIO/amss20.bin" && check "$CANDIDATE" "$RADIO/amss20.bin" >/dev/null 2>&1; then
+  amss_ok=1
+ else
   rm -f "$RADIO/amss20.bin"
   cp "$R/firmware/ezif.bin" "$RADIO/amss20.bin"
  fi
  chown system:system "$RADIO/amss20.bin"
  chmod 440 "$RADIO/amss20.bin"
  chcon u:object_r:firmware_file:s0 "$RADIO/amss20.bin"
- check "$CANDIDATE" "$RADIO/amss20.bin"
+ if test "$amss_ok" != 1; then
+  check "$CANDIDATE" "$RADIO/amss20.bin"
+ fi
 
  cmd wifi set-scan-always-available disabled >/dev/null 2>&1 || true
  cmd wifi set-wifi-enabled disabled >/dev/null 2>&1 || true
@@ -408,8 +427,9 @@ enter() {
   pt_vht80=1 \
   pt_vht80_2ss=1 \
   pt_rx_capacity_4224=1 \
-  pt_rate_observe=1 \
-  pt_single_ring=1 \
+  pt_rate_observe="${OWLY_RATE_OBSERVE:-0}" \
+  pt_tx_observe="${OWLY_TX_OBS:-0}" \
+  pt_single_ring="${OWLY_SINGLE_RING:-0}" \
   pt_rx_phy_peer=02:00:00:00:00:01 \
   pt_remote_multi=1 \
   pt_remote_assoc=0 \
@@ -418,7 +438,8 @@ enter() {
   pt_remote_reo=2 \
   pt_remote_rx_window=256 \
   pt_tx_ampdu=1 \
-  pt_dynamic_rate=0 \
+  pt_dynamic_rate="${OWLY_DYNAMIC_RATE:-1}" \
+  pt_tx_backpressure="${OWLY_TX_BACKPRESSURE:-1}" \
   pt_fw_addba=0 \
   pt_rx_msdu_buf=1 \
   pt_rx_ezif_marked=1 \

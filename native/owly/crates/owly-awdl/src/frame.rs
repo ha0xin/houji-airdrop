@@ -64,10 +64,11 @@ const CATEGORY_VENDOR: u8 = 127;
 const AWDL_TYPE: u8 = 8;
 /// AWDL 1.0, major in the high nibble: what the action header carries.
 const AWDL_VERSION_COMPAT: u8 = 0x10;
-/// The Block Ack action category, and its ADDBA request and response.
+/// The Block Ack action category, and its ADDBA/DELBA action frames.
 const CATEGORY_BLOCK_ACK: u8 = 3;
 const ADDBA_REQUEST: u8 = 0;
 const ADDBA_RESPONSE: u8 = 1;
+const DELBA: u8 = 2;
 
 /// The SNAP header AWDL data frames carry (AWDL-13).
 const LLC_SNAP: [u8; 8] = [0xaa, 0xaa, 0x03, OUI[0], OUI[1], OUI[2], 0x08, 0x00];
@@ -120,6 +121,13 @@ pub enum Received<'a> {
         status: u16,
         params: u16,
         timeout: u16,
+    },
+    /// A Block Ack session teardown notification.
+    DelBa {
+        header: Header,
+        tid: u8,
+        initiator: bool,
+        reason: u16,
     },
     /// An AWDL data frame: one MSDU, or an A-MSDU.
     Data {
@@ -207,6 +215,15 @@ fn action(header: Header, body: &[u8]) -> Result<Received<'_>, Error> {
             status: b.le16(3)?,
             params: b.le16(5)?,
             timeout: b.le16(7)?,
+        });
+    }
+    if b.u8(0)? == CATEGORY_BLOCK_ACK && b.u8(1)? == DELBA {
+        let params = b.le16(2)?;
+        return Ok(Received::DelBa {
+            header,
+            tid: ((params >> 12) & 0x0f) as u8,
+            initiator: (params & (1 << 11)) != 0,
+            reason: b.le16(4)?,
         });
     }
     if body.len() < ACTION_HEADER_LEN
@@ -446,6 +463,25 @@ pub fn addba_request(
     out
 }
 
+/// Outbound IEEE 802.11 Block Ack DELBA notification (Category 3, Action 2).
+pub fn delba(
+    src: MacAddr,
+    dst: MacAddr,
+    seq: u16,
+    tid: u8,
+    initiator: bool,
+    reason: u16,
+) -> Vec<u8> {
+    let params = ((u16::from(tid) & 0x0f) << 12) | (u16::from(initiator) << 11);
+    let mut out = Vec::with_capacity(HEADER_LEN + 6);
+    put_header(&mut out, fc::ACTION, dst, src, seq);
+    out.u8(CATEGORY_BLOCK_ACK);
+    out.u8(DELBA);
+    out.le16(params);
+    out.le16(reason);
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -646,5 +682,22 @@ mod tests {
         let p = u16::from_le_bytes([body[5], body[6]]);
         assert_eq!(((p >> 2) & 0xf, p & 0x3, p >> 6), (5, 0x2, 64));
         assert_eq!(&resp[4..10], &B.0);
+
+        let teardown = delba(B, A, 5, 3, true, 37);
+        assert_eq!(
+            parse(&teardown),
+            Ok(Received::DelBa {
+                header: Header {
+                    fc: fc::ACTION,
+                    dst: A,
+                    src: B,
+                    bssid: BSSID,
+                    seq: 5,
+                },
+                tid: 3,
+                initiator: true,
+                reason: 37,
+            })
+        );
     }
 }

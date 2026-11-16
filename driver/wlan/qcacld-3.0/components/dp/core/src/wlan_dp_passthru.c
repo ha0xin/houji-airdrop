@@ -160,17 +160,27 @@ free_endpoint:
 	return status;
 }
 
-qdf_nbuf_t ucfg_dp_passthru_tx(struct wlan_dp_passthru_endpoint *endpoint,
-			     qdf_nbuf_t nbuf)
+qdf_nbuf_t ucfg_dp_passthru_tx_status(struct wlan_dp_passthru_endpoint *endpoint,
+				    qdf_nbuf_t nbuf,
+				    enum cdp_pt_tx_status *status)
 {
 	qdf_nbuf_t remaining;
 
+	if (status)
+		*status = CDP_PT_TX_DROP_VDEV;
 	if (!endpoint || !nbuf || !wlan_dp_passthru_enter(endpoint))
 		return nbuf;
-	remaining = cdp_passthru_managed_tx(endpoint->soc, endpoint->handle,
-					   nbuf);
+	remaining = cdp_passthru_managed_tx_status(endpoint->soc,
+						   endpoint->handle,
+						   nbuf, status);
 	wlan_dp_passthru_exit(endpoint);
 	return remaining;
+}
+
+qdf_nbuf_t ucfg_dp_passthru_tx(struct wlan_dp_passthru_endpoint *endpoint,
+			     qdf_nbuf_t nbuf)
+{
+	return ucfg_dp_passthru_tx_status(endpoint, nbuf, NULL);
 }
 
 /* Caller holds its endpoint reference. Nonwaiting admission close; retry BUSY

@@ -16,7 +16,7 @@ use crate::channel::{Channel, Sequence};
 use crate::election::{Election, Ranking};
 use crate::frame::{self, Frame, Received};
 use crate::ip::Ipv6Packet;
-use crate::peer::{Peer, PeerInfo};
+use crate::peer::{Peer, PeerCaps, PeerInfo};
 use crate::rate::TxRate;
 use crate::sync::{Clock, MULTICAST_GUARD_US, SLOT_US, UNICAST_GUARD_US};
 use crate::tlv::{self, Advert, HtCapabilities, Own, VhtProfile};
@@ -50,6 +50,8 @@ pub enum Action {
     /// A peer turned valid: give it a neighbour entry (NET-2), before the
     /// packets that follow.
     PeerUp(PeerInfo),
+    /// A valid peer updated its HT/VHT RF capabilities.
+    PeerCaps(MacAddr, PeerCaps),
     /// A valid peer went quiet and was dropped.
     PeerDown(MacAddr),
     /// Hand this packet to the IP stack.
@@ -193,6 +195,7 @@ pub struct Stats {
     pub tx_addba_resp: u64,
     pub tx_addba_req: u64,
     pub rx_addba_resp: u64,
+    pub rx_delba: u64,
     pub rx_dup_dropped: u64,
 }
 
@@ -232,10 +235,8 @@ const HELD_SYNS: usize = 128;
 /// hundreds of fakes fresher than that takes more airtime than the channel
 /// has (SEC-11).
 pub const MAX_PEERS: usize = 512;
-/// Frames sent for one input at most; the rest follow half a millisecond
-/// later, so the host's queue isn't flooded.
+/// Frames sent for one input at most before yielding to the event loop.
 const BURST: usize = 64;
-const BURST_PAUSE_US: u64 = 500;
 /// The most packets in one A-MSDU.
 const AMSDU_PACKETS: usize = 8;
 /// What a peer that announces no HT capabilities is assumed to take.
@@ -253,7 +254,9 @@ pub struct Node {
     election: Election,
     sequence: Sequence,
     peers: BTreeMap<MacAddr, Peer>,
-    unicast: VecDeque<Queued>,
+    unicast: BTreeMap<MacAddr, VecDeque<Queued>>,
+    unicast_total: usize,
+    unicast_cursor: Option<MacAddr>,
     multicast: VecDeque<Queued>,
     held: VecDeque<Queued>,
     seq: u16,
@@ -290,7 +293,9 @@ impl Node {
             clock,
             cfg,
             peers: BTreeMap::new(),
-            unicast: VecDeque::new(),
+            unicast: BTreeMap::new(),
+            unicast_total: 0,
+            unicast_cursor: None,
             multicast: VecDeque::new(),
             held: VecDeque::new(),
             seq: 0,
@@ -372,7 +377,12 @@ impl Node {
 
     /// Unicast packets waiting for their peer's slot (see [`UNICAST_QUEUE`]).
     pub fn backlog(&self) -> usize {
-        self.unicast.len()
+        self.unicast_total
+    }
+
+    /// Unicast packets queued for a specific peer inside [`Node`].
+    pub fn peer_backlog(&self, peer: MacAddr) -> usize {
+        self.unicast.get(&peer).map_or(0, VecDeque::len)
     }
 
     /// While the radio shares its channel and the sync master's sequence has
@@ -471,6 +481,40 @@ impl Node {
                     );
                     if accepted {
                         peer.tx_ba_active = true;
+                        peer.tx_ba_amsdu = Some(amsdu);
+                        peer.tx_ba_window = Some(window);
+                    } else if self.cfg.initiate_addba
+                        && peer.tx_ba_attempts > 0
+                        && peer.tx_ba_token == token
+                    {
+                        peer.reset_tx_ba();
+                    }
+                }
+            }
+            Received::DelBa {
+                header,
+                tid,
+                initiator,
+                reason,
+            } if header.dst == self.cfg.addr => {
+                if let Some(peer) = self.peers.get_mut(&header.src) {
+                    peer.last_seen = now;
+                    self.stats.rx_delba += 1;
+                    // Recipient-originated DELBA (`initiator == false`) tears down our TX BA.
+                    if tid == 0 && !initiator {
+                        peer.reset_tx_ba();
+                        peer.tx_ba_attempts = 0;
+                        peer.tx_ba_last_req = Some(now);
+                        #[cfg(feature = "driver")]
+                        tracing::info!(
+                            peer = ?header.src,
+                            tid,
+                            initiator,
+                            reason,
+                            "OWLY_TX_BA_TORN_DOWN_BY_DELBA"
+                        );
+                        #[cfg(not(feature = "driver"))]
+                        let _ = reason;
                     }
                 }
             }
@@ -527,7 +571,10 @@ impl Node {
         if rssi.is_some() {
             peer.rssi = rssi;
         }
+        let was_valid = peer.valid;
+        let prev_caps = peer.caps();
         let up = peer.absorb(&advert, subtype == frame::subtype::MIF);
+        let new_caps = peer.caps();
         let peer_valid = peer.valid;
         if let Some(s) = advert.sync {
             peer.sync_offset_us =
@@ -544,6 +591,8 @@ impl Node {
                 self.maybe_initiate_addba(now, src, out);
             }
             self.release_syns(src, out);
+        } else if was_valid && peer_valid && prev_caps != new_caps {
+            out.push(Action::PeerCaps(src, new_caps));
         }
         if self.cfg.fast_discovery
             && (!known || !peer_valid)
@@ -665,15 +714,16 @@ impl Node {
                 self.stats.dropped_no_peer += 1;
                 return;
             };
+            let dst = packet.dst;
             if self.cfg.amsdu
                 && peer.ht.is_some()
                 && let Some(ack) = packet.pure_tcp_ack()
+                && let Some(peer_queue) = self.unicast.get_mut(&dst)
             {
                 let flow = ack.flow();
-                let mut same_flow = self
-                    .unicast
+                let mut same_flow = peer_queue
                     .iter_mut()
-                    .filter(|q| q.packet.dst == packet.dst && q.packet.tcp_flow() == Some(flow));
+                    .filter(|q| q.packet.tcp_flow() == Some(flow));
                 if let (Some(existing), None) = (same_flow.next(), same_flow.next())
                     && existing
                         .packet
@@ -684,11 +734,24 @@ impl Node {
                     return;
                 }
             }
-            if self.unicast.len() >= self.cfg.unicast_queue.max(1) {
-                self.unicast.pop_front();
-                self.stats.dropped_queue_full += 1;
+            let cap = self.cfg.unicast_queue.max(1);
+            if self.unicast_total >= cap {
+                if let Some((&victim_mac, _)) = self
+                    .unicast
+                    .iter()
+                    .max_by_key(|(mac, q)| (q.len(), **mac != dst))
+                    && let Some(victim) = self.unicast.get_mut(&victim_mac)
+                    && victim.pop_front().is_some()
+                {
+                    self.unicast_total -= 1;
+                    self.stats.dropped_queue_full += 1;
+                    if victim.is_empty() {
+                        self.unicast.remove(&victim_mac);
+                    }
+                }
             }
-            &mut self.unicast
+            self.unicast_total += 1;
+            self.unicast.entry(dst).or_default()
         };
         queue.push_back(Queued { packet, at: now });
     }
@@ -739,18 +802,40 @@ impl Node {
         self.send_multicast(now, &mut sent, out);
         self.send_unicast(now, &mut sent, out);
         if sent >= self.cfg.burst_limit.max(1) {
-            self.resume = Some(now.plus(BURST_PAUSE_US));
+            self.resume = Some(now);
         }
     }
 
-    /// Drops the peer heard from longest ago. The election runs without it
-    /// at the next tick, as for one that timed out.
+    fn drop_peer_unicast(&mut self, mac: MacAddr) {
+        if let Some(q) = self.unicast.remove(&mac) {
+            let dropped = q.len();
+            self.unicast_total -= dropped;
+            self.stats.dropped_no_peer += dropped as u64;
+        }
+    }
+
+    fn peer_amsdu_allowed(&self, peer: &Peer) -> bool {
+        self.cfg.amsdu
+            && peer.ht.is_some()
+            && !(self.cfg.initiate_addba && peer.tx_ba_active && peer.tx_ba_amsdu == Some(false))
+    }
+
+    /// Drops the peer heard from longest ago, preferring unvalidated or idle
+    /// peers ahead of peers with active queued traffic.
     fn evict_stalest(&mut self, out: &mut Vec<Action>) {
-        let Some(stalest) = self.peers.values().min_by_key(|p| p.last_seen) else {
+        let Some((mac, valid)) = self
+            .peers
+            .values()
+            .min_by_key(|p| {
+                let has_queued = !self.unicast.get(&p.mac).is_none_or(VecDeque::is_empty);
+                (p.valid, has_queued, p.last_seen)
+            })
+            .map(|p| (p.mac, p.valid))
+        else {
             return;
         };
-        let (mac, valid) = (stalest.mac, stalest.valid);
         self.peers.remove(&mac);
+        self.drop_peer_unicast(mac);
         self.stats.peers_evicted += 1;
         if valid {
             out.push(Action::PeerDown(mac));
@@ -766,21 +851,29 @@ impl Node {
             .collect();
         for (mac, valid) in gone {
             self.peers.remove(&mac);
+            self.drop_peer_unicast(mac);
             if valid {
                 out.push(Action::PeerDown(mac));
             }
         }
-        // Packets for a peer that's gone never go, and would hold up the
-        // host until they expired.
-        let before = self.unicast.len();
-        let peers = &self.peers;
-        self.unicast.retain(|q| peers.contains_key(&q.packet.dst));
-        self.stats.dropped_no_peer += (before - self.unicast.len()) as u64;
         let expired = |q: &Queued, limit: u64| now.since(q.at) >= limit;
-        let before = self.unicast.len() + self.multicast.len();
-        self.unicast.retain(|q| !expired(q, PACKET_EXPIRY_US));
+        let mut emptied = Vec::new();
+        for (&mac, q) in &mut self.unicast {
+            let before = q.len();
+            q.retain(|item| !expired(item, PACKET_EXPIRY_US));
+            let removed = before - q.len();
+            self.unicast_total -= removed;
+            self.stats.dropped_expired += removed as u64;
+            if q.is_empty() {
+                emptied.push(mac);
+            }
+        }
+        for mac in emptied {
+            self.unicast.remove(&mac);
+        }
+        let before = self.multicast.len();
         self.multicast.retain(|q| !expired(q, PACKET_EXPIRY_US));
-        self.stats.dropped_expired += (before - self.unicast.len() - self.multicast.len()) as u64;
+        self.stats.dropped_expired += (before - self.multicast.len()) as u64;
         self.held.retain(|q| !expired(q, SYN_HOLD_US));
         let ranking = self.cfg.radio.presence.ranking();
         self.election.run(
@@ -945,26 +1038,31 @@ impl Node {
     // before frame creation and recheck the channel when retrying.
     const AMSDU_COALESCE_MIN_BYTES: usize = 512;
 
-    fn should_coalesce(&self, peer: &Peer, now: Time, packet: &Ipv6Packet) -> bool {
+    fn should_coalesce(packet: &Ipv6Packet) -> bool {
         packet.data.len() >= Self::AMSDU_COALESCE_MIN_BYTES
-            || (packet.pure_tcp_ack().is_some()
-                && self.unicast_wait(peer, now.plus(self.cfg.amsdu_coalesce_us)) == 0)
     }
 
     const TX_ADDBA_RETRY_US: u64 = 250_000;
     const TX_ADDBA_MAX_ATTEMPTS: u8 = 4;
+    const TX_ADDBA_COOLDOWN_US: u64 = 10_000_000;
 
     fn maybe_initiate_addba(&mut self, now: Time, dst: MacAddr, out: &mut Vec<Action>) {
         let (token, ssn) = {
             let Some(peer) = self.peers.get_mut(&dst) else {
                 return;
             };
-            if !peer.valid
-                || peer.ht.is_none()
-                || peer.tx_ba_active
-                || peer.tx_ba_attempts >= Self::TX_ADDBA_MAX_ATTEMPTS
-            {
+            if !peer.valid || peer.ht.is_none() || peer.tx_ba_active {
                 return;
+            }
+            if peer.tx_ba_attempts >= Self::TX_ADDBA_MAX_ATTEMPTS {
+                if peer
+                    .tx_ba_last_req
+                    .is_some_and(|last| now.since(last) >= Self::TX_ADDBA_COOLDOWN_US)
+                {
+                    peer.tx_ba_attempts = 0;
+                } else {
+                    return;
+                }
             }
             if let Some(last) = peer.tx_ba_last_req
                 && now.since(last) < Self::TX_ADDBA_RETRY_US
@@ -1000,113 +1098,158 @@ impl Node {
     }
 
     fn send_unicast(&mut self, now: Time, sent: &mut usize, out: &mut Vec<Action>) {
-        if self.unicast.is_empty() {
+        if self.unicast_total == 0 {
             return;
         }
-        let mut waiting: VecDeque<Queued> = VecDeque::new();
-        let mut items: VecDeque<Queued> = core::mem::take(&mut self.unicast);
-        let mut blocked: Vec<MacAddr> = Vec::new();
-        while let Some(q) = items.pop_front() {
-            let dst = q.packet.dst;
-            let open = *sent < self.cfg.burst_limit.max(1)
-                && !blocked.contains(&dst)
-                && self
-                    .peers
-                    .get(&dst)
-                    .is_some_and(|p| self.unicast_wait(p, now) == 0);
-            if !open {
-                if !blocked.contains(&dst) {
-                    blocked.push(dst);
+        let budget = self.cfg.burst_limit.max(1);
+        let mut order: Vec<MacAddr> = self.unicast.keys().copied().collect();
+        if let Some(cursor) = self.unicast_cursor
+            && let Some(pos) = order.iter().position(|&mac| mac > cursor)
+        {
+            order.rotate_left(pos);
+        }
+        let mut peer_sent = alloc::vec![0usize; order.len()];
+        let mut peer_blocked = alloc::vec![false; order.len()];
+        while *sent < budget {
+            let mut progressed = false;
+            for (idx, &dst) in order.iter().enumerate() {
+                if *sent >= budget {
+                    break;
                 }
-                waiting.push_back(q);
-                continue;
-            }
-            let peer = &self.peers[&dst];
-            let rate = self.cfg.rate.for_peer(peer.ht.as_ref());
-            let mut batch = Vec::from([q]);
-            if self.cfg.amsdu && peer.ht.is_some() {
-                let limit = peer
+                if peer_blocked[idx] {
+                    continue;
+                }
+                let Some(peer) = self.peers.get(&dst) else {
+                    peer_blocked[idx] = true;
+                    continue;
+                };
+                if self.unicast_wait(peer, now) != 0 {
+                    peer_blocked[idx] = true;
+                    continue;
+                }
+                if self.cfg.initiate_addba && peer.tx_ba_active {
+                    let win = usize::from(
+                        peer.tx_ba_window
+                            .unwrap_or(self.cfg.initiate_addba_window)
+                            .max(1),
+                    );
+                    if peer_sent[idx] >= win {
+                        peer_blocked[idx] = true;
+                        continue;
+                    }
+                }
+                let rate = self.cfg.rate.for_peer(peer.ht.as_ref());
+                let amsdu_allowed = self.peer_amsdu_allowed(peer);
+                let peer_limit = peer
                     .ht
                     .map_or(AMSDU_DEFAULT_MAX, |h| h.max_amsdu())
                     .min(self.cfg.max_frame.saturating_sub(frame::HEADER_LEN + 2));
-                let first_len = frame::amsdu_subframe_len(batch[0].packet.data.len());
-                let mut len = first_len;
-                let mut rest = VecDeque::new();
-                let mut blocked_same_peer = false;
-                while let Some(next) = items.pop_front() {
-                    if next.packet.dst != dst || blocked_same_peer {
-                        rest.push_back(next);
+
+                let mut batch = {
+                    let Some(q) = self.unicast.get_mut(&dst) else {
+                        peer_blocked[idx] = true;
                         continue;
-                    }
-                    let add = frame::amsdu_subframe_len(next.packet.data.len()) + 3;
-                    if batch.len() == AMSDU_PACKETS || len + add > limit {
-                        // Never pack a later short packet ahead of this
-                        // earlier packet that couldn't fit.
-                        blocked_same_peer = true;
-                        rest.push_back(next);
+                    };
+                    let Some(first) = q.pop_front() else {
+                        self.unicast.remove(&dst);
+                        peer_blocked[idx] = true;
                         continue;
+                    };
+                    let mut batch = Vec::from([first]);
+                    if amsdu_allowed {
+                        let first_len = frame::amsdu_subframe_len(batch[0].packet.data.len());
+                        let mut len = first_len;
+                        let mut blocked_same_peer = false;
+                        while batch.len() < AMSDU_PACKETS {
+                            let Some(next) = q.front() else {
+                                break;
+                            };
+                            let add = frame::amsdu_subframe_len(next.packet.data.len()) + 3;
+                            if len + add > peer_limit {
+                                // Never pack a later short packet ahead of this
+                                // earlier packet that couldn't fit.
+                                blocked_same_peer = true;
+                                break;
+                            }
+                            let next = q.pop_front().expect("checked front");
+                            len += add;
+                            batch.push(next);
+                        }
+                        let oldest = &batch[0];
+                        let can_grow = !blocked_same_peer
+                            && batch.len() < AMSDU_PACKETS
+                            && len + first_len + 3 <= peer_limit;
+                        if can_grow
+                            && Self::should_coalesce(&oldest.packet)
+                            && !batch.iter().any(|item| item.packet.pure_tcp_ack().is_some())
+                            && now.since(oldest.at) < self.cfg.amsdu_coalesce_us
+                        {
+                            for item in batch.into_iter().rev() {
+                                q.push_front(item);
+                            }
+                            peer_blocked[idx] = true;
+                            continue;
+                        }
                     }
-                    len += add;
-                    batch.push(next);
+                    self.unicast_total -= batch.len();
+                    if q.is_empty() {
+                        self.unicast.remove(&dst);
+                        peer_blocked[idx] = true;
+                    }
+                    batch
+                };
+                let _ = &mut batch;
+                if self.cfg.initiate_addba {
+                    self.maybe_initiate_addba(now, dst, out);
                 }
-                items = rest;
-                let oldest = &batch[0];
-                let can_grow = !blocked_same_peer
-                    && batch.len() < AMSDU_PACKETS
-                    && len + first_len + 3 <= limit;
-                if can_grow
-                    && self.should_coalesce(peer, now, &oldest.packet)
-                    && now.since(oldest.at) < self.cfg.amsdu_coalesce_us
-                {
-                    blocked.push(dst);
-                    waiting.extend(batch);
-                    continue;
-                }
-            }
-            if self.cfg.initiate_addba {
-                self.maybe_initiate_addba(now, dst, out);
-            }
-            let seq = if self.cfg.initiate_addba {
-                if let Some(peer) = self.peers.get_mut(&dst) {
-                    peer.next_tx_qos_seq()
+                let seq = if self.cfg.initiate_addba {
+                    if let Some(peer) = self.peers.get_mut(&dst) {
+                        peer.next_tx_qos_seq()
+                    } else {
+                        self.next_seq()
+                    }
                 } else {
                     self.next_seq()
-                }
-            } else {
-                self.next_seq()
-            };
-            let awdl_seq = self.awdl_seq;
-            self.awdl_seq = self.awdl_seq.wrapping_add(batch.len() as u16);
-            let bytes = if batch.len() == 1 {
-                if self.cfg.initiate_addba {
-                    frame::qos_data_frame(
-                        self.cfg.addr,
-                        dst,
-                        seq,
-                        awdl_seq,
-                        &batch[0].packet.data,
-                    )
+                };
+                let awdl_seq = self.awdl_seq;
+                self.awdl_seq = self.awdl_seq.wrapping_add(batch.len() as u16);
+                let bytes = if batch.len() == 1 {
+                    if self.cfg.initiate_addba {
+                        frame::qos_data_frame(
+                            self.cfg.addr,
+                            dst,
+                            seq,
+                            awdl_seq,
+                            &batch[0].packet.data,
+                        )
+                    } else {
+                        frame::data_frame(self.cfg.addr, dst, seq, awdl_seq, &batch[0].packet.data)
+                    }
                 } else {
-                    frame::data_frame(self.cfg.addr, dst, seq, awdl_seq, &batch[0].packet.data)
-                }
-            } else {
-                let packets: Vec<&[u8]> = batch.iter().map(|q| q.packet.data.as_slice()).collect();
-                self.stats.tx_amsdu += 1;
-                frame::amsdu_frame(self.cfg.addr, dst, seq, awdl_seq, &packets)
-            };
-            self.stats.tx_unicast += batch.len() as u64;
-            *sent += 1;
-            out.push(Action::Transmit {
-                at: now,
-                frame: Frame {
-                    bytes,
-                    to: dst,
-                    rate,
-                    no_ack: self.cfg.no_ack,
-                },
-            });
+                    let packets: Vec<&[u8]> =
+                        batch.iter().map(|item| item.packet.data.as_slice()).collect();
+                    self.stats.tx_amsdu += 1;
+                    frame::amsdu_frame(self.cfg.addr, dst, seq, awdl_seq, &packets)
+                };
+                self.stats.tx_unicast += batch.len() as u64;
+                *sent += 1;
+                peer_sent[idx] += 1;
+                self.unicast_cursor = Some(dst);
+                progressed = true;
+                out.push(Action::Transmit {
+                    at: now,
+                    frame: Frame {
+                        bytes,
+                        to: dst,
+                        rate,
+                        no_ack: self.cfg.no_ack,
+                    },
+                });
+            }
+            if !progressed {
+                break;
+            }
         }
-        self.unicast = waiting;
     }
 
     /// When to be called back.
@@ -1121,20 +1264,15 @@ impl Node {
         if !self.multicast.is_empty() {
             t = t.min(now.plus(self.multicast_wait(now).max(1)));
         }
-        let mut seen: Vec<MacAddr> = Vec::new();
-        for q in &self.unicast {
-            if seen.contains(&q.packet.dst) {
+        for (&dst, q) in &self.unicast {
+            let Some(front) = q.front() else {
                 continue;
-            }
-            seen.push(q.packet.dst);
-            if let Some(p) = self.peers.get(&q.packet.dst) {
+            };
+            if let Some(p) = self.peers.get(&dst) {
                 let mut wait = self.unicast_wait(p, now);
-                if wait == 0
-                    && self.cfg.amsdu
-                    && p.ht.is_some()
-                    && self.should_coalesce(p, now, &q.packet)
+                if wait == 0 && self.peer_amsdu_allowed(p) && Self::should_coalesce(&front.packet)
                 {
-                    wait = self.cfg.amsdu_coalesce_us.saturating_sub(now.since(q.at));
+                    wait = self.cfg.amsdu_coalesce_us.saturating_sub(now.since(front.at));
                 }
                 t = t.min(now.plus(wait.max(1)));
             }

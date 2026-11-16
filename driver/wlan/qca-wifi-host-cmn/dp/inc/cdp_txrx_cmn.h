@@ -1177,13 +1177,29 @@ cdp_passthru_managed_join(ol_txrx_soc_handle soc,
 
 /* NULL means consumed; non-NULL returns the unconsumed original nbuf. */
 static inline qdf_nbuf_t
+cdp_passthru_managed_tx_status(ol_txrx_soc_handle soc,
+			       struct cdp_passthru_handle *handle,
+			       qdf_nbuf_t nbuf,
+			       enum cdp_pt_tx_status *status)
+{
+	if (status)
+		*status = CDP_PT_TX_DROP_VDEV;
+	if (!soc || !soc->ops || !handle || !soc->ops->cmn_drv_ops)
+		return nbuf;
+	if (soc->ops->cmn_drv_ops->passthru_managed_tx_status)
+		return soc->ops->cmn_drv_ops->passthru_managed_tx_status(
+			soc, handle, nbuf, status);
+	if (soc->ops->cmn_drv_ops->passthru_managed_tx)
+		return soc->ops->cmn_drv_ops->passthru_managed_tx(soc, handle,
+								  nbuf);
+	return nbuf;
+}
+
+static inline qdf_nbuf_t
 cdp_passthru_managed_tx(ol_txrx_soc_handle soc,
 		      struct cdp_passthru_handle *handle, qdf_nbuf_t nbuf)
 {
-	if (!soc || !soc->ops || !handle || !soc->ops->cmn_drv_ops ||
-	    !soc->ops->cmn_drv_ops->passthru_managed_tx)
-		return nbuf;
-	return soc->ops->cmn_drv_ops->passthru_managed_tx(soc, handle, nbuf);
+	return cdp_passthru_managed_tx_status(soc, handle, nbuf, NULL);
 }
 #endif
 

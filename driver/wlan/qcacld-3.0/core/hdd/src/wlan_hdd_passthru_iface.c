@@ -16,10 +16,33 @@ static netdev_tx_t hdd_pt_netdev_tx(struct sk_buff *skb,
 		READ_ONCE(adapter->passthru_registry);
 
 	if (registry)
-		hdd_pt_tx(registry, adapter->passthru_generation, skb);
-	else
-		dev_kfree_skb_any(skb);
+		return hdd_pt_tx_net(registry, adapter->passthru_generation,
+				     dev, skb);
+	dev_core_stats_tx_dropped_inc(dev);
+	dev_kfree_skb_any(skb);
 	return NETDEV_TX_OK;
+}
+
+static void hdd_pt_netdev_get_stats64(struct net_device *dev,
+				      struct rtnl_link_stats64 *storage)
+{
+	struct hdd_adapter *adapter = netdev_priv(dev);
+	struct hdd_pt_registry *registry =
+		READ_ONCE(adapter->passthru_registry);
+	unsigned int cpu;
+
+	if (!registry)
+		return;
+	for (cpu = 0; cpu < ARRAY_SIZE(registry->netstats); cpu++) {
+		const struct hdd_pt_netstats *s = &registry->netstats[cpu];
+
+		storage->tx_packets += READ_ONCE(s->tx_packets);
+		storage->tx_bytes += READ_ONCE(s->tx_bytes);
+		storage->tx_dropped += READ_ONCE(s->tx_dropped);
+		storage->rx_packets += READ_ONCE(s->rx_packets);
+		storage->rx_bytes += READ_ONCE(s->rx_bytes);
+		storage->rx_dropped += READ_ONCE(s->rx_dropped);
+	}
 }
 
 static int hdd_pt_netdev_open(struct net_device *dev)
@@ -53,6 +76,7 @@ static const struct net_device_ops hdd_pt_netdev_ops = {
 	.ndo_open = hdd_pt_netdev_open,
 	.ndo_stop = hdd_pt_netdev_stop,
 	.ndo_start_xmit = hdd_pt_netdev_tx,
+	.ndo_get_stats64 = hdd_pt_netdev_get_stats64,
 };
 
 void hdd_pt_set_netdev_ops(struct net_device *dev)

@@ -22,7 +22,12 @@ AUDIT = json.loads((REPO / MANIFEST["audit_file"]).read_text())
 BLOBS_DIR = Path(os.environ.get("HOUJI_BLOBS_DIR", str(REPO / "blobs/local")))
 
 assert MANIFEST["blobs"]["qca_cld3_kiwi_v2"]["sha256"] == AUDIT["candidate_sha256"]
-assert int(MANIFEST["audit_import_count"]) == int(AUDIT["candidate_import_count"]) == 567
+assert int(MANIFEST["audit_import_count"]) == int(AUDIT["candidate_import_count"]) == 570
+assert all(AUDIT["checks"].values()), AUDIT["checks"]
+assert not AUDIT.get("unresolved_imports"), AUDIT.get("unresolved_imports")
+if "modules" in AUDIT:
+    for mod_key in ("qca_cld3_kiwi_v2", "wonder", "houji_wonder_bridge"):
+        assert MANIFEST["blobs"][mod_key]["sha256"] == AUDIT["modules"][mod_key]["sha256"]
 
 
 def resolve_serial() -> str:

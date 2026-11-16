@@ -228,6 +228,123 @@ impl HtCapabilities {
     pub fn sgi20(&self) -> bool {
         self.capabilities & 0x0020 != 0
     }
+
+    /// Short guard interval at 40 MHz.
+    pub fn sgi40(&self) -> bool {
+        self.capabilities & 0x0040 != 0
+    }
+
+    /// HT 40 MHz channel width support.
+    pub fn bw40(&self) -> bool {
+        self.capabilities & 0x0002 != 0
+    }
+
+    /// HT LDPC coding capability.
+    pub fn ldpc(&self) -> bool {
+        self.capabilities & 0x0001 != 0
+    }
+
+    /// Number of supported receive spatial streams (1 or 2 from MCS 0..15).
+    pub fn rx_nss(&self) -> u8 {
+        if (self.rx_mcs & 0xff00) == 0xff00 {
+            2
+        } else {
+            1
+        }
+    }
+
+    /// Supported HT A-MPDU length exponent (`0..=3`, max `2^(13 + exp) - 1`).
+    pub fn ampdu_exp(&self) -> u8 {
+        self.ampdu_params & 0x03
+    }
+
+    /// Minimum MPDU start spacing code (`0..=7`).
+    pub fn mpdu_density(&self) -> u8 {
+        (self.ampdu_params >> 2) & 0x07
+    }
+
+    /// Raw RX HT MCS bitmask (MCS 0..31).
+    pub fn rx_mcs_mask(&self) -> u32 {
+        self.rx_mcs
+    }
+}
+
+/// IEEE 802.11 VHT Capabilities IE (191) extracted from AWDL TLV 17 containers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VhtCapabilities {
+    pub cap_info: u32,
+    pub rx_mcs_map: u16,
+    pub tx_mcs_map: u16,
+}
+
+impl VhtCapabilities {
+    pub const IE_ID: u8 = 191;
+
+    /// Parses IE 191 from an IEEE 802.11 container TLV (TLV 17) payload.
+    pub fn parse_container(value: &[u8]) -> Option<VhtCapabilities> {
+        let mut at = 0usize;
+        while at + 2 <= value.len() {
+            let id = value[at];
+            let len = value[at + 1] as usize;
+            let start = at + 2;
+            let Some(end) = start.checked_add(len) else {
+                break;
+            };
+            if end > value.len() {
+                break;
+            }
+            if id == Self::IE_ID && len >= 12 {
+                let ie = &value[start..start + 12];
+                return Some(VhtCapabilities {
+                    cap_info: u32::from_le_bytes([ie[0], ie[1], ie[2], ie[3]]),
+                    rx_mcs_map: u16::from_le_bytes([ie[4], ie[5]]),
+                    tx_mcs_map: u16::from_le_bytes([ie[8], ie[9]]),
+                });
+            }
+            at = end;
+        }
+        None
+    }
+
+    pub fn rx_ldpc(&self) -> bool {
+        self.cap_info & 0x0000_0010 != 0
+    }
+
+    pub fn sgi80(&self) -> bool {
+        self.cap_info & 0x0000_0020 != 0
+    }
+
+    pub fn max_mpdu(&self) -> usize {
+        match self.cap_info & 0x3 {
+            1 => 7991,
+            2 => 11454,
+            _ => 3895,
+        }
+    }
+
+    /// Supported VHT maximum A-MPDU length exponent (`0..=7`).
+    pub fn max_ampdu_exp(&self) -> u8 {
+        ((self.cap_info >> 23) & 0x07) as u8
+    }
+
+    /// Supported RX spatial streams (`1..=2`) and max VHT MCS (`7..=9`).
+    pub fn rx_streams_and_mcs(&self) -> (u8, u8) {
+        let c1 = (self.rx_mcs_map & 0x3) as u8;
+        let c2 = ((self.rx_mcs_map >> 2) & 0x3) as u8;
+        let (nss, code) = if c1 < 3 && c2 < 3 {
+            (2, c1.min(c2))
+        } else if c1 < 3 {
+            (1, c1)
+        } else {
+            (1, 0)
+        };
+        let max_mcs = match code {
+            2 => 9,
+            1 => 8,
+            _ => 7,
+        };
+        (nss, max_mcs)
+    }
 }
 
 /// What a node reads from the Data Path State TLV (12).
@@ -307,6 +424,7 @@ pub struct Advert {
     /// Version, device class.
     pub version: Option<(u8, u8)>,
     pub ht: Option<HtCapabilities>,
+    pub vht: Option<VhtCapabilities>,
     pub data_path: Option<DataPathState>,
 }
 
@@ -333,6 +451,11 @@ impl Advert {
                 kind::ARPA => a.name = Some(parse_arpa(value)?),
                 kind::VERSION => a.version = Some(parse_version(value)?),
                 kind::HT_CAPABILITIES => a.ht = Some(HtCapabilities::parse(value)?),
+                kind::IEEE80211_CONTAINER => {
+                    if let Some(vht) = VhtCapabilities::parse_container(value) {
+                        a.vht = Some(vht);
+                    }
+                }
                 kind::DATA_PATH_STATE => a.data_path = Some(DataPathState::parse(value)?),
                 // The sync tree's layout isn't known (docs/open-questions.md,
                 // item 11) and the election doesn't need it; the rest carry
@@ -808,5 +931,39 @@ mod tests {
         let t = tlvs(&out).next().unwrap().unwrap();
         assert_eq!(parse_arpa(t.value).unwrap().len(), NAME_MAX);
         assert_eq!(parse_arpa(&[3, 10, b'a']), Err(Error::Truncated));
+    }
+
+    #[test]
+    fn parses_vht_container_profiles_and_multi_ie() {
+        let mif_1ss = own_frame_with_vht(true, true);
+        let a_1ss = Advert::parse(&mif_1ss).unwrap();
+        let v1 = a_1ss.vht.expect("1ss vht");
+        assert_eq!(v1.rx_streams_and_mcs(), (1, 7));
+        assert!(!v1.sgi80());
+        assert!(!v1.rx_ldpc());
+
+        let mut out = Vec::new();
+        put_vht80_2ss_sgi_capabilities(&mut out, 7);
+        let a_2ss = Advert::parse(&out).unwrap();
+        let v2 = a_2ss.vht.expect("2ss vht");
+        assert_eq!(v2.rx_streams_and_mcs(), (2, 9));
+        assert!(v2.sgi80());
+        assert!(v2.rx_ldpc());
+        assert_eq!(v2.max_mpdu(), 3895);
+
+        // Preceding custom IE + 1SS MCS 0-9 IE (0xfffe) + Mac cap_info 0x03800036
+        let multi = [
+            45, 2, 0x11, 0x22, // unrelated IE before IE 191
+            191, 12,
+            0x36, 0x00, 0x80, 0x03, // cap_info: mpdu 11454 + rx_ldpc + sgi80 + exp7
+            0xfe, 0xff, 0x00, 0x00, // rx_mcs_map = 0xfffe (1SS MCS 0-9)
+            0xfe, 0xff, 0x00, 0x00, // tx_mcs_map
+        ];
+        let v_multi = VhtCapabilities::parse_container(&multi).unwrap();
+        assert_eq!(v_multi.rx_streams_and_mcs(), (1, 9));
+        assert_eq!(v_multi.max_mpdu(), 11454);
+        assert!(v_multi.sgi80());
+        assert!(v_multi.rx_ldpc());
+        assert_eq!(VhtCapabilities::parse_container(&[191, 4, 1, 2]), None);
     }
 }

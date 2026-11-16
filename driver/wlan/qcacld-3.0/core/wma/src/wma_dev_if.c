@@ -2477,6 +2477,7 @@ struct wma_pt_peer_state {
 	bool active;
 	bool reo_enabled;
 	bool is_2ss;
+	struct wma_pt_peer_caps caps;
 	u16 peer_id;
 	bool ast_valid;
 	u16 ast_idx;
@@ -2522,8 +2523,23 @@ struct wma_pt_peer_summary_row {
 	bool active;
 	bool ast_valid;
 	bool tx_ready;
+	struct wma_pt_peer_caps caps;
 	int setup_rc;
 	int teardown_rc;
+};
+
+#define WMA_PT_PEER_BITMAP_BITS 2048
+#define WMA_PT_PEER_BITMAP_WORDS (WMA_PT_PEER_BITMAP_BITS / 64)
+
+struct wma_pt_fast_slot {
+	const void *psoc;
+	u16 peer_id;
+	u16 ast_idx;
+	u16 ast_hash;
+	u8 vdev_id;
+	u8 mac[QDF_MAC_ADDR_SIZE];
+	bool ready;
+	bool ast_valid;
 };
 
 static DEFINE_MUTEX(wma_pt_peer_ops_lock);
@@ -2532,6 +2548,10 @@ static struct wma_pt_peer_state wma_pt_peers[WMA_PT_MAX_PEERS];
 static struct wma_pt_peer_state wma_pt_peer_last;
 static u64 wma_pt_peer_seq;
 static atomic_t wma_pt_tx_ready_count = ATOMIC_INIT(0);
+static u32 wma_pt_fast_seq;
+static struct wma_pt_fast_slot wma_pt_fast_slots[WMA_PT_MAX_PEERS];
+static u64 wma_pt_active_peer_words[WMA_PT_PEER_BITMAP_WORDS];
+static u64 wma_pt_next_peer_words[WMA_PT_PEER_BITMAP_WORDS];
 static u32 pt_reo_mode;
 static bool pt_fw_addba;
 module_param(pt_fw_addba, bool, 0400);
@@ -2540,16 +2560,61 @@ module_param(pt_fw_addba_rc, int, 0400);
 static bool pt_fw_addba_sent;
 module_param(pt_fw_addba_sent, bool, 0400);
 
+static void wma_pt_sync_fast_locked(const struct wma_pt_peer_state *slot)
+{
+	ptrdiff_t idx = slot - wma_pt_peers;
+	int i;
+
+	if (idx < 0 || idx >= WMA_PT_MAX_PEERS)
+		return;
+
+	WRITE_ONCE(wma_pt_fast_seq, wma_pt_fast_seq + 1);
+	smp_wmb();
+
+	wma_pt_fast_slots[idx].psoc = slot->psoc;
+	wma_pt_fast_slots[idx].peer_id = slot->peer_id;
+	wma_pt_fast_slots[idx].ast_idx = slot->ast_idx;
+	wma_pt_fast_slots[idx].ast_hash = slot->ast_hash;
+	wma_pt_fast_slots[idx].vdev_id = slot->vdev_id;
+	memcpy(wma_pt_fast_slots[idx].mac, slot->mac, QDF_MAC_ADDR_SIZE);
+	wma_pt_fast_slots[idx].ready = slot->peer_seq && slot->tx_ready;
+	wma_pt_fast_slots[idx].ast_valid = slot->ast_valid;
+
+	memset(wma_pt_next_peer_words, 0, sizeof(wma_pt_next_peer_words));
+	for (i = 0; i < WMA_PT_MAX_PEERS; i++) {
+		const struct wma_pt_peer_state *s = &wma_pt_peers[i];
+
+		if (s->peer_seq && s->tx_ready &&
+		    s->peer_id < WMA_PT_PEER_BITMAP_BITS) {
+			wma_pt_next_peer_words[s->peer_id >> 6] |=
+				BIT_ULL(s->peer_id & 63);
+		}
+	}
+	for (i = 0; i < WMA_PT_PEER_BITMAP_WORDS; i++) {
+		if (wma_pt_active_peer_words[i] != wma_pt_next_peer_words[i])
+			WRITE_ONCE(wma_pt_active_peer_words[i],
+				   wma_pt_next_peer_words[i]);
+	}
+
+	smp_wmb();
+	WRITE_ONCE(wma_pt_fast_seq, wma_pt_fast_seq + 1);
+}
+
 static void wma_pt_set_tx_ready_locked(struct wma_pt_peer_state *slot,
 				       bool ready)
 {
 	if (slot->tx_ready == ready)
 		return;
-	WRITE_ONCE(slot->tx_ready, ready);
-	if (ready)
+	if (ready) {
+		WRITE_ONCE(slot->tx_ready, true);
+		wma_pt_sync_fast_locked(slot);
+		smp_wmb();
 		atomic_inc(&wma_pt_tx_ready_count);
-	else
+	} else {
 		atomic_dec(&wma_pt_tx_ready_count);
+		WRITE_ONCE(slot->tx_ready, false);
+		wma_pt_sync_fast_locked(slot);
+	}
 }
 
 static void wma_pt_clear_slot_locked(struct wma_pt_peer_state *slot)
@@ -2558,6 +2623,7 @@ static void wma_pt_clear_slot_locked(struct wma_pt_peer_state *slot)
 	slot->active = false;
 	wma_pt_peer_last = *slot;
 	memset(slot, 0, sizeof(*slot));
+	wma_pt_sync_fast_locked(slot);
 }
 
 static struct wma_pt_peer_state *
@@ -2758,34 +2824,61 @@ void pt_remote_peer_set_ast(const void *psoc, u8 vdev_id, const u8 *mac,
 		slot->ast_idx = ast_idx;
 		slot->ast_hash = ast_hash;
 		slot->ast_valid = true;
+		wma_pt_sync_fast_locked(slot);
 	}
 	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
+}
+
+static inline u32 wma_pt_fast_read_begin(void)
+{
+	u32 seq;
+
+	while (unlikely((seq = READ_ONCE(wma_pt_fast_seq)) & 1U))
+		cpu_relax();
+	smp_rmb();
+	return seq;
+}
+
+static inline bool wma_pt_fast_read_retry(u32 seq)
+{
+	smp_rmb();
+	return unlikely(READ_ONCE(wma_pt_fast_seq) != seq);
 }
 
 bool pt_remote_peer_lookup_ast(const void *psoc, u8 vdev_id, const u8 *ra_mac,
 			       u16 *ast_idx, u16 *ast_hash)
 {
-	unsigned long flags;
-	bool ok = false;
+	u32 seq;
+	bool ok;
+	u16 idx_out, hash_out;
 	int i;
 
 	if (atomic_read(&wma_pt_tx_ready_count) <= 0)
 		return false;
 
-	spin_lock_irqsave(&wma_pt_peer_lock, flags);
-	for (i = 0; i < WMA_PT_MAX_PEERS; i++) {
-		struct wma_pt_peer_state *s = &wma_pt_peers[i];
+	do {
+		seq = wma_pt_fast_read_begin();
+		ok = false;
+		idx_out = 0;
+		hash_out = 0;
+		for (i = 0; i < WMA_PT_MAX_PEERS; i++) {
+			const struct wma_pt_fast_slot *s = &wma_pt_fast_slots[i];
 
-		if (s->peer_seq && s->tx_ready && s->ast_valid &&
-		    s->psoc == psoc && s->vdev_id == vdev_id &&
-		    !memcmp(s->mac, ra_mac, QDF_MAC_ADDR_SIZE)) {
-			*ast_idx = s->ast_idx;
-			*ast_hash = s->ast_hash;
-			ok = true;
-			break;
+			if (s->ready && s->ast_valid &&
+			    s->psoc == psoc && s->vdev_id == vdev_id &&
+			    !memcmp(s->mac, ra_mac, QDF_MAC_ADDR_SIZE)) {
+				idx_out = s->ast_idx;
+				hash_out = s->ast_hash;
+				ok = true;
+				break;
+			}
 		}
+	} while (wma_pt_fast_read_retry(seq));
+
+	if (ok) {
+		*ast_idx = idx_out;
+		*ast_hash = hash_out;
 	}
-	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
 	return ok;
 }
 
@@ -2812,22 +2905,30 @@ u16 pt_remote_peer_active_id(void)
 
 bool pt_remote_peer_is_active_id(u16 peer_id)
 {
-	unsigned long flags;
-	bool active = false;
+	u32 seq;
+	bool active;
 	int i;
 
 	if (peer_id == U16_MAX || atomic_read(&wma_pt_tx_ready_count) <= 0)
 		return false;
 
-	spin_lock_irqsave(&wma_pt_peer_lock, flags);
-	for (i = 0; i < WMA_PT_MAX_PEERS; i++) {
-		if (wma_pt_peers[i].peer_seq && wma_pt_peers[i].tx_ready &&
-		    wma_pt_peers[i].peer_id == peer_id) {
-			active = true;
-			break;
-		}
+	if (likely(peer_id < WMA_PT_PEER_BITMAP_BITS)) {
+		smp_rmb();
+		return !!(READ_ONCE(wma_pt_active_peer_words[peer_id >> 6]) &
+			  BIT_ULL(peer_id & 63));
 	}
-	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
+
+	do {
+		seq = wma_pt_fast_read_begin();
+		active = false;
+		for (i = 0; i < WMA_PT_MAX_PEERS; i++) {
+			if (wma_pt_fast_slots[i].ready &&
+			    wma_pt_fast_slots[i].peer_id == peer_id) {
+				active = true;
+				break;
+			}
+		}
+	} while (wma_pt_fast_read_retry(seq));
 	return active;
 }
 
@@ -3094,11 +3195,219 @@ void pt_remote_peer_set_reo_mode(u32 mode)
 	WRITE_ONCE(pt_reo_mode, mode);
 }
 
+static void wma_pt_normalize_caps(struct wma_pt_peer_caps *dst,
+				  const struct wma_pt_peer_caps *src)
+{
+	bool legacy_sgi;
+	bool legacy_ldpc;
+
+	memset(dst, 0, sizeof(*dst));
+	if (!src || (!src->ht && !src->vht)) {
+		dst->nss = 1;
+		dst->bw = 20;
+		dst->max_mcs = 7;
+		dst->max_mpdu = 3895;
+		return;
+	}
+	dst->vht = src->vht;
+	dst->ht = src->ht || src->vht;
+	dst->nss = (src->nss >= 2) ? 2 : 1;
+	if (dst->vht) {
+		if (src->bw >= 80)
+			dst->bw = 80;
+		else if (src->bw >= 40)
+			dst->bw = 40;
+		else
+			dst->bw = 20;
+		if (src->max_mcs >= 9)
+			dst->max_mcs = 9;
+		else if (src->max_mcs == 8)
+			dst->max_mcs = 8;
+		else
+			dst->max_mcs = 7;
+		if (dst->bw == 20 && dst->max_mcs > 8)
+			dst->max_mcs = 8;
+	} else {
+		dst->bw = (src->bw >= 40) ? 40 : 20;
+		dst->max_mcs = 7;
+	}
+
+	dst->has_ht_bw40 = true;
+	dst->ht_bw40 = dst->ht && (src->has_ht_bw40 ? src->ht_bw40 : (dst->bw >= 40));
+
+	legacy_sgi = src->sgi;
+	legacy_ldpc = src->ldpc;
+
+	dst->has_ht_sgi20 = true;
+	dst->ht_sgi20 = dst->ht && (src->has_ht_sgi20 ? src->ht_sgi20 : legacy_sgi);
+	dst->has_ht_sgi40 = true;
+	dst->ht_sgi40 = dst->ht && dst->ht_bw40 &&
+			(src->has_ht_sgi40 ? src->ht_sgi40 : legacy_sgi);
+	dst->has_vht_sgi80 = true;
+	dst->vht_sgi80 = dst->vht && dst->bw >= 80 &&
+			 (src->has_vht_sgi80 ? src->vht_sgi80 : legacy_sgi);
+
+	dst->has_ht_ldpc = true;
+	dst->ht_ldpc = dst->ht && (src->has_ht_ldpc ? src->ht_ldpc : legacy_ldpc);
+	dst->has_vht_ldpc = true;
+	dst->vht_ldpc = dst->vht && (src->has_vht_ldpc ? src->vht_ldpc : legacy_ldpc);
+
+	if (dst->vht) {
+		if (dst->bw >= 80)
+			dst->sgi = dst->vht_sgi80;
+		else if (dst->bw >= 40)
+			dst->sgi = src->has_ht_sgi40 ? dst->ht_sgi40 : legacy_sgi;
+		else
+			dst->sgi = src->has_ht_sgi20 ? dst->ht_sgi20 : legacy_sgi;
+		dst->ldpc = dst->vht_ldpc;
+	} else {
+		dst->sgi = (dst->bw >= 40) ? dst->ht_sgi40 : dst->ht_sgi20;
+		dst->ldpc = dst->ht_ldpc;
+	}
+
+	if (src->max_mpdu >= 11454)
+		dst->max_mpdu = 11454;
+	else if (src->max_mpdu >= 7991)
+		dst->max_mpdu = 7991;
+	else
+		dst->max_mpdu = 3895;
+	dst->has_ampdu_exp = src->has_ampdu_exp;
+	if (src->has_ampdu_exp)
+		dst->ampdu_exp = min_t(u8, src->ampdu_exp, dst->vht ? 7U : 3U);
+	else
+		dst->ampdu_exp = dst->vht ? 7U : 3U;
+	dst->mpdu_density = min_t(u8, src->mpdu_density, 7U);
+	dst->ht_mcs_mask = src->ht_mcs_mask;
+}
+
+static void wma_pt_default_caps(struct wma_pt_peer_caps *dst, bool is_2ss)
+{
+	memset(dst, 0, sizeof(*dst));
+	dst->ht = true;
+	dst->vht = true;
+	dst->nss = is_2ss ? 2 : 1;
+	dst->bw = 80;
+	dst->max_mcs = 9;
+	dst->sgi = true;
+	dst->ldpc = true;
+	dst->has_ht_bw40 = true;
+	dst->ht_bw40 = true;
+	dst->has_ht_sgi20 = true;
+	dst->ht_sgi20 = true;
+	dst->has_ht_sgi40 = true;
+	dst->ht_sgi40 = true;
+	dst->has_ht_ldpc = true;
+	dst->ht_ldpc = true;
+	dst->has_vht_sgi80 = true;
+	dst->vht_sgi80 = true;
+	dst->has_vht_ldpc = true;
+	dst->vht_ldpc = true;
+	dst->max_mpdu = 3895;
+	dst->has_ampdu_exp = false;
+	dst->ampdu_exp = 7;
+	dst->mpdu_density = 0;
+	dst->ht_mcs_mask = is_2ss ? 0xffffU : 0x00ffU;
+}
+
+static u16 wma_pt_vht_mcs_map(u8 nss, u8 max_mcs)
+{
+	u16 code = (max_mcs >= 9) ? 2 : ((max_mcs == 8) ? 1 : 0);
+	u16 map = 0xffff;
+	u8 s;
+
+	for (s = 0; s < nss && s < 2; s++) {
+		map &= ~(0x3U << (s * 2));
+		map |= (code << (s * 2));
+	}
+	return map;
+}
+
+static u16 wma_pt_vht_max_rate(const struct wma_pt_peer_caps *caps)
+{
+	bool sgi;
+
+	if (!caps->vht)
+		return 0;
+	if (caps->bw >= 80) {
+		sgi = caps->vht_sgi80;
+		if (caps->nss >= 2) {
+			if (caps->max_mcs >= 9)
+				return sgi ? 867 : 780;
+			if (caps->max_mcs == 8)
+				return sgi ? 780 : 702;
+			return sgi ? 650 : 585;
+		}
+		if (caps->max_mcs >= 9)
+			return sgi ? 433 : 390;
+		if (caps->max_mcs == 8)
+			return sgi ? 390 : 351;
+		return sgi ? 325 : 293;
+	}
+	if (caps->bw >= 40) {
+		sgi = caps->ht_sgi40;
+		if (caps->nss >= 2)
+			return (caps->max_mcs >= 9) ? (sgi ? 400 : 360) :
+						      (sgi ? 300 : 270);
+		return (caps->max_mcs >= 9) ? (sgi ? 200 : 180) :
+					      (sgi ? 150 : 135);
+	}
+	sgi = caps->ht_sgi20;
+	if (caps->nss >= 2)
+		return (caps->max_mcs >= 8) ? (sgi ? 173 : 156) :
+					      (sgi ? 144 : 130);
+	return (caps->max_mcs >= 8) ? (sgi ? 87 : 78) :
+				      (sgi ? 72 : 65);
+}
+
+static enum wlan_phymode
+wma_pt_caps_phymodes(const struct wma_pt_peer_caps *caps, u32 *wmi_mode)
+{
+	if (caps->vht && caps->bw >= 80) {
+		*wmi_mode = WMI_HOST_MODE_11AC_VHT80;
+		return WLAN_PHYMODE_11AC_VHT80;
+	}
+	if (caps->vht && caps->bw >= 40) {
+		*wmi_mode = WMI_HOST_MODE_11AC_VHT40;
+		return WLAN_PHYMODE_11AC_VHT40;
+	}
+	if (caps->vht) {
+		*wmi_mode = WMI_HOST_MODE_11AC_VHT20;
+		return WLAN_PHYMODE_11AC_VHT20;
+	}
+	if (caps->ht && caps->bw >= 40) {
+		*wmi_mode = WMI_HOST_MODE_11NA_HT40;
+		return WLAN_PHYMODE_11NA_HT40;
+	}
+	if (caps->ht) {
+		*wmi_mode = WMI_HOST_MODE_11NA_HT20;
+		return WLAN_PHYMODE_11NA_HT20;
+	}
+	*wmi_mode = WMI_HOST_MODE_11A;
+	return WLAN_PHYMODE_11A;
+}
+
+static u32 wma_pt_mpdu_density_us(u8 code)
+{
+	static const u8 tbl[8] = { 0, 1, 1, 1, 2, 4, 8, 16 };
+
+	return tbl[code & 0x07U];
+}
+
 static void wma_pt_fill_assoc_params(struct peer_assoc_params *assoc,
 				     const u8 *remote_mac, u8 vdev_id,
-				     u8 slot_idx, bool is_2ss)
+				     u8 slot_idx,
+				     const struct wma_pt_peer_caps *caps)
 {
 	static const u8 legacy_11a[8] = {12, 18, 24, 36, 48, 72, 96, 108};
+	bool is_2ss = caps->nss >= 2;
+	u32 wmi_phymode = WMI_HOST_MODE_11A;
+	u32 vht_mpdu_code;
+	u8 vht_ampdu_exp;
+	u16 ht_mask;
+	u8 max_ht_rates;
+	u8 ht_num_rates = 0;
+	u16 vht_mcs_map;
+	u16 max_rate;
 	int i;
 
 	memset(assoc, 0, sizeof(*assoc));
@@ -3111,45 +3420,81 @@ static void wma_pt_fill_assoc_params(struct peer_assoc_params *assoc,
 	assoc->is_wme_set = 1;
 	assoc->qos_flag = 1;
 	assoc->auth_flag = 1;
-	assoc->ht_flag = 1;
-	assoc->vht_flag = 1;
-	assoc->vht_capable = 1;
-	assoc->bw_40 = 1;
-	assoc->bw_80 = 1;
-	assoc->ldpc_flag = 1;
+	assoc->ht_flag = caps->ht ? 1 : 0;
+	assoc->vht_flag = caps->vht ? 1 : 0;
+	assoc->vht_capable = caps->vht ? 1 : 0;
+	assoc->bw_40 = (caps->bw >= 40) ? 1 : 0;
+	assoc->bw_80 = (caps->vht && caps->bw >= 80) ? 1 : 0;
+	assoc->ldpc_flag = caps->ldpc ? 1 : 0;
 	assoc->spatial_mux_flag = is_2ss ? 1 : 0;
-	assoc->peer_rate_caps = WMI_RC_HT_FLAG | WMI_RC_CW40_FLAG |
-				WMI_RC_SGI_FLAG |
+	assoc->peer_rate_caps = (caps->ht ? WMI_RC_HT_FLAG : 0) |
+				(caps->bw >= 40 ? WMI_RC_CW40_FLAG : 0) |
+				(caps->sgi ? WMI_RC_SGI_FLAG : 0) |
 				(is_2ss ? WMI_RC_DS_FLAG : 0);
-	assoc->peer_ht_caps = is_2ss ? 0x01ef : 0x01ce;
-	assoc->peer_max_mpdu = 65535;
-	assoc->peer_mpdu_density = 0;
+	if (caps->ht) {
+		assoc->peer_ht_caps = 0x018c |
+				      (caps->ht_ldpc ? 0x0001 : 0) |
+				      (caps->ht_bw40 ? 0x0002 : 0) |
+				      (caps->ht_sgi20 ? 0x0020 : 0) |
+				      ((caps->ht_sgi40 && caps->ht_bw40) ? 0x0040 : 0);
+	}
+	if (caps->has_ampdu_exp)
+		assoc->peer_max_mpdu =
+			(1U << (13U + min_t(u8, caps->ampdu_exp,
+					    caps->vht ? 7U : 3U))) - 1U;
+	else
+		assoc->peer_max_mpdu = 65535U;
+	assoc->peer_mpdu_density = wma_pt_mpdu_density_us(caps->mpdu_density);
 	assoc->peer_nss = is_2ss ? 2 : 1;
-	assoc->peer_vht_caps = 0x03800030;
-	assoc->peer_phymode = WMI_HOST_MODE_11AC_VHT80;
-	assoc->rx_max_rate = is_2ss ? 867 : 433;
-	assoc->rx_mcs_set = is_2ss ? 0xfffa : 0xfffc;
-	assoc->tx_max_rate = is_2ss ? 867 : 433;
-	assoc->tx_mcs_set = is_2ss ? 0xfffa : 0xfffc;
+	wma_pt_caps_phymodes(caps, &wmi_phymode);
+	assoc->peer_phymode = wmi_phymode;
+	if (caps->vht) {
+		vht_mcs_map = wma_pt_vht_mcs_map(assoc->peer_nss,
+						 caps->max_mcs);
+		max_rate = wma_pt_vht_max_rate(caps);
+		vht_mpdu_code = (caps->max_mpdu >= 11454) ? 2U :
+				((caps->max_mpdu >= 7991) ? 1U : 0U);
+		vht_ampdu_exp = caps->has_ampdu_exp ?
+				min_t(u8, caps->ampdu_exp, 7U) : 7U;
+		assoc->peer_vht_caps = ((u32)vht_ampdu_exp << 23) |
+				       vht_mpdu_code |
+				       (caps->vht_ldpc ? 0x00000010U : 0U) |
+				       ((caps->vht_sgi80 && caps->bw >= 80) ? 0x00000020U : 0U);
+		assoc->rx_max_rate = max_rate;
+		assoc->rx_mcs_set = vht_mcs_map;
+		assoc->tx_max_rate = max_rate;
+		assoc->tx_mcs_set = vht_mcs_map;
+	}
 	assoc->peer_legacy_rates.num_rates = sizeof(legacy_11a);
 	memcpy(assoc->peer_legacy_rates.rates, legacy_11a, sizeof(legacy_11a));
-	assoc->peer_ht_rates.num_rates = is_2ss ? 16 : 8;
-	for (i = 0; i < assoc->peer_ht_rates.num_rates; i++)
-		assoc->peer_ht_rates.rates[i] = i;
+	if (caps->ht) {
+		max_ht_rates = is_2ss ? 16 : 8;
+		ht_mask = caps->ht_mcs_mask ? caps->ht_mcs_mask :
+			  (is_2ss ? 0xffffU : 0x00ffU);
+		for (i = 0; i < max_ht_rates; i++) {
+			if (ht_mask & BIT(i))
+				assoc->peer_ht_rates.rates[ht_num_rates++] = i;
+		}
+	}
+	assoc->peer_ht_rates.num_rates = ht_num_rates;
 }
 
-int wma_pt_remote_peer_add(struct wlan_objmgr_vdev *vdev, u64 generation,
-			   const u8 *remote_mac, u32 enable_reo, bool is_2ss)
+int wma_pt_remote_peer_add_caps(struct wlan_objmgr_vdev *vdev, u64 generation,
+				const u8 *remote_mac, u32 enable_reo,
+				const struct wma_pt_peer_caps *raw_caps)
 {
 	tp_wma_handle wma = cds_get_context(QDF_MODULE_ID_WMA);
 	void *soc = cds_get_context(QDF_MODULE_ID_SOC);
 	struct peer_create_params cparam = {0};
 	struct peer_assoc_params assoc;
+	struct wma_pt_peer_caps caps;
 	struct qdf_mac_addr remote = {0};
 	struct wlan_objmgr_peer *obj_peer, *self;
 	struct wma_pt_peer_state *slot = NULL;
 	struct wma_pt_peer_state snap;
 	target_resource_config *cfg;
+	enum wlan_phymode mlme_phymode;
+	u32 wmi_mode = WMI_HOST_MODE_11A;
 	unsigned long flags, deadline;
 	QDF_STATUS status;
 	u8 remote_copy[QDF_MAC_ADDR_SIZE];
@@ -3157,8 +3502,11 @@ int wma_pt_remote_peer_add(struct wlan_objmgr_vdev *vdev, u64 generation,
 	int i, free_idx = -1, rc;
 
 	if (!generation || !wma || !wma->psoc || !wma->wmi_handle || !soc ||
-	    !wma_is_passthru_vdev(vdev) || !remote_mac || enable_reo > 2)
+	    !wma_is_passthru_vdev(vdev) || !remote_mac || enable_reo > 2 ||
+	    !raw_caps)
 		return -EINVAL;
+
+	wma_pt_normalize_caps(&caps, raw_caps);
 
 	memcpy(remote.bytes, remote_mac, QDF_MAC_ADDR_SIZE);
 	memcpy(remote_copy, remote_mac, QDF_MAC_ADDR_SIZE);
@@ -3197,9 +3545,12 @@ int wma_pt_remote_peer_add(struct wlan_objmgr_vdev *vdev, u64 generation,
 
 		if (s->peer_seq) {
 			if (!memcmp(s->mac, remote_copy, QDF_MAC_ADDR_SIZE)) {
-				rc = (s->generation == generation &&
-				      s->vdev_id == vdev_id && s->tx_ready) ?
-				     0 : -EBUSY;
+				if (s->generation == generation &&
+				    s->vdev_id == vdev_id && s->tx_ready &&
+				    !memcmp(&s->caps, &caps, sizeof(caps)))
+					rc = 0;
+				else
+					rc = -EBUSY;
 				spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
 				goto unlock_ops;
 			}
@@ -3226,9 +3577,11 @@ int wma_pt_remote_peer_add(struct wlan_objmgr_vdev *vdev, u64 generation,
 	memcpy(slot->mac, remote_copy, QDF_MAC_ADDR_SIZE);
 	slot->active = true;
 	slot->reo_enabled = enable_reo;
-	slot->is_2ss = is_2ss;
+	slot->is_2ss = caps.nss >= 2;
+	slot->caps = caps;
 	slot->peer_id = U16_MAX;
 	slot->ast_idx = U16_MAX;
+	wma_pt_sync_fast_locked(slot);
 	spin_unlock_irqrestore(&wma_pt_peer_lock, flags);
 
 	obj_peer = wma_create_objmgr_peer_typed(wma, vdev_id, remote_copy,
@@ -3318,9 +3671,9 @@ int wma_pt_remote_peer_add(struct wlan_objmgr_vdev *vdev, u64 generation,
 		}
 	}
 
-	wma_pt_fill_assoc_params(&assoc, remote_copy, vdev_id, free_idx, is_2ss);
-	wma_objmgr_set_peer_mlme_phymode(wma, assoc.peer_mac,
-					 WLAN_PHYMODE_11AC_VHT80);
+	wma_pt_fill_assoc_params(&assoc, remote_copy, vdev_id, free_idx, &caps);
+	mlme_phymode = wma_pt_caps_phymodes(&caps, &wmi_mode);
+	wma_objmgr_set_peer_mlme_phymode(wma, assoc.peer_mac, mlme_phymode);
 
 	spin_lock_irqsave(&wma_pt_peer_lock, flags);
 	slot->assoc_issued = true;
@@ -3400,6 +3753,24 @@ unlock_ops:
 	return rc;
 }
 
+int wma_pt_remote_peer_add(struct wlan_objmgr_vdev *vdev, u64 generation,
+			   const u8 *remote_mac, u32 enable_reo, bool is_2ss)
+{
+	struct wma_pt_peer_caps caps;
+
+	wma_pt_default_caps(&caps, is_2ss);
+	return wma_pt_remote_peer_add_caps(vdev, generation, remote_mac,
+					   enable_reo, &caps);
+}
+
+int wma_pt_remote_peer_setup_caps(struct wlan_objmgr_vdev *vdev, u64 generation,
+				  const u8 *remote_mac, u32 enable_reo,
+				  const struct wma_pt_peer_caps *caps)
+{
+	return wma_pt_remote_peer_add_caps(vdev, generation, remote_mac,
+					   enable_reo, caps);
+}
+
 int wma_pt_remote_peer_setup(struct wlan_objmgr_vdev *vdev, u64 generation,
 			     const u8 *remote_mac, u32 enable_reo, bool is_2ss)
 {
@@ -3433,6 +3804,7 @@ int wma_pt_remote_peer_summary(char *buf, size_t size)
 		rows[count].active = s->active;
 		rows[count].ast_valid = s->ast_valid;
 		rows[count].tx_ready = s->tx_ready;
+		rows[count].caps = s->caps;
 		rows[count].setup_rc = s->setup_rc;
 		rows[count].teardown_rc = s->teardown_rc;
 		if (s->active)
@@ -3450,13 +3822,24 @@ int wma_pt_remote_peer_summary(char *buf, size_t size)
 		n += scnprintf(buf + n, size - n,
 			       "slot=%u seq=%llu vdev=%u peer_id=%u aid=%u "
 			       "ast_valid=%u ast_idx=%u ast_hash=%u "
-			       "tx_ready=%u setup_rc=%d teardown_rc=%d\n",
+			       "tx_ready=%u ht=%u vht=%u nss=%u bw=%u mcs=%u sgi=%u ldpc=%u "
+			       "ht_bw40=%u ht_sgi20=%u ht_sgi40=%u ht_ldpc=%u "
+			       "vht_sgi80=%u vht_ldpc=%u max_mpdu=%u ampdu_exp=%u "
+			       "mpdu_density=%u ht_mcs=0x%x setup_rc=%d teardown_rc=%d\n",
 			       rows[i].slot_idx, rows[i].peer_seq,
 			       rows[i].vdev_id, rows[i].peer_id,
 			       rows[i].slot_idx + 1, rows[i].ast_valid,
 			       rows[i].ast_idx, rows[i].ast_hash,
-			       rows[i].tx_ready, rows[i].setup_rc,
-			       rows[i].teardown_rc);
+			       rows[i].tx_ready, rows[i].caps.ht,
+			       rows[i].caps.vht, rows[i].caps.nss,
+			       rows[i].caps.bw, rows[i].caps.max_mcs,
+			       rows[i].caps.sgi, rows[i].caps.ldpc,
+			       rows[i].caps.ht_bw40, rows[i].caps.ht_sgi20,
+			       rows[i].caps.ht_sgi40, rows[i].caps.ht_ldpc,
+			       rows[i].caps.vht_sgi80, rows[i].caps.vht_ldpc,
+			       rows[i].caps.max_mpdu, rows[i].caps.ampdu_exp,
+			       rows[i].caps.mpdu_density, rows[i].caps.ht_mcs_mask,
+			       rows[i].setup_rc, rows[i].teardown_rc);
 	}
 	return n;
 }

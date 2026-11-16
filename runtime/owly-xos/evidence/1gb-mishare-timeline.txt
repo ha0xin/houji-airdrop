@@ -1,0 +1,95 @@
+# Anonymized MIShare logcat milestone timeline for 2026-11-15 back-to-back 1 GiB (1,073,741,824 B) RX + TX runs.
+# Round 2 RX (21:53:27-21:56:35): 188,011 ms /Upload, 188,190 ms PERF_TRANSFER, avg 5,705,626 B/s (5.71 MB/s), peak 16.13 MB/s, min 2.25 MB/s.
+# Round 3 TX (21:57:41-21:58:31): 52,580 ms PERF_TRANSFER, avg 20,421,107 B/s (20.42 MB/s), peak 35.55 MB/s, min 7.95 MB/s.
+# Personal device names, peer UUIDs, link-local IIDs, service IDs, certs, and request UUIDs redacted per docs/PRIVACY.md.
+
+11-15 21:53:08.896 D/MiShare:AirDropService( 3116): Config created: serviceId=<service-rx>
+11-15 21:53:13.948 I/MiShare:AwdlServiceClient( 3116): XOS started on channel: 149
+11-15 21:53:13.949 I/MiShare:AwdlManager( 3116): XOS started on ch149 (sender=true)
+11-15 21:53:13.955 I/MiShare:AwdlManager( 3116): xos0 up: addresses=[/fe80::200:ff:fe00:102%xos0] mtu=1450
+11-15 21:53:14.019 I/MiShare:AwdlManager( 3116): XOS ready for AirDrop, network=127, ch=149
+11-15 21:53:14.023 I/MiShare:AirDropService( 3116): Raw mDNS browser bound to xos0 network
+11-15 21:53:14.030 I/MiShare:AirDropService( 3116): AirDrop sending discovery started session=1
+11-15 21:53:14.622 I/MiShare:RawMdnsBrowser( 3116): Peer found: <service-peer-1> addr=fe80::200:ff:fe00:11%xos0 port=8770 flags=0x1b3fb dc=0 model=null
+11-15 21:53:16.079 I/MiShare:RawMdnsBrowser( 3116): Peer found: <service-peer-2> addr=fe80::200:ff:fe00:12%xos0 port=8770 flags=0x1b3fb dc=0 model=null
+11-15 21:53:16.767 I/MiShare:AirDropClient( 3116): /Discover OK: name=<ApplePeer> model=null manufacturer=null service=<service-peer-2> fingerprint=<redacted-sha256>
+11-15 21:53:17.374 I/MiShare:AirDropClient( 3116): /Discover OK: name=<ApplePeer-2> model=null manufacturer=null service=<service-peer-1> fingerprint=<redacted-sha256>
+11-15 21:53:19.214 I/MiShare:AirDropService( 3116): Server started on dynamic port 46779
+11-15 21:53:19.225 I/MiShare:AirDropService( 3116): AirDrop receiving started
+11-15 21:53:25.079 I/MiShare:AirDropServer( 3116): request=null connection=<conn-1> state=OPEN request POST /Discover
+11-15 21:53:25.081 D/MiShare:AirDropService( 3116): Discover from: authenticated
+11-15 21:53:26.135 I/MiShare:AirDropService( 3116): Incoming /Ask requestId=<request-uuid> SenderModelName=iPhone sender=<ApplePeer>
+11-15 21:53:26.152 D/MiShare:AirDropShareBridge( 3116): Receive TaskInner created: -4694765086152265678 sender=<ApplePeer> items=1 totalBytes=1073741824 urlOnly=false
+11-15 21:53:27.338 I/MiShare:AirDropService( 3116): NetworkAgent registered for incoming upload requestId=<request-uuid>
+11-15 21:53:27.341 I/MiShare:AirDropServer( 3116): request=<request-uuid> connection=<conn-2> state=WAITING_UPLOAD response 200 bytes=560
+11-15 21:53:27.346 I/MiShare:TaskInner( 3116): [Trace] event=TASK_WORKING taskId=-4694765086152265678 totalSize=1073741824 send=false
+11-15 21:53:27.391 I/MiShare:AirDropServer( 3116): request=<request-uuid> connection=<conn-2> state=WAITING_UPLOAD request POST /Upload
+11-15 21:53:27.392 I/MiShare:AirDropServer( 3116): request=<request-uuid> connection=<conn-2> state=WAITING_UPLOAD Upload body start framing=CHUNKED contentLength=-1 totalBytes=1073741824 contentType=application/x-dvzip expect100=false socket=local=/[fe80::200:ff:fe00:102%xos0]:46779 remote=/[fe80::200:ff:fe00:12%xos0]:59992 connected=true closed=false inputShutdown=false outputShutdown=false
+11-15 21:53:27.393 I/MiShare:AirDropServer( 3116): request=<request-uuid> connection=<conn-2> state=UPLOADING Upload consumer start expected=1073741824 logicalTotal=1073741824 expectLargeEntry=false
+11-15 21:53:27.400 I/MiShare:AirDropServer( 3116): request=<request-uuid> connection=<conn-2> state=UPLOADING Upload extract start contentType=application/x-dvzip
+11-15 21:53:27.832 I/MiShare:AirDropServer( 3116): request=<request-uuid> connection=<conn-2> state=UPLOADING Upload body progress bytes=4194621/1073741824 spoolSize=4194621
+11-15 21:53:46.079 I/MiShare:AirDropServer( 3116): request=<request-uuid> connection=<conn-2> state=UPLOADING Upload body progress bytes=109052221/1073741824 spoolSize=109052221
+11-15 21:54:02.297 I/MiShare:AirDropServer( 3116): request=<request-uuid> connection=<conn-2> state=UPLOADING Upload body progress bytes=184549693/1073741824 spoolSize=184549693
+11-15 21:54:09.666 I/MiShare:AirDropServer( 3116): request=<request-uuid> connection=<conn-2> state=UPLOADING Upload body progress bytes=218104125/1073741824 spoolSize=218104125
+11-15 21:54:27.658 I/MiShare:AirDropServer( 3116): request=<request-uuid> connection=<conn-2> state=UPLOADING Upload body progress bytes=322961725/1073741824 spoolSize=322961725
+11-15 21:54:48.577 I/MiShare:AirDropServer( 3116): request=<request-uuid> connection=<conn-2> state=UPLOADING Upload body progress bytes=432013629/1073741824 spoolSize=432013629
+11-15 21:55:05.202 I/MiShare:AirDropServer( 3116): request=<request-uuid> connection=<conn-2> state=UPLOADING Upload body progress bytes=536871229/1073741824 spoolSize=536871229
+11-15 21:55:22.646 I/MiShare:AirDropServer( 3116): request=<request-uuid> connection=<conn-2> state=UPLOADING Upload body progress bytes=645923133/1073741824 spoolSize=645923133
+11-15 21:55:42.080 I/MiShare:AirDropServer( 3116): request=<request-uuid> connection=<conn-2> state=UPLOADING Upload body progress bytes=754975037/1073741824 spoolSize=754975037
+11-15 21:55:42.579 I/MiShare:AirDropClient( 3116): /Discover OK: name=<ApplePeer> model=null manufacturer=null service=<service-peer-3> fingerprint=<redacted-sha256>
+11-15 21:55:50.223 I/MiShare:AirDropServer( 3116): request=<request-uuid> connection=<conn-2> state=UPLOADING Upload body progress bytes=809500989/1073741824 spoolSize=809500989
+11-15 21:55:50.483 I/MiShare:AirDropServer( 3116): request=<request-uuid> connection=<conn-2> state=UPLOADING Upload body progress bytes=813695293/1073741824 spoolSize=813695293
+11-15 21:55:59.224 I/MiShare:AirDropServer( 3116): request=<request-uuid> connection=<conn-2> state=UPLOADING Upload body progress bytes=859832637/1073741824 spoolSize=859832637
+11-15 21:56:12.311 I/MiShare:AirDropClient( 3116): /Discover OK: name=<ApplePeer> model=null manufacturer=null service=<service-peer-3> fingerprint=<redacted-sha256>
+11-15 21:56:17.165 I/MiShare:AirDropServer( 3116): request=<request-uuid> connection=<conn-2> state=UPLOADING Upload body progress bytes=968884541/1073741824 spoolSize=968884541
+11-15 21:56:35.392 I/MiShare:AirDropServer( 3116): request=<request-uuid> connection=<conn-2> state=UPLOADING Upload body progress bytes=1073742141/1073741824 spoolSize=1073742141
+11-15 21:56:35.401 I/MiShare:AirDropServer( 3116): request=<request-uuid> connection=<conn-2> state=UPLOADING Upload framing trailers-complete count=0 COMPLETE chunkIndex=73733 remaining=0 sizeLineBytes=0 previousCrlf=true zeroChunk=true trailersComplete=true payloadBytes=1073775417
+11-15 21:56:35.402 I/MiShare:AirDropServer( 3116): request=<request-uuid> connection=<conn-2> state=UPLOADING Upload body EOF bytes=1073775417 expected=1073741824 elapsedMs=188011
+11-15 21:56:35.491 I/MiShare:AirDropServer( 3116): Upload spool complete file=/data/user/0/com.miui.mishare.connectivity/cache/airdrop-upload-<id>.spool bytes=1073775417
+11-15 21:56:35.491 I/MiShare:AirDropServer( 3116): request=<request-uuid> connection=<conn-2> state=UPLOADING Upload spool complete bytes=1073775417
+11-15 21:56:35.495 I/MiShare:AirDropServer( 3116): request=<request-uuid> connection=<conn-2> state=UPLOADING Upload extract complete files=1 spoolSize=1073775417 archiveBytes=1073742848 trailer=true blockBoundary=true decoderFrame=true
+11-15 21:56:35.523 I/MiShare:AirDropServer( 3116): request=<request-uuid> connection=<conn-2> state=UPLOADING Upload files committed count=1
+11-15 21:56:35.524 I/MiShare:AirDropServer( 3116): request=<request-uuid> connection=<conn-2> state=UPLOADING Upload response 200 complete
+11-15 21:56:35.526 I/MiShare:AirDropServer( 3116): request=<request-uuid> connection=<conn-2> state=TERMINATED terminate reason=COMPLETED from=UPLOADING message=1 files received bytes=1073775417 readPending=false readWaitMs=125 framing=trailers-complete count=0 COMPLETE chunkIndex=73733 remaining=0 sizeLineBytes=0 previousCrlf=true zeroChunk=true trailersComplete=true payloadBytes=1073775417 socketBeforeClose=local=/[fe80::200:ff:fe00:102%xos0]:46779 remote=/[fe80::200:ff:fe00:12%xos0]:59992 connected=true closed=false inputShutdown=false outputShutdown=false
+11-15 21:56:35.537 I/MiShare:TaskInner( 3116): [Trace] event=TASK_SUCCESS taskId=-4694765086152265678 count=1 send=false device=airdrop-recv-1794750806138
+11-15 21:56:35.537 I/MiShare:TaskInner( 3116): [Trace] event=PERF_TRANSFER taskId=-4694765086152265678 duration=188190 totalSize=1073741824 speedBps=5705626
+11-15 21:56:53.179 I/MiShare:AirDropServer( 3116): request=null connection=<conn-3> state=OPEN request POST /Discover
+11-15 21:56:53.842 I/MiShare:AirDropClient( 3116): /Discover OK: name=<ApplePeer> model=null manufacturer=null service=<service-peer-3> fingerprint=<redacted-sha256>
+11-15 21:56:56.770 I/MiShare:AirDropService( 3116): AWDL delayed release — executing
+11-15 21:57:28.026 D/MiShare:AirDropShareBridge(10930): AirDropService connected
+11-15 21:57:28.084 D/MiShare:AirDropService(10930): Config created: serviceId=<service-tx>
+11-15 21:57:28.389 D/MiShare:AwdlServiceClient(10930): calling XOSService.startDomestXOsComm, chan=149
+11-15 21:57:31.749 I/MiShare:AwdlServiceClient(10930): XOS started on channel: 149
+11-15 21:57:31.754 I/MiShare:AwdlManager(10930): xos0 up: addresses=[/fe80::200:ff:fe00:103%xos0] mtu=1450
+11-15 21:57:31.831 I/MiShare:AirDropService(10930): Raw mDNS browser bound to xos0 network
+11-15 21:57:31.837 I/MiShare:AirDropService(10930): AirDrop sending discovery started session=1
+11-15 21:57:33.642 I/MiShare:RawMdnsBrowser(10930): Peer found: <service-peer-3> addr=fe80::200:ff:fe00:12%xos0 port=8770 flags=0x1b3fb dc=0 model=null
+11-15 21:57:35.113 I/MiShare:AirDropClient(10930): /Discover OK: name=<ApplePeer> model=null manufacturer=null service=<service-peer-3> fingerprint=<redacted-sha256>
+11-15 21:57:36.102 I/MiShare:RawMdnsBrowser(10930): Peer found: <service-peer-1> addr=fe80::200:ff:fe00:11%xos0 port=8770 flags=0x1b3fb dc=0 model=null
+11-15 21:57:37.830 I/MiShare:AirDropClient(10930): /Discover OK: name=<ApplePeer-2> model=null manufacturer=null service=<service-peer-1> fingerprint=<redacted-sha256>
+11-15 21:57:38.898 I/MiShare:TaskInner(10930): [Trace] event=TASK_WORKING taskId=21636 totalSize=1073741824 send=true
+11-15 21:57:38.921 I/MiShare:AirDropService(10930): sendToDevice: calling send() with 1 files, totalBytes=1073741824
+11-15 21:57:39.283 I/MiShare:AirDropClient(10930): /Ask: starting for 1 files
+11-15 21:57:41.935 D/MiShare:AirDropClient(10930): /Ask: HTTP/1.1 200 OK
+11-15 21:57:41.980 I/MiShare:AirDropClient(10930): /Ask accepted
+11-15 21:57:41.980 I/MiShare:AirDropClient(10930): /Upload: starting for 1 files
+11-15 21:57:41.981 D/MiShare:AirDropClient(10930): /Upload: headers sent
+11-15 21:57:41.983 D/MiShare:TaskManager(10930): [Trace] event=PROGRESS taskId=21636 current=0 total=1073741824 percent=0
+11-15 21:57:44.520 D/MiShare:ISendUi(10930): setCurrentTaskProgress(21636, 75161927, 1073741824)
+11-15 21:57:45.492 D/MiShare:ISendUi(10930): setCurrentTaskProgress(21636, 107374182, 1073741824)
+11-15 21:57:51.041 D/MiShare:ISendUi(10930): setCurrentTaskProgress(21636, 214748364, 1073741824)
+11-15 21:57:55.973 D/MiShare:ISendUi(10930): setCurrentTaskProgress(21636, 322122547, 1073741824)
+11-15 21:58:01.214 D/MiShare:ISendUi(10930): setCurrentTaskProgress(21636, 429496729, 1073741824)
+11-15 21:58:07.593 D/MiShare:ISendUi(10930): setCurrentTaskProgress(21636, 536870912, 1073741824)
+11-15 21:58:12.084 D/MiShare:ISendUi(10930): setCurrentTaskProgress(21636, 644245094, 1073741824)
+11-15 21:58:15.794 D/MiShare:ISendUi(10930): setCurrentTaskProgress(21636, 751619276, 1073741824)
+11-15 21:58:20.833 D/MiShare:ISendUi(10930): setCurrentTaskProgress(21636, 858993459, 1073741824)
+11-15 21:58:26.180 D/MiShare:ISendUi(10930): setCurrentTaskProgress(21636, 966367641, 1073741824)
+11-15 21:58:27.972 D/MiShare:ISendUi(10930): setCurrentTaskProgress(21636, 987842478, 1073741824)
+11-15 21:58:29.972 D/MiShare:ISendUi(10930): setCurrentTaskProgress(21636, 1052266987, 1073741824)
+11-15 21:58:31.458 I/MiShare:AirDropClient(10930): /Upload HTTP 200: HTTP/1.1 200 OK
+11-15 21:58:31.459 I/MiShare:AirDropService(10930): Send finished — keeping XOS alive while AirDrop page is active
+11-15 21:58:31.465 D/MiShare:TaskManager(10930): [Trace] event=PROGRESS taskId=21636 current=1073741824 total=1073741824 percent=100
+11-15 21:58:31.475 I/MiShare:MiStatsHelper(10930): speed: 2.04257689849338E7 fileSize: 1073741824 fileCount: 1 duration: 52568 isTurboMode: false protocol: Airdrop localMcc: false remoteMcc: false
+11-15 21:58:31.477 I/MiShare:TaskInner(10930): [Trace] event=TASK_SUCCESS taskId=21636 count=1 send=true device=<service-peer-3>
+11-15 21:58:31.477 I/MiShare:TaskInner(10930): [Trace] event=PERF_TRANSFER taskId=21636 duration=52580 totalSize=1073741824 speedBps=20421107

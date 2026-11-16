@@ -99,3 +99,7 @@ Owly 在 149 信道与 Mac（零修改）的独立探针已通过双向 SHA-256�
 33. [单向传输参数探索](33-single-direction-optimization.md)：探索用户态合包等待与初始 REO 接收窗口参数边界。
 
 34. [原生小米互传 `owly-xos` 多对端硬件 TX A-MPDU、快速发现与实机双向验证](34-owly-xos-validation.md)：在 `runtime/owly-xos` 落地免预绑定多对端 `pt_remote_multi=1` + 官方 `ezif` 硬件 TX A-MPDU、冷启动加速（`~3.16–3.62s`）与双向快速发现；16 MiB TCP 小米→Mac 达 **64.08 MB/s**，原版 `MIShare.apk` 对 Apple 手机实测收发 `157.80 MB` 视频双向闭环通过并归档匿名化遥测日志。
+
+35. [小米接收方向高 `NO_ACK` 率根因与调试/兼容代码延迟吞吐审计](35-rx-no-ack-and-latency-audit.md)：针对 `1 GiB`（`1,073,741,824 B`）AirDrop 接收仅 `5.71 MB/s`（对照同环境发送 `20.42 MB/s`）的实测异常，定位内核 TX 完成态 `NO_ACK`（`status[2]`，`HAL_TX_TQM_RR_REM_CMD_TX`）飙升至 **`38.22%–43.11%`**（反推单播反向 TCP ACK 失败率超过 50%）的物理窗错配与调度叠加机制，并系统审计 `owly-awdl` / `houji-runner` / `radio.sh` 中导致延迟抖动、CPU/堆开销或制约吞吐的历史兼容与调试代码。
+
+36. [小米接收方向高 `NO_ACK` 修复实施与 `1 GiB` RX 回归验证报告](36-rx-no-ack-fix-and-verification.md)：落地第 35 篇 **A1 + A2 + A3 + A4 + A5 + A7** 修复并在远端编译装机回归验证：同载荷 `1 GiB` RX 耗时从 `188.01 s` 缩短至 **`43.569 s`**（`PERF_TRANSFER` 均速 **`24.64 MB/s`**、后段采样 P50 **`27.59 MB/s`** / 峰值 **`50.53 MB/s`**），硬件 `NO_ACK` 降至 **`1.46%`**（`2,023 / 138,894`，单播趋近 `0`）、`agg_mpdus=136,005`（`max_ppdu_mpdus=64`）、全链路 `0` 丢包。

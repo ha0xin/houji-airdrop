@@ -50,8 +50,8 @@ static bool pt_tx_ampdu;
 module_param(pt_tx_ampdu, bool, 0400);
 MODULE_PARM_DESC(pt_tx_ampdu, "Allow outbound TX A-MPDU aggregation up to 64 MPDUs");
 
-static bool pt_dynamic_rate;
-module_param(pt_dynamic_rate, bool, 0400);
+static bool pt_dynamic_rate = true;
+module_param(pt_dynamic_rate, bool, 0444);
 MODULE_PARM_DESC(pt_dynamic_rate, "Skip fixed_rate override so firmware rate control uses peer_assoc caps");
 
 static u8 pt_remote_mac[QDF_MAC_ADDR_SIZE];
@@ -106,6 +106,11 @@ u32 hdd_pt_control_remote_reo_mode(void)
 bool hdd_pt_control_params_is_2ss(const struct wondertap_init_params *params)
 {
 	return hdd_pt_vht80_2ss(params);
+}
+
+bool hdd_pt_control_params_vht80(const struct wondertap_init_params *params)
+{
+	return hdd_pt_vht80(params);
 }
 
 
@@ -554,13 +559,39 @@ int hdd_pt_control_finish_start(struct hdd_pt_iface *iface,
 		pt_remote_peer_set_reo_mode(pt_remote_reo);
 	}
 	if (pt_remote_assoc) {
+		bool vht80 = hdd_pt_vht80(params);
+		bool is_2ss = hdd_pt_vht80_2ss(params);
+		bool short_gi = params->tx_rate.gi == WONDERTAP_RATE_GI_SHORT;
+		struct wma_pt_peer_caps caps = {
+			.ht = true,
+			.vht = vht80,
+			.nss = is_2ss ? 2 : 1,
+			.bw = vht80 ? 80 : 20,
+			.max_mcs = vht80 ? 9 : 7,
+			.sgi = short_gi,
+			.ldpc = is_2ss,
+			.has_ht_bw40 = true,
+			.ht_bw40 = vht80,
+			.has_ht_sgi20 = true,
+			.ht_sgi20 = short_gi,
+			.has_ht_sgi40 = true,
+			.ht_sgi40 = vht80 && short_gi,
+			.has_ht_ldpc = true,
+			.ht_ldpc = is_2ss,
+			.has_vht_sgi80 = true,
+			.vht_sgi80 = vht80 && short_gi,
+			.has_vht_ldpc = true,
+			.vht_ldpc = vht80 && is_2ss,
+			.max_mpdu = 3895,
+			.ht_mcs_mask = is_2ss ? 0xffffU : 0x00ffU,
+		};
 		vdev = hdd_objmgr_get_vdev_by_user(adapter->deflink,
 						   WLAN_OSIF_ID);
 		if (!vdev)
 			return -ENODEV;
-		ret = wma_pt_remote_peer_setup(vdev, iface->generation,
-					       pt_remote_mac, pt_remote_reo,
-					       hdd_pt_vht80_2ss(params));
+		ret = wma_pt_remote_peer_setup_caps(vdev, iface->generation,
+						    pt_remote_mac, pt_remote_reo,
+						    &caps);
 		hdd_objmgr_put_vdev_by_user(vdev, WLAN_OSIF_ID);
 		if (ret)
 			return ret;

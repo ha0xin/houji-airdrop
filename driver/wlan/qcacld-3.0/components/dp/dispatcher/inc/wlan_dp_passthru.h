@@ -5,6 +5,7 @@
 #include <qdf_types.h>
 #include <qdf_status.h>
 #include <qdf_nbuf.h>
+#include <cdp_txrx_ops.h>
 
 #ifdef DRIVER_PASSTHRU_OWNER
 struct cdp_soc_t;
@@ -44,6 +45,9 @@ void ucfg_dp_passthru_put(struct wlan_dp_passthru_endpoint *endpoint);
 /* Every public operation requires a caller reference for its entire call. */
 qdf_nbuf_t ucfg_dp_passthru_tx(struct wlan_dp_passthru_endpoint *endpoint,
 			     qdf_nbuf_t nbuf);
+qdf_nbuf_t ucfg_dp_passthru_tx_status(struct wlan_dp_passthru_endpoint *endpoint,
+				    qdf_nbuf_t nbuf,
+				    enum cdp_pt_tx_status *status);
 
 /*
  * Sticky, non-waiting admission close. BUSY retains all ownership and must

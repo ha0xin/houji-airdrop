@@ -194,33 +194,37 @@ void wonder_txs_queue_exit(void)
 }
 
 /**
- * wonder_txs_enqueue() - Enqueue a fake TX status report for a given SKB.
- * @sta: The station the frame was sent to.
+ * wonder_txs_enqueue() - Queue best-effort netdev submit status for a STA.
+ * @sta: The station the frame was sent to (NULL in monitor injection mode).
  * @skb: The socket buffer of the transmitted frame.
  *
- * This function generates a fake successful TX status report and adds it to
- * the queue to be processed later by wonder_txs_dequeue().
+ * Wonder injects over raw passthru netdevs via dev_queue_xmit(), which only
+ * reports qdisc/netdev admission rather than hardware air ACKs or peer RSSI
+ * (authoritative firmware TX stats live in qca_cld3 pt_tx_stats/pt_rate_stats).
+ * Skip queuing fake ACKs when no STA is bound and do not synthesize RSSI.
  *
- * Return: 0 on success, or -ENOBUFS if the queue is full.
+ * Return: 0 on success, -EINVAL when sta is NULL, or -ENOBUFS if queue full.
  */
 int wonder_txs_enqueue(struct ieee80211_sta *sta, struct sk_buff *skb)
 {
 	struct txs_queue *ts = get_txs_queue();
-	struct ieee80211_tx_status *status = wonder_txs_get_status(ts);
-	struct ieee80211_tx_info *info = IEEE80211_SKB_CB(skb);
-	struct ieee80211_tx_rate *rate = &info->control.rates[0];
+	struct ieee80211_tx_status *status;
+	struct ieee80211_tx_info *info;
+	struct ieee80211_tx_rate *rate;
 
+	if (!sta)
+		return -EINVAL;
+
+	status = wonder_txs_get_status(ts);
 	if (status == NULL) {
 		return -ENOBUFS;
 	}
+	info = IEEE80211_SKB_CB(skb);
+	rate = &info->control.rates[0];
 	/* assign tx_info */
 	info = status->info;
-	info->flags = IEEE80211_TX_STAT_ACK;
-	info->status.ack_signal = -30;
-	info->status.ampdu_len = 1;
-	info->status.ampdu_ack_len = 1;
-	info->status.flags |=
-			IEEE80211_TX_STATUS_ACK_SIGNAL_VALID;
+	ieee80211_tx_info_clear_status(info);
+	info->flags |= IEEE80211_TX_STAT_ACK;
 	info->status.rates[0].count = 1;
 	info->status.rates[0].idx = rate->idx;
 	info->status.rates[0].flags = rate->flags;
@@ -256,34 +260,50 @@ int wonder_txs_dequeue(struct ieee80211_hw *hw)
 }
 
 /**
- * wonder_txs_direct_report() - Immediately report a fake TX status.
+ * wonder_txs_direct_report_info() - Report qdisc TX status when bound to a STA.
  * @hw: Pointer to the ieee80211_hw structure.
- * @sta: The station the frame was sent to.
- * @skb: The socket buffer of the transmitted frame.
+ * @sta: The station the frame was sent to (NULL in monitor injection mode).
+ * @orig_info: Snapshot of IEEE80211_SKB_CB(skb) captured before dev_queue_xmit.
+ * @queued: Whether dev_queue_xmit accepted the frame (NET_XMIT_SUCCESS/CN).
  *
- * This function generates a fake successful TX status and reports it directly
- * to mac80211 without using the intermediate queue.
+ * Passthru TX via dev_queue_xmit() is unidirectional: the netdev return value
+ * only indicates qdisc/device enqueue vs drop, not over-the-air 802.11 ACK
+ * reception or ACK RSSI. In monitor injection mode (sta == NULL), return without
+ * calling ieee80211_tx_status_ext() instead of synthesizing fake ACK/RSSI.
+ * Authoritative FW completion stats are exported by qca_cld3 pt_tx_stats.
  */
+void wonder_txs_direct_report_info(struct ieee80211_hw *hw,
+				   struct ieee80211_sta *sta,
+				   const struct ieee80211_tx_info *orig_info,
+				   bool queued)
+{
+	struct ieee80211_tx_status status = { 0 };
+	struct ieee80211_tx_info info;
+	struct ieee80211_tx_rate rate;
+
+	if (!sta || !orig_info)
+		return;
+
+	info = *orig_info;
+	rate = info.control.rates[0];
+
+	/* assign tx_info on stack copy; never touch skb after dev_queue_xmit */
+	ieee80211_tx_info_clear_status(&info);
+	if (queued)
+		info.flags |= IEEE80211_TX_STAT_ACK;
+	else
+		info.flags &= ~IEEE80211_TX_STAT_ACK;
+	info.status.rates[0].count = 1;
+	info.status.rates[0].idx = rate.idx;
+	info.status.rates[0].flags = rate.flags;
+	/* Assign tx_status */
+	status.sta = sta;
+	status.info = &info;
+	ieee80211_tx_status_ext(hw, &status);
+}
+
 void wonder_txs_direct_report(struct ieee80211_hw *hw, struct ieee80211_sta *sta,
 		struct sk_buff *skb)
 {
-	struct ieee80211_tx_status status = { 0 };
-	struct ieee80211_tx_info *info = IEEE80211_SKB_CB(skb);
-	struct ieee80211_tx_rate *rate = &info->control.rates[0];
-
-	/* assign tx_info */
-	ieee80211_tx_info_clear_status(info);
-	info->flags |= IEEE80211_TX_STAT_ACK;
-	info->status.ack_signal = -30;
-	info->status.ampdu_len = 1;
-	info->status.ampdu_ack_len = 1;
-	info->status.flags |=
-			IEEE80211_TX_STATUS_ACK_SIGNAL_VALID;
-	info->status.rates[0].count = 1;
-	info->status.rates[0].idx = rate->idx;
-	info->status.rates[0].flags = rate->flags;
-	/* Assign tx_status */
-	status.sta = sta;
-	status.info = info;
-	ieee80211_tx_status_ext(hw, &status);
+	wonder_txs_direct_report_info(hw, sta, IEEE80211_SKB_CB(skb), true);
 }

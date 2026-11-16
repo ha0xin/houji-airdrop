@@ -48,5 +48,6 @@ int hdd_pt_control_finish_start(struct hdd_pt_iface *iface,
 bool hdd_pt_control_remote_multi_enabled(void);
 u32 hdd_pt_control_remote_reo_mode(void);
 bool hdd_pt_control_params_is_2ss(const struct wondertap_init_params *params);
+bool hdd_pt_control_params_vht80(const struct wondertap_init_params *params);
 
 #endif

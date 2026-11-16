@@ -215,6 +215,17 @@ struct cdp_cmn_mlo_ops {
  *
  *****************************************************************************/
 
+#if defined(DRIVER_PASSTHRU_DP) || defined(DRIVER_PASSTHRU_OWNER)
+enum cdp_pt_tx_status {
+	CDP_PT_TX_OK = 0,
+	CDP_PT_TX_DROP_VALIDATE,
+	CDP_PT_TX_DROP_VDEV,
+	CDP_PT_TX_DROP_DMA,
+	CDP_PT_TX_BUSY_DESC,
+	CDP_PT_TX_BUSY_HW_ENQ,
+};
+#endif
+
 struct cdp_cmn_ops {
 
 	QDF_STATUS (*txrx_soc_attach_target)(ol_txrx_soc_handle soc);
@@ -800,6 +811,9 @@ struct cdp_cmn_ops {
 		struct cdp_passthru_handle **inout);
 	qdf_nbuf_t (*passthru_managed_tx)(struct cdp_soc_t *soc,
 		struct cdp_passthru_handle *handle, qdf_nbuf_t nbuf);
+	qdf_nbuf_t (*passthru_managed_tx_status)(struct cdp_soc_t *soc,
+		struct cdp_passthru_handle *handle, qdf_nbuf_t nbuf,
+		enum cdp_pt_tx_status *status);
 #endif
 };
 

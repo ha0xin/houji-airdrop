@@ -17,10 +17,13 @@ public class XosBridge extends Binder {
     static final String SERVICE = DESCRIPTOR + "/default";
     static final String DEFAULT_RADIO = "/data/local/tmp/xos/owly/radio.sh";
     static final int EFFECTIVE_CHANNEL = 149;
+    static final int DEFAULT_IDLE_GRACE_SEC = 10;
 
     final int allowedUid;
     final String radioScript;
-    final Object lock = new Object();
+    final int idleGraceSec;
+    final Object stateLock = new Object();
+    final Object shellLock = new Object();
     final ScheduledExecutorService cleanup = Executors.newSingleThreadScheduledExecutor();
     IBinder owner;
     IBinder.DeathRecipient death;
@@ -35,7 +38,20 @@ public class XosBridge extends Binder {
     XosBridge(int uid, String radioScript) {
         this.allowedUid = uid;
         this.radioScript = radioScript;
+        this.idleGraceSec = resolveIdleGraceSec();
         attachInterface(null, DESCRIPTOR);
+    }
+
+    static int resolveIdleGraceSec() {
+        String env = System.getenv("XOS_IDLE_GRACE_SEC");
+        if (env != null && !env.trim().isEmpty()) {
+            try {
+                int parsed = Integer.parseInt(env.trim());
+                return Math.max(1, Math.min(60, parsed));
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return DEFAULT_IDLE_GRACE_SEC;
     }
 
     static String resolveRadioScript() {
@@ -75,21 +91,37 @@ public class XosBridge extends Binder {
         if (token == null) {
             throw new IllegalArgumentException("client death token required");
         }
-        synchronized (lock) {
-            generation++;
+        final int myGeneration;
+        synchronized (stateLock) {
+            myGeneration = ++generation;
             if (pending != null) {
                 pending.cancel(false);
                 pending = null;
             }
             if (owner != null && death != null) {
                 owner.unlinkToDeath(death, 0);
+                owner = null;
+                death = null;
             }
+            IBinder.DeathRecipient nextDeath =
+                    () -> releaseForGeneration(myGeneration, token, "binder-death");
+            token.linkToDeath(nextDeath, 0);
             owner = token;
-            death = () -> release(token, "binder-death");
-            token.linkToDeath(death, 0);
+            death = nextDeath;
+        }
+        synchronized (shellLock) {
+            synchronized (stateLock) {
+                if (myGeneration != generation) {
+                    return;
+                }
+            }
             try {
                 radio("enter");
-                active = true;
+                synchronized (stateLock) {
+                    if (myGeneration == generation) {
+                        active = true;
+                    }
+                }
                 System.out.println(
                         "START_OK requested_channel="
                                 + requested
@@ -99,15 +131,26 @@ public class XosBridge extends Binder {
                                 + allowedUid);
                 System.out.flush();
             } catch (Exception e) {
-                active = false;
-                release(token, "start-failed");
+                synchronized (stateLock) {
+                    if (myGeneration == generation) {
+                        active = false;
+                    }
+                }
+                releaseForGeneration(myGeneration, token, "start-failed");
                 throw e;
             }
         }
     }
 
     void release(IBinder token, String reason) {
-        synchronized (lock) {
+        releaseForGeneration(null, token, reason);
+    }
+
+    private void releaseForGeneration(Integer expectedGeneration, IBinder token, String reason) {
+        synchronized (stateLock) {
+            if (expectedGeneration != null && expectedGeneration.intValue() != generation) {
+                return;
+            }
             if (token != null && owner != token) {
                 return;
             }
@@ -122,13 +165,24 @@ public class XosBridge extends Binder {
             death = null;
             pending = cleanup.schedule(
                     () -> {
-                        synchronized (lock) {
+                        synchronized (stateLock) {
                             if (version != generation) {
                                 return;
                             }
+                        }
+                        synchronized (shellLock) {
+                            synchronized (stateLock) {
+                                if (version != generation) {
+                                    return;
+                                }
+                            }
                             try {
                                 radio("restore");
-                                active = false;
+                                synchronized (stateLock) {
+                                    if (version == generation) {
+                                        active = false;
+                                    }
+                                }
                                 System.out.println("STOP_OK reason=" + reason);
                             } catch (Exception e) {
                                 System.out.println("RESTORE_ERROR " + e);
@@ -137,7 +191,7 @@ public class XosBridge extends Binder {
                             }
                         }
                     },
-                    2,
+                    idleGraceSec,
                     TimeUnit.SECONDS);
         }
     }
@@ -165,10 +219,14 @@ public class XosBridge extends Binder {
                 return true;
             }
             if (code == 3) {
+                final boolean isActive;
+                synchronized (stateLock) {
+                    isActive = active;
+                }
                 reply.writeNoException();
                 reply.writeString(
                         "{\"bridge\":\"houji-owly-xos0\",\"active\":"
-                                + active
+                                + isActive
                                 + ",\"effectiveChannel\":"
                                 + EFFECTIVE_CHANNEL
                                 + "}");
@@ -190,7 +248,9 @@ public class XosBridge extends Binder {
                 "XOS_BRIDGE_READY allowed_uid="
                         + bridge.allowedUid
                         + " radio="
-                        + bridge.radioScript);
+                        + bridge.radioScript
+                        + " idle_grace_sec="
+                        + bridge.idleGraceSec);
         System.out.flush();
         new CountDownLatch(1).await();
     }

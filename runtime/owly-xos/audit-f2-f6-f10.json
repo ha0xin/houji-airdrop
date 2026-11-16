@@ -1,0 +1,149 @@
+{
+  "checks": {
+    "all_570_qca_imports_resolved": true,
+    "all_567_baseline_imports_unchanged": true,
+    "added_imports_crc_verified": true,
+    "qca_abi_matches_baseline": true,
+    "wonder_abi_matches_baseline": true,
+    "bridge_abi_matches_baseline": true,
+    "f2_f6_f10_params_present": true
+  },
+  "reference_sha256": {
+    "qca_cld3_kiwi_v2": "e81c4a90fd2f5d6e40cef5f2e282b3cad095c79a3e9a03dad1788f92306f4262",
+    "wonder": "9d60988f896669604ff2e8cdfa1ba91a7047c1ddd2210b1fa494f506f5eb039c",
+    "houji_wonder_bridge": "9a8345d87ec1186a29b413935b4efdbd38566e7e22374e70a7a85510b2970e9a"
+  },
+  "candidate_sha256": "e425dbfa4a07e8abe786300efd8e2c873025c7d5f925f4e19e9b461f9e8d8344",
+  "modules": {
+    "qca_cld3_kiwi_v2": {
+      "sha256": "e425dbfa4a07e8abe786300efd8e2c873025c7d5f925f4e19e9b461f9e8d8344",
+      "import_count": 570,
+      "unresolved_imports": [],
+      "abi": {
+        "machine": true,
+        "vermagic": true,
+        "depends": true,
+        "module_name": true,
+        "exports": true,
+        "module_size": true,
+        "module_relocations": true,
+        "plt_got": true,
+        "debug_stripped": true,
+        "common_import_crc": true,
+        "all_imports_resolved": true
+      },
+      "added_imports": [
+        "hrtimer_try_to_cancel",
+        "memchr",
+        "netdev_core_stats_alloc"
+      ],
+      "removed_imports": []
+    },
+    "wonder": {
+      "sha256": "24ca5401ea776069c273260eb0521c3783574710a616a4bae6a50407b019f2b1",
+      "import_count": 103,
+      "unresolved_imports": [],
+      "abi": {
+        "machine": true,
+        "vermagic": true,
+        "depends": true,
+        "module_name": true,
+        "exports": true,
+        "module_size": true,
+        "module_relocations": true,
+        "plt_got": true,
+        "debug_stripped": true,
+        "common_import_crc": true,
+        "all_imports_resolved": true
+      }
+    },
+    "houji_wonder_bridge": {
+      "sha256": "0ab5c986cac01f8b6bb9eefd38088bd350a2fc68ea1a3efeff478b88b4e74ead",
+      "import_count": 30,
+      "unresolved_imports": [],
+      "abi": {
+        "machine": true,
+        "vermagic": true,
+        "depends": true,
+        "module_name": true,
+        "exports": true,
+        "module_size": true,
+        "module_relocations": true,
+        "plt_got": true,
+        "debug_stripped": true,
+        "common_import_crc": true,
+        "all_imports_resolved": true
+      }
+    }
+  },
+  "candidate_vermagic": [
+    "6.1.68 SMP preempt mod_unload modversions aarch64"
+  ],
+  "candidate_depends": [
+    "cfg80211,cnss_utils,hwid,cnss_nl,ipam,houji_wonder_bridge,cnss_prealloc,qcom_iommu_util,sched-walt,qcom_va_minidump,cnss2"
+  ],
+  "candidate_import_count": 570,
+  "added_imports_crc_verified": {
+    "hrtimer_try_to_cancel": true,
+    "memchr": true,
+    "netdev_core_stats_alloc": true
+  },
+  "unresolved_imports": [],
+  "candidate_param_permissions": {
+    "pt_rx_msdu_buf": "0o400",
+    "pt_rx_ezif_marked": "0o400",
+    "pt_coex_5g_override": "0o400",
+    "pt_rx_msdu_stats": "0o444",
+    "pt_rx_capacity_4224": "0o400",
+    "pt_rx_phy_peer": "0o400",
+    "pt_rx_phy_stats": "0o400",
+    "pt_vht80_2ss": "0o400",
+    "pt_remote_assoc": "0o400",
+    "pt_remote_ast_override": "0o400",
+    "pt_remote_hash_override": "0o400",
+    "pt_ast_selection": "0o400",
+    "pt_remote_reo": "0o400",
+    "pt_remote_rx_window": "0o400",
+    "pt_fw_addba": "0o400",
+    "pt_fw_addba_rc": "0o400",
+    "pt_fw_addba_sent": "0o400",
+    "pt_remote_mac": "0o400",
+    "pt_tx_ampdu": "0o400",
+    "pt_dynamic_rate": "0o444",
+    "pt_sta_coexist": "0o400",
+    "pt_fw_caps": "0o400",
+    "pt_remote_peer_stats": "0o400",
+    "pt_ampdu_peak": "0o400",
+    "pt_remote_multi": "0o400",
+    "pt_remote_peer_ctl": "0o600",
+    "pt_rate_observe": "0o644",
+    "pt_single_ring": "0o444",
+    "pt_tx_observe": "0o444",
+    "pt_tx_stats": "0o444",
+    "pt_tx_backpressure": "0o644",
+    "pt_hdd_tx_stats": "0o444"
+  },
+  "candidate_initial_flags": {
+    "pt_rx_msdu_buf": "00",
+    "pt_rx_ezif_marked": "00",
+    "pt_coex_5g_override": "00",
+    "pt_rx_capacity_4224": "00",
+    "pt_rx_phy_mac": "000000000000",
+    "pt_vht80_2ss": "00",
+    "pt_remote_assoc": "00",
+    "pt_remote_reo": "00000000",
+    "pt_remote_rx_window": "40000000",
+    "pt_fw_addba": "00",
+    "pt_remote_mac": "000000000000",
+    "pt_tx_ampdu": "00",
+    "pt_dynamic_rate": "01",
+    "pt_sta_coexist": "00",
+    "pt_remote_multi": "00",
+    "pt_rate_observe": "00",
+    "pt_single_ring": "00",
+    "pt_tx_observe": "00",
+    "pt_tx_backpressure": "01",
+    "pt_remote_ast_override": "01",
+    "pt_remote_hash_override": "01"
+  }
+}

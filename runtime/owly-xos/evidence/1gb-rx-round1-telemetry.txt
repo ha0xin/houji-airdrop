@@ -1,0 +1,63 @@
+# Anonymized kernel sysfs + owly-xosd final telemetry tail from Round 1 1 GiB AirDrop RX (~21:49 CST, 2026-11-15).
+# Provenance: Captured immediately after Round 1 completion before Round 2 start_xos() overwrote runner.log.
+# Shows NO_ACK status[2]=4,699 / 12,296 (38.2%), rx_msdu_dropped=0, OWLY_RX_GAPS (387,611 frames, missing=0), and timer late avg 1408-1500 us.
+
+## Kernel sysfs snapshot
+
+== pt_remote_rx_window ==
+256
+
+== pt_fw_caps ==
+ready=1 wire_506_valid=1 wire_506_passthru_ampdu=1 ext2_len_words=8 ext2_w7=0x24010000 wmi_service_338_passthru_ampdu=0 peer_create_conf=1 sync_delete=1 max_peers=17
+
+== pt_rate_stats ==
+schema=1 enabled=1 completed=12296 valid=7596 invalid=4700 tries=15217 amsdu=0 ldpc=7569 ppdus=7036 agg_ppdus=181 agg_mpdus=741 ast_overrides=7701 remote_peer_compl=7673
+bw=27,0,7569,0,0,0,0,0
+mcs=0,0,0,27,0,0,0,0,0,7569,0,0,0,0,0,0
+pkt=27,0,0,7569,0,0,0,0,0,0,0,0,0,0,0,0
+gi=27,7569,0,0
+status=7596,1,4699,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+tx_ring=12296,0,0,0,0,0,0,0
+ppdu_bin=6854,158,10,6,2,5
+
+== pt_ampdu_peak ==
+max_ppdu_mpdus=64 last_peer_id=0
+
+== pt_rx_msdu_stats ==
+enabled=1 seen=5538 peer_miss=0 bad_desc=0 reaped=5538 delivered=5538 dropped=0 last_drop=0 last_bad=0 other_peer=0
+
+== pt_remote_peer_ctl ==
+active=2 tx_ready=2 max=8 reo_mode=2
+slot=1 seq=2 vdev=0 peer_id=24 aid=2 ast_valid=1 ast_idx=45 ast_hash=13 tx_ready=1 setup_rc=0 teardown_rc=0
+slot=2 seq=10 vdev=0 peer_id=27 aid=3 ast_valid=1 ast_idx=22 ast_hash=6 tx_ready=1 setup_rc=0 teardown_rc=0
+
+== pt_remote_peer_stats ==
+active=1 generation=1 vdev=0 peer_id=24 ast_valid=1 ast_idx=45 ast_hash=13 reo_enabled=1 is_2ss=1 obj_created=1 dp_created=1 create_confirm=1 create_status=0 htt_map=1 slot=1 reo_setup=1 reo_status=0 assoc_issued=1 assoc_confirm=1 assoc_status=0 tx_ready=1 delete_issued=0 delete_confirm=0 htt_unmap=0 slot_removed=0 dp_released=0 obj_released=0 dp_conflict=0 setup_rc=0 teardown_rc=0
+
+## owly-xosd runner final telemetry tail
+
+ INFO owly_awdl::driver: STATS tx_action 4113 tx_unicast 8986 tx_multicast 48 tx_amsdu 257 | radio full 0 gave up 0 | rx_action 5031 rx_data 393450 rx_malformed 0 rx_dup 25 delivered 781023 | addba req 0 resp 0 tx_req 37 rx_resp 0 | dropped no_peer 0 queue 0 expired 0 | syn held 0 released 0 | no_overlap 0 | timer late avg 1467 µs max 7448 µs
+OWLY_PEERS count=3
+OWLY_PEERS count=3
+ INFO owly_awdl::driver: remove peer 02:00:00:00:00:14
+OWLY_PT_PEER_CTL op=del active=2 rc=ok
+OWLY_PEERS count=2
+OWLY_PEERS count=2
+OWLY_PEERS count=2
+OWLY_PEERS count=2
+OWLY_PEERS count=2
+OWLY_PEERS count=2
+OWLY_PEERS count=2
+ INFO owly_awdl::driver: STATS tx_action 4354 tx_unicast 8993 tx_multicast 48 tx_amsdu 257 | radio full 0 gave up 0 | rx_action 5300 rx_data 393456 rx_malformed 0 rx_dup 25 delivered 781023 | addba req 0 resp 0 tx_req 37 rx_resp 0 | dropped no_peer 0 queue 0 expired 0 | syn held 0 released 0 | no_overlap 0 | timer late avg 1500 µs max 8653 µs
+OWLY_PEERS count=2
+OWLY_PEERS count=2
+OWLY_PEERS count=2
+OWLY_PEERS count=2
+OWLY_PEERS count=2
+OWLY_PEERS count=2
+OWLY_PEERS count=2
+ INFO owly_awdl::driver: STATS tx_action 4537 tx_unicast 8999 tx_multicast 50 tx_amsdu 257 | radio full 0 gave up 0 | rx_action 5510 rx_data 393462 rx_malformed 0 rx_dup 25 delivered 781023 | addba req 0 resp 0 tx_req 37 rx_resp 0 | dropped no_peer 0 queue 0 expired 0 | syn held 0 released 0 | no_overlap 0 | timer late avg 1408 µs max 9445 µs
+OWLY_RX_GAPS schema=1 matched=387611 missing=0 equal=363884 backwards=0 host_delayed=2 equal_host_delayed=4 host_caught_up=0 bounds_us=[250, 1000, 4000, 16000, 32000, 64000, 128000, 256000] radio_count=[9, 16138, 2843, 2802, 1619, 73, 2, 234, 6] radio_us=[1951, 12186826, 5725826, 27371441, 32782787, 2805698, 142627, 42899451, 1718660] host_count=[329698, 50642, 2636, 4227, 150, 17, 5, 229, 6] host_us=[24358966, 20742356, 4960471, 28282180, 3403109, 645147, 624760, 40750429, 1681973]
+ INFO houji_runner::android: monitor totals air_rx_invalid=0 air_rx_kernel_packets=398997 air_rx_kernel_drops=0 air_tx_fatal=0 air_tx_backpressure=0 air_tx_submitted=12298 air_tx_amsdu_mpdu=257 air_tx_amsdu_msdu=1582
+ INFO houji_runner::android: tap totals tap_rx_invalid=0 tap_delivery_drops=0
+OWLY_PT_PEER_CTL op=clear active=0 rc=ok

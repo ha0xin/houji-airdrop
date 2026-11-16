@@ -66,6 +66,7 @@
 #include <qdf_pt_remote_peer.h>
 #endif
 #include "dp_pt_rate_observer.h"
+#include "dp_pt_tx_observer.h"
 
 #ifdef DRIVER_PASSTHRU_OWNER
 /* Diagnostic switch: retain association while selecting the original BSS AST.
@@ -415,6 +416,8 @@ dp_tx_desc_release(struct dp_soc *soc, struct dp_tx_desc_s *tx_desc,
 {
 	struct dp_pdev *pdev = tx_desc->pdev;
 	uint8_t comp_status = 0;
+
+	dp_pto_end(tx_desc, NULL);
 
 	if (dp_tx_release_ds_tx_desc(soc, tx_desc, desc_pool_id))
 		return;
@@ -3064,10 +3067,12 @@ dp_tx_latency_stats_update(struct dp_soc *soc,
 }
 #endif
 
-qdf_nbuf_t
-dp_tx_send_msdu_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
-		       struct dp_tx_msdu_info_s *msdu_info, uint16_t peer_id,
-		       struct cdp_tx_exception_metadata *tx_exc_metadata)
+static qdf_nbuf_t
+dp_tx_send_msdu_single_reason(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
+			      struct dp_tx_msdu_info_s *msdu_info,
+			      uint16_t peer_id,
+			      struct cdp_tx_exception_metadata *tx_exc_metadata,
+			      enum cdp_tx_sw_drop *drop_reason)
 {
 	struct dp_pdev *pdev = vdev->pdev;
 	struct dp_soc *soc = pdev->soc;
@@ -3132,6 +3137,7 @@ dp_tx_send_msdu_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
 	dp_tx_desc_history_add(soc, tx_desc->dma_addr, nbuf,
 			       tx_desc->id, DP_TX_DESC_MAP);
 	dp_tx_update_mcast_param(peer_id, &htt_tcl_metadata, vdev, msdu_info);
+	dp_pto_begin(tx_desc, nbuf);
 	/* Enqueue the Tx MSDU descriptor to HW for transmit */
 	status = soc->arch_ops.tx_hw_enqueue(soc, vdev, tx_desc,
 					     htt_tcl_metadata,
@@ -3164,7 +3170,18 @@ fail_return:
 	tid_stats = &pdev->stats.tid_stats.
 		    tid_tx_stats[tx_q->ring_id][tid];
 	tid_stats->swdrop_cnt[drop_code]++;
+	if (drop_reason)
+		*drop_reason = drop_code;
 	return nbuf;
+}
+
+qdf_nbuf_t
+dp_tx_send_msdu_single(struct dp_vdev *vdev, qdf_nbuf_t nbuf,
+		       struct dp_tx_msdu_info_s *msdu_info, uint16_t peer_id,
+		       struct cdp_tx_exception_metadata *tx_exc_metadata)
+{
+	return dp_tx_send_msdu_single_reason(vdev, nbuf, msdu_info, peer_id,
+					     tx_exc_metadata, NULL);
 }
 
 #ifdef DRIVER_PASSTHRU_DP
@@ -3222,8 +3239,9 @@ dp_tx_passthru_validate_frame(const uint8_t *frame, uint32_t len,
 }
 
 static qdf_nbuf_t
-dp_tx_send_passthru_internal(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
-			     qdf_nbuf_t nbuf, struct dp_vdev *expected)
+dp_tx_send_passthru_impl(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
+			 qdf_nbuf_t nbuf, struct dp_vdev *expected,
+			 enum cdp_pt_tx_status *out_status)
 {
 	struct dp_soc *soc;
 	struct dp_vdev *vdev;
@@ -3232,23 +3250,26 @@ dp_tx_send_passthru_internal(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 	qdf_nbuf_t result = nbuf;
 	uint16_t radiotap_len;
 	uint8_t saved_cb[sizeof(nbuf->cb)];
+	enum cdp_tx_sw_drop drop_code = TX_MAX_DROP;
+	enum cdp_pt_tx_status status_out = CDP_PT_TX_DROP_VALIDATE;
 
 	if (!soc_hdl || !nbuf || vdev_id >= MAX_VDEV_CNT ||
 	    qdf_nbuf_is_nonlinear(nbuf) || qdf_nbuf_is_tso(nbuf))
-		return nbuf;
+		goto out_nofree;
 	if (QDF_IS_STATUS_ERROR(qdf_nbuf_get_wonder_tx_metadata(nbuf, &meta)) ||
 	    QDF_IS_STATUS_ERROR(qdf_nbuf_get_radiotap_len_checked(nbuf,
 							      &radiotap_len)))
-		return nbuf;
+		goto out_nofree;
 	if (!dp_tx_passthru_validate_frame(qdf_nbuf_data(nbuf) + radiotap_len,
 					 qdf_nbuf_headlen(nbuf) - radiotap_len,
 					 &meta, &msdu_info.tid))
-		return nbuf;
+		goto out_nofree;
 
+	status_out = CDP_PT_TX_DROP_VDEV;
 	soc = cdp_soc_t_to_dp_soc(soc_hdl);
 	vdev = dp_vdev_get_ref_by_id(soc, vdev_id, DP_MOD_ID_CDP);
 	if (!vdev)
-		return nbuf;
+		goto out_nofree;
 	/* The managed owner pins expected; ID reuse must not select a new vdev. */
 	if (expected && vdev != expected)
 		goto put;
@@ -3260,11 +3281,11 @@ dp_tx_send_passthru_internal(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 	    !soc->num_tcl_data_rings || !soc->arch_ops.tx_hw_enqueue)
 		goto leave;
 	dp_tx_get_queue(vdev, nbuf, &msdu_info.tx_queue);
-    if (pt_single_ring) {
-        msdu_info.tx_queue.ring_id = 0;
-        msdu_info.tx_queue.desc_pool_id = 0;
-    }
-    /* This profile uses only ordinary data rings and descriptor pools. */
+	if (pt_single_ring) {
+		msdu_info.tx_queue.ring_id = 0;
+		msdu_info.tx_queue.desc_pool_id = 0;
+	}
+	/* This profile uses only ordinary data rings and descriptor pools. */
 	if (msdu_info.tx_queue.ring_id >= soc->num_tcl_data_rings ||
 	    msdu_info.tx_queue.ring_id >= MAX_TCL_DATA_RINGS ||
 	    msdu_info.tx_queue.ring_id >= CDP_MAX_TX_COMP_RINGS ||
@@ -3293,36 +3314,78 @@ dp_tx_send_passthru_internal(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 		dp_pt_ast_override_inc();
 	}
 #endif
-	result = dp_tx_send_msdu_single(vdev, nbuf, &msdu_info,
-					 HTT_INVALID_PEER, NULL);
+	result = dp_tx_send_msdu_single_reason(vdev, nbuf, &msdu_info,
+					       HTT_INVALID_PEER, NULL,
+					       &drop_code);
 	if (result) {
 		/* No raw failure path pushes additional headers or reallocates. */
 		qdf_nbuf_push_head(result, radiotap_len);
 		qdf_mem_copy(result->cb, saved_cb, sizeof(saved_cb));
+		if (drop_code == TX_DESC_ERR)
+			status_out = CDP_PT_TX_BUSY_DESC;
+		else if (drop_code == TX_HW_ENQUEUE)
+			status_out = CDP_PT_TX_BUSY_HW_ENQ;
+		else
+			status_out = CDP_PT_TX_DROP_DMA;
+	} else {
+		status_out = CDP_PT_TX_OK;
 	}
 
 leave:
 	dp_passthru_exit(vdev);
 put:
 	dp_vdev_unref_delete(soc, vdev, DP_MOD_ID_CDP);
+out_nofree:
+	if (out_status)
+		*out_status = status_out;
+	return result;
+}
+
+static qdf_nbuf_t
+dp_tx_send_passthru_internal(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
+			     qdf_nbuf_t nbuf, struct dp_vdev *expected,
+			     enum cdp_pt_tx_status *out_status)
+{
+	enum cdp_pt_tx_status st = CDP_PT_TX_DROP_VDEV;
+	qdf_nbuf_t result;
+
+	result = dp_tx_send_passthru_impl(soc_hdl, vdev_id, nbuf, expected,
+					  &st);
+	dp_pto_record_status(st);
+	if (out_status)
+		*out_status = st;
 	return result;
 }
 
 qdf_nbuf_t dp_tx_send_passthru(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 			     qdf_nbuf_t nbuf)
 {
-	return dp_tx_send_passthru_internal(soc_hdl, vdev_id, nbuf, NULL);
+	return dp_tx_send_passthru_internal(soc_hdl, vdev_id, nbuf, NULL, NULL);
 }
 
 #ifdef DRIVER_PASSTHRU_OWNER
 qdf_nbuf_t
+dp_tx_send_passthru_identity_status(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
+				   qdf_nbuf_t nbuf, struct dp_vdev *expected,
+				   enum cdp_pt_tx_status *status)
+{
+	if (!expected) {
+		if (status)
+			*status = CDP_PT_TX_DROP_VDEV;
+		dp_pto_record_status(CDP_PT_TX_DROP_VDEV);
+		return nbuf;
+	}
+
+	return dp_tx_send_passthru_internal(soc_hdl, vdev_id, nbuf, expected,
+					    status);
+}
+
+qdf_nbuf_t
 dp_tx_send_passthru_identity(struct cdp_soc_t *soc_hdl, uint8_t vdev_id,
 			    qdf_nbuf_t nbuf, struct dp_vdev *expected)
 {
-	if (!expected)
-		return nbuf;
-
-	return dp_tx_send_passthru_internal(soc_hdl, vdev_id, nbuf, expected);
+	return dp_tx_send_passthru_identity_status(soc_hdl, vdev_id, nbuf,
+						   expected, NULL);
 }
 #endif
 #endif
@@ -6411,6 +6474,7 @@ void dp_tx_comp_process_tx_status(struct dp_soc *soc,
 
 	if (dp_tx_desc_is_passthru(tx_desc)) {
 		/* No Ethernet statistics, peer lookup or fabricated ACK callback. */
+		dp_pto_end(tx_desc, ts);
 		dp_pt_rate_end(ts);
 		DP_STATS_INCC(soc, tx.dropped_fw_removed, 1,
 			      (ts->status == HAL_TX_TQM_RR_REM_CMD_REM));

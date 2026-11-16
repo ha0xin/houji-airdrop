@@ -1,0 +1,34 @@
+# Kernel sysfs snapshot captured at session exit after post-fix 2026-11-15 22:52:43-22:53:26 1 GiB (1,073,741,824 B) AirDrop RX (24.64 MB/s).
+# Source: /data/local/tmp/xos/owly/state/last-session-stats.txt (NO_ACK status[2]=2,023 / 138,894 = 1.46%, tries=142,805, agg_mpdus=136,005).
+
+== pt_remote_rx_window ==
+256
+
+== pt_fw_caps ==
+ready=1 wire_506_valid=1 wire_506_passthru_ampdu=1 ext2_len_words=8 ext2_w7=0x24010000 wmi_service_338_passthru_ampdu=0 peer_create_conf=1 sync_delete=1 max_peers=17
+
+== pt_rate_stats ==
+schema=1 enabled=1 completed=138894 valid=136871 invalid=2023 tries=142805 amsdu=0 ldpc=136860 ppdus=7455 agg_ppdus=6589 agg_mpdus=136005 ast_overrides=136915 remote_peer_compl=136906
+bw=11,0,136860,0,0,0,0,0
+mcs=0,0,0,11,0,0,0,0,0,136860,0,0,0,0,0,0
+pkt=11,0,0,136860,0,0,0,0,0,0,0,0,0,0,0,0
+gi=11,136860,0,0
+status=136871,0,2023,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+tx_ring=138894,0,0,0,0,0,0,0
+ppdu_bin=865,875,1326,1656,1119,1613
+
+== pt_ampdu_peak ==
+max_ppdu_mpdus=64 last_peer_id=0
+
+== pt_rx_msdu_stats ==
+enabled=1 seen=1114 peer_miss=0 bad_desc=0 reaped=1114 delivered=1114 dropped=0 last_drop=0 last_bad=0 other_peer=0
+
+== pt_remote_peer_ctl ==
+active=3 tx_ready=3 max=8 reo_mode=2
+slot=0 seq=1 vdev=0 peer_id=23 aid=1 ast_valid=1 ast_idx=30 ast_hash=14 tx_ready=1 setup_rc=0 teardown_rc=0
+slot=1 seq=2 vdev=0 peer_id=24 aid=2 ast_valid=1 ast_idx=3 ast_hash=3 tx_ready=1 setup_rc=0 teardown_rc=0
+slot=2 seq=3 vdev=0 peer_id=25 aid=3 ast_valid=1 ast_idx=35 ast_hash=3 tx_ready=1 setup_rc=0 teardown_rc=0
+
+== pt_remote_peer_stats ==
+active=1 generation=1 vdev=0 peer_id=23 ast_valid=1 ast_idx=30 ast_hash=14 reo_enabled=1 is_2ss=1 obj_created=1 dp_created=1 create_confirm=1 create_status=0 htt_map=1 slot=1 reo_setup=1 reo_status=0 assoc_issued=1 assoc_confirm=1 assoc_status=0 tx_ready=1 delete_issued=0 delete_confirm=0 htt_unmap=0 slot_removed=0 dp_released=0 obj_released=0 dp_conflict=0 setup_rc=0 teardown_rc=0
+

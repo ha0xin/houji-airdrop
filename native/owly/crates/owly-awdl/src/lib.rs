@@ -53,9 +53,9 @@ pub use ip::Ipv6Packet;
 pub use node::{
     Action, Config, Input, MAX_PEERS, Node, Presence, RadioConstraints, Stats, UNICAST_QUEUE,
 };
-pub use peer::PeerInfo;
+pub use peer::{PeerCaps, PeerInfo};
 pub use rate::TxRate;
-pub use tlv::VhtProfile;
+pub use tlv::{HtCapabilities, VhtCapabilities, VhtProfile};
 
 /// A monotonic count of microseconds from an epoch the caller picks.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]

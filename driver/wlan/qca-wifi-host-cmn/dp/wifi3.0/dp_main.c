@@ -5326,17 +5326,29 @@ dp_passthru_managed_join_wifi3(struct cdp_soc_t *cdp_soc,
 }
 
 static qdf_nbuf_t
-dp_passthru_managed_tx_wifi3(struct cdp_soc_t *cdp_soc,
-			   struct cdp_passthru_handle *handle, qdf_nbuf_t nbuf)
+dp_passthru_managed_tx_status_wifi3(struct cdp_soc_t *cdp_soc,
+				    struct cdp_passthru_handle *handle,
+				    qdf_nbuf_t nbuf,
+				    enum cdp_pt_tx_status *status)
 {
 	struct dp_vdev *vdev;
 
+	if (status)
+		*status = CDP_PT_TX_DROP_VDEV;
 	if (!handle || handle->soc != (struct dp_soc *)cdp_soc)
 		return nbuf;
 	vdev = handle->vdev;
 	if (!vdev)
 		return nbuf;
-	return dp_tx_send_passthru_identity(cdp_soc, vdev->vdev_id, nbuf, vdev);
+	return dp_tx_send_passthru_identity_status(cdp_soc, vdev->vdev_id,
+						   nbuf, vdev, status);
+}
+
+static qdf_nbuf_t
+dp_passthru_managed_tx_wifi3(struct cdp_soc_t *cdp_soc,
+			   struct cdp_passthru_handle *handle, qdf_nbuf_t nbuf)
+{
+	return dp_passthru_managed_tx_status_wifi3(cdp_soc, handle, nbuf, NULL);
 }
 #endif
 
@@ -12879,6 +12891,7 @@ static struct cdp_cmn_ops dp_ops_cmn = {
 	.passthru_managed_close = dp_passthru_managed_close_wifi3,
 	.passthru_managed_join = dp_passthru_managed_join_wifi3,
 	.passthru_managed_tx = dp_passthru_managed_tx_wifi3,
+	.passthru_managed_tx_status = dp_passthru_managed_tx_status_wifi3,
 #endif
 	.txrx_soc_detach = dp_soc_detach_wifi3,
 	.txrx_soc_deinit = dp_soc_deinit_wifi3,
